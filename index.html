@@ -9300,87 +9300,64 @@ function formatDate(dateString) {
 
 
 
-
-
-
-
-
-
 function generatePreview() {
     // Save current step data first
     saveStepData();
     
-    // In a real app, this would generate a preview of the memorial
+    // Show notification
     showNotification('Generating preview...');
     
-    // Instead of using iframe, show a preview modal or navigate to a preview section
+    // Get the preview iframe element
     const previewFrame = document.getElementById('memorialPreview');
     if (previewFrame) {
-        // Set to a blank page or remove the iframe approach
+        // Hide the iframe completely
         previewFrame.style.display = 'none';
         
-        // Create a preview message
+        // Get the parent container
         const previewContainer = previewFrame.parentElement;
-        if (!previewContainer.querySelector('.preview-message')) {
-            const message = document.createElement('div');
-            message.className = 'preview-message';
-            message.style.cssText = `
-                padding: 3rem;
-                text-align: center;
-                color: var(--text-secondary);
-                background: var(--gradient-soft);
-                border-radius: 10px;
-                height: 100%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                flex-direction: column;
-            `;
-            message.innerHTML = `
-                <i class="fas fa-eye" style="font-size: 3rem; margin-bottom: 1rem; color: var(--primary-sage);"></i>
-                <h3 style="margin-bottom: 1rem;">Memorial Preview Ready</h3>
-                <p>Your memorial has been prepared. Click "Publish Memorial" to make it live.</p>
-                <button class="btn-secondary" onclick="showPage('exampleMemorial')" style="margin-top: 1rem;">
-                    <i class="fas fa-external-link-alt"></i>
-                    View Example Memorial
-                </button>
-            `;
-            previewContainer.appendChild(message);
-        }
-    }
-    
-    // Update other preview elements
-    if (memorialData.basic) {
-        // Update name
-        const nameEl = document.querySelector('.memorial-main-name');
-        if (nameEl) {
-            const fullName = `${memorialData.basic.firstName} ${memorialData.basic.middleName || ''} ${memorialData.basic.lastName}`.trim();
-            nameEl.textContent = fullName;
+        
+        // Remove any existing preview message
+        const existingMessage = previewContainer.querySelector('.preview-message');
+        if (existingMessage) {
+            existingMessage.remove();
         }
         
-        // Update dates
-        const datesEl = document.querySelector('.memorial-main-dates');
-        if (datesEl) {
-            const birthDate = new Date(memorialData.basic.birthDate);
-            const deathDate = new Date(memorialData.basic.deathDate);
-            datesEl.textContent = `${birthDate.toLocaleDateString()} - ${deathDate.toLocaleDateString()}`;
-        }
-        
-        // Update photos
-        const profilePhotoEl = document.querySelector('.memorial-main-photo');
-        if (profilePhotoEl && memorialData.basic.profilePhoto) {
-            profilePhotoEl.src = memorialData.basic.profilePhoto;
-            profilePhotoEl.onerror = function() {
-                this.src = 'assets/default-memorial-photo.jpg';
-            };
-        }
+        // Create new preview message
+        const message = document.createElement('div');
+        message.className = 'preview-message';
+        message.style.cssText = `
+            padding: 3rem;
+            text-align: center;
+            color: var(--text-secondary);
+            background: var(--gradient-soft);
+            border-radius: 10px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        `;
+        message.innerHTML = `
+            <i class="fas fa-eye" style="font-size: 3rem; margin-bottom: 1rem; color: var(--primary-sage);"></i>
+            <h3 style="margin-bottom: 1rem;">Memorial Preview Ready</h3>
+            <p>Your memorial has been prepared. Click "Publish Memorial" to make it live.</p>
+            <button class="btn-secondary" onclick="showPage('exampleMemorial')" style="margin-top: 1rem;">
+                <i class="fas fa-external-link-alt"></i>
+                View Example Memorial
+            </button>
+        `;
+        previewContainer.appendChild(message);
     }
     
-    // Update the preview with sanitized content
-    if (memorialData.story && memorialData.story.lifeStory) {
-        displayLifeStory(memorialData.story.lifeStory);
-    }
+    // Log the memorial data for debugging
+    console.log('Memorial preview data:', memorialData);
 }
+
+
+
+
+
+
 
 
 
