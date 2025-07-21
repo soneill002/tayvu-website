@@ -8599,73 +8599,88 @@ function validateCurrentStep() {
     // Add validation for required fields
     switch(currentStep) {
         case 1:
-    const firstName = document.getElementById('firstName').value;
-    const lastName = document.getElementById('lastName').value;
-    const birthDate = document.getElementById('birthDate').value;
-    const deathDate = document.getElementById('deathDate').value;
-    const headline = document.getElementById('headline').value;
-    const openingStatement = document.getElementById('openingStatement').value;
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+            const birthDate = document.getElementById('birthDate').value;
+            const deathDate = document.getElementById('deathDate').value;
+            const headline = document.getElementById('headline').value;
+            const openingStatement = document.getElementById('openingStatement').value;
+            
+            // Check if all required fields are filled
+            if (!firstName || !lastName || !birthDate || !deathDate || !headline || !openingStatement) {
+                showNotification('Please fill in all required fields', 'error');
+                return false;
+            }
+            
+            // Validate dates using the validateDates function
+            if (!validateDates()) {
+                return false;
+            }
+            
+            // Additional date validations
+            const birthDateObj = new Date(birthDate);
+            const deathDateObj = new Date(deathDate);
+            const minDateObj = new Date('1850-01-01');
+            
+            // Check if dates are before 1850
+            if (birthDateObj < minDateObj) {
+                showNotification('Date of birth cannot be before 1850', 'error');
+                document.getElementById('birthDate').focus();
+                return false;
+            }
+            
+            if (deathDateObj < minDateObj) {
+                showNotification('Date of passing cannot be before 1850', 'error');
+                document.getElementById('deathDate').focus();
+                return false;
+            }
+            
+            return true;
     
-    // Check if all required fields are filled
-    if (!firstName || !lastName || !birthDate || !deathDate || !headline || !openingStatement) {
-        showNotification('Please fill in all required fields', 'error');
-        return false;
-    }
-    
-    // Validate dates using the validateDates function
-    if (!validateDates()) {
-        return false;
-    }
-    
-    // Additional date validations
-    const birthDateObj = new Date(birthDate);
-    const deathDateObj = new Date(deathDate);
-    const minDateObj = new Date('1850-01-01');
-    
-    // Check if dates are before 1850
-    if (birthDateObj < minDateObj) {
-        showNotification('Date of birth cannot be before 1850', 'error');
-        document.getElementById('birthDate').focus();
-        return false;
-    }
-    
-    if (deathDateObj < minDateObj) {
-        showNotification('Date of passing cannot be before 1850', 'error');
-        document.getElementById('deathDate').focus();
-        return false;
-    }
-    
-  return true;
-    
-case 2:
-    // Validate obituary details
-    const lifeStory = document.getElementById('lifeStory').innerHTML;
-    const lifeStoryText = document.getElementById('lifeStory').textContent.trim();
-    
-    // Check if empty
-    if (!lifeStoryText || lifeStoryText.length < 50) {
-        showNotification('Please write at least 50 characters for the obituary', 'error');
-        document.getElementById('lifeStory').focus();
-        return false;
-    }
-    
-    // Check for suspicious content
-    if (lifeStory.includes('<script') || lifeStory.includes('javascript:')) {
-        showNotification('Invalid content detected. Please remove any scripts.', 'error');
-        return false;
-    }
-    
-    // Sanitize and check if content survives sanitization
-    const sanitized = MemorialSanitizer.sanitizeRichText(lifeStory);
-    const sanitizedText = document.createElement('div');
-    sanitizedText.innerHTML = sanitized;
-    
-    if (sanitizedText.textContent.trim().length < 50) {
-        showNotification('The obituary content is too short after removing invalid elements', 'error');
-        return false;
-    }
-    
-    return true;
+        case 2:
+            // Validate obituary details
+            const lifeStory = document.getElementById('lifeStory').innerHTML;
+            const lifeStoryText = document.getElementById('lifeStory').textContent.trim();
+            
+            // Check if empty
+            if (!lifeStoryText || lifeStoryText.length < 50) {
+                showNotification('Please write at least 50 characters for the obituary', 'error');
+                document.getElementById('lifeStory').focus();
+                return false;
+            }
+            
+            // Check for suspicious content
+            if (lifeStory.includes('<script') || lifeStory.includes('javascript:')) {
+                showNotification('Invalid content detected. Please remove any scripts.', 'error');
+                return false;
+            }
+            
+            // Sanitize and check if content survives sanitization
+            const sanitized = MemorialSanitizer.sanitizeRichText(lifeStory);
+            const sanitizedText = document.createElement('div');
+            sanitizedText.innerHTML = sanitized;
+            
+            if (sanitizedText.textContent.trim().length < 50) {
+                showNotification('The obituary content is too short after removing invalid elements', 'error');
+                return false;
+            }
+            
+            return true;
+            
+        case 3:
+            // Service Information - optional step, no validation required
+            return true;
+            
+        case 4:
+            // Cherished Moments - optional step, no validation required
+            return true;
+            
+        case 5:
+            // Preview step - no validation needed
+            return true;
+            
+        default:
+            return true;
     }
 }
 
