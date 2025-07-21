@@ -7842,34 +7842,109 @@ window.addEventListener('load', () => {
             document.body.style.overflow = 'hidden';
         }
 
-        function submitGuestbookEntry(event) {
-            event.preventDefault();
-            const message = document.getElementById('guestbookMessage').value;
-            
-            // In a real app, this would save to the database
-            showNotification('Your message has been posted');
-            event.target.closest('.modal').remove();
-            document.body.style.overflow = 'auto';
-            
-            // Add the new entry to the guestbook (in real app, this would come from database)
-            const guestbookEntries = document.querySelector('.guestbook-entries');
-            const newEntry = document.createElement('div');
-            newEntry.className = 'guestbook-entry';
-            newEntry.innerHTML = `
-                <div class="entry-header">
-                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=50&h=50&fit=crop" alt="You">
-                    <div class="entry-info">
-                        <h4>You</h4>
-                        <p class="entry-date">Just now</p>
-                    </div>
-                </div>
-                <p class="entry-message">${message}</p>
-                <div class="entry-actions">
-                    <button class="action-btn"><i class="fas fa-heart"></i> 0</button>
-                </div>
-            `;
-            guestbookEntries.insertBefore(newEntry, guestbookEntries.firstChild);
-        }
+
+
+
+
+
+      function submitGuestbookEntry(event) {
+    event.preventDefault();
+    const messageInput = document.getElementById('guestbookMessage');
+    const rawMessage = messageInput.value;
+    
+    // Sanitize the message
+    const sanitizedMessage = MemorialSanitizer.sanitizeMessage(rawMessage);
+    
+    if (!sanitizedMessage) {
+        showNotification('Please enter a valid message', 'error');
+        return;
+    }
+    
+    // Create entry using DOM methods
+    const newEntry = document.createElement('div');
+    newEntry.className = 'guestbook-entry';
+    
+    // Create header
+    const header = document.createElement('div');
+    header.className = 'entry-header';
+    
+    // Create user image
+    const userImg = document.createElement('img');
+    userImg.src = currentUser?.photoURL || 'assets/default-avatar.jpg';
+    userImg.alt = 'Your profile photo';
+    userImg.width = 50;
+    userImg.height = 50;
+    userImg.onerror = function() {
+        this.src = 'assets/default-avatar.jpg';
+    };
+    
+    // Create info container
+    const info = document.createElement('div');
+    info.className = 'entry-info';
+    
+    const userName = document.createElement('h4');
+    userName.textContent = MemorialSanitizer.sanitizeText(
+        currentUser?.displayName || 'Anonymous'
+    );
+    
+    const date = document.createElement('p');
+    date.className = 'entry-date';
+    date.textContent = 'Just now';
+    
+    // Create message paragraph
+    const messageEl = document.createElement('p');
+    messageEl.className = 'entry-message';
+    // Use innerHTML for sanitized content that may contain allowed HTML
+    messageEl.innerHTML = sanitizedMessage;
+    
+    // Create actions
+    const actions = document.createElement('div');
+    actions.className = 'entry-actions';
+    
+    const likeBtn = document.createElement('button');
+    likeBtn.className = 'action-btn';
+    likeBtn.innerHTML = '<i class="fas fa-heart"></i> 0';
+    likeBtn.onclick = function() {
+        incrementLikes(this);
+    };
+    
+    // Assemble the entry
+    info.appendChild(userName);
+    info.appendChild(date);
+    header.appendChild(userImg);
+    header.appendChild(info);
+    actions.appendChild(likeBtn);
+    
+    newEntry.appendChild(header);
+    newEntry.appendChild(messageEl);
+    newEntry.appendChild(actions);
+    
+    // Add to guestbook
+    const guestbookEntries = document.querySelector('.guestbook-entries');
+    guestbookEntries.insertBefore(newEntry, guestbookEntries.firstChild);
+    
+    // Clear form and close modal
+    messageInput.value = '';
+    event.target.closest('.modal').remove();
+    document.body.style.overflow = 'auto';
+    
+    // Show success notification
+    showNotification('Your message has been posted');
+    
+    // In production, also save to database with sanitized content
+    saveGuestbookEntry({
+        message: sanitizedMessage,
+        userId: currentUser?.uid,
+        userName: MemorialSanitizer.sanitizeText(currentUser?.displayName),
+        timestamp: new Date().toISOString()
+    });
+}
+
+
+
+
+
+
 
         // Mobile menu
         function toggleMobileMenu() {
@@ -8190,29 +8265,86 @@ function switchProfileTab(tab) {
     document.getElementById(`${tab}Tab`).classList.add('active');
 }
 
+
+
+
+
+
 function loadMyMemorials() {
-    // Mock data for demonstration
-    const memorials = [
-        {
-            id: 1,
-            name: 'Margaret Rose Thompson',
-            dates: '1945 - 2023',
-            photo: 'https://images.unsplash.com/photo-1566616213894-2d4e1baee5d8?w=400&h=300&fit=crop',
-            photos: 147,
-            tributes: 89,
-         
-        },
-        {
-            id: 2,
-            name: 'Robert James Wilson',
-            dates: '1938 - 2022',
-            photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop',
-            photos: 92,
-            tributes: 56,
-        
-        }
-    ];
+    const container = document.getElementById('myMemorials');
     
+    // Clear container safely
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+    
+    // Build elements safely
+    memorials.forEach(memorial => {
+        // Create card element
+        const card = document.createElement('div');
+        card.className = 'memorial-card';
+        card.onclick = () => viewMemorial(memorial.id);
+        
+        // Create image container
+        const imageContainer = document.createElement('div');
+        imageContainer.className = 'memorial-card-image';
+        
+        // Create and validate image
+        const img = document.createElement('img');
+        const sanitizedSrc = MemorialSanitizer.sanitizeURL(memorial.photo);
+        if (sanitizedSrc && MemorialSanitizer.isValidImageSource(sanitizedSrc)) {
+            img.src = sanitizedSrc;
+        } else {
+            img.src = 'assets/default-memorial-photo.jpg'; // Fallback image
+        }
+        img.alt = MemorialSanitizer.sanitizeText(memorial.name);
+        img.onerror = function() {
+            this.src = 'assets/default-memorial-photo.jpg';
+        };
+        
+        imageContainer.appendChild(img);
+        
+        // Create content container
+        const content = document.createElement('div');
+        content.className = 'memorial-card-content';
+        
+        // Create name element
+        const name = document.createElement('h3');
+        name.className = 'memorial-card-name';
+        name.textContent = MemorialSanitizer.sanitizeText(memorial.name);
+        
+        // Create dates element
+        const dates = document.createElement('p');
+        dates.className = 'memorial-card-dates';
+        dates.textContent = MemorialSanitizer.sanitizeText(memorial.dates);
+        
+        // Assemble card
+        content.appendChild(name);
+        content.appendChild(dates);
+        card.appendChild(imageContainer);
+        card.appendChild(content);
+        container.appendChild(card);
+    });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const container = document.getElementById('myMemorials');
     
     if (memorials.length === 0) {
@@ -8556,6 +8688,22 @@ function updateProgress() {
             memorialPage.classList.add('compact-layout');
         }
     }
+
+ // ADD THIS NEW CODE HERE ↓↓↓
+    
+    // Initialize features for specific steps
+    if (currentStep === 2) {
+        // Initialize rich text auto-save for obituary
+        setTimeout(() => {
+            initializeRichTextAutoSave();
+            loadDraftLifeStory();
+        }, 100);
+    }
+    
+    // ↑↑↑ END OF NEW CODE
+}  // This is the closing brace of updateProgress()
+
+
 }
 
 
@@ -8679,33 +8827,35 @@ function validateCurrentStep() {
     
   return true;
     
-        case 2:
-            // Validate obituary details
-            const lifeStory = document.getElementById('lifeStory').innerHTML;
-            const lifeStoryText = document.getElementById('lifeStory').textContent.trim();
-            
-            if (!lifeStoryText || lifeStoryText.length < 10) {
-                showNotification('Please write the obituary details', 'error');
-                return false;
-            }
-            
-            return true;
-            
-        case 3:
-            // Service information is optional, so always return true
-            return true;
-            
-                    
-        case 4:
-            // Moments are optional, so always return true
-            return true;
-            
-        case 5:
-            // Preview step, no validation needed
-            return true;
-            
-        default:
-            return true;
+case 2:
+    // Validate obituary details
+    const lifeStory = document.getElementById('lifeStory').innerHTML;
+    const lifeStoryText = document.getElementById('lifeStory').textContent.trim();
+    
+    // Check if empty
+    if (!lifeStoryText || lifeStoryText.length < 50) {
+        showNotification('Please write at least 50 characters for the obituary', 'error');
+        document.getElementById('lifeStory').focus();
+        return false;
+    }
+    
+    // Check for suspicious content
+    if (lifeStory.includes('<script') || lifeStory.includes('javascript:')) {
+        showNotification('Invalid content detected. Please remove any scripts.', 'error');
+        return false;
+    }
+    
+    // Sanitize and check if content survives sanitization
+    const sanitized = MemorialSanitizer.sanitizeRichText(lifeStory);
+    const sanitizedText = document.createElement('div');
+    sanitizedText.innerHTML = sanitized;
+    
+    if (sanitizedText.textContent.trim().length < 50) {
+        showNotification('The obituary content is too short after removing invalid elements', 'error');
+        return false;
+    }
+    
+    return true;
     }
 }
 
@@ -8738,10 +8888,26 @@ function saveStepData() {
             };
             break;
         case 2:
-            memorialData.story = {
-                lifeStory: document.getElementById('lifeStory').innerHTML
-            };
-            break;
+    // Get the raw HTML from the editor
+    const rawContent = document.getElementById('lifeStory').innerHTML;
+    
+    // Sanitize the rich text content
+    const sanitizedContent = MemorialSanitizer.sanitizeRichText(rawContent);
+    
+    // Validate that content exists
+    if (!sanitizedContent || sanitizedContent.trim().length < 50) {
+        showNotification('Please write at least 50 characters for the obituary', 'error');
+        return false;
+    }
+    
+    memorialData.story = {
+        lifeStory: sanitizedContent,
+        // Store both sanitized and raw for editing
+        lifeStoryRaw: rawContent,
+        // Store plain text version for previews/excerpts
+        lifeStoryText: document.getElementById('lifeStory').textContent.trim()
+    };
+    break;
         case 3:
             // Save service information
             memorialData.services = [];
@@ -8773,7 +8939,46 @@ function saveStepData() {
 }
 
 
+// Add this after the saveStepData function (around line 3000)
+function displayLifeStory(content) {
+    // Find the container where obituary should be displayed
+    const container = document.querySelector('.obituary-details');
+    if (!container) {
+        console.error('Obituary container not found');
+        return;
+    }
+    
+    // Content is already sanitized, safe to use innerHTML
+    container.innerHTML = content;
+    
+    // Also update the headline if provided
+    const headlineEl = document.querySelector('.obituary-title');
+    if (headlineEl && memorialData.basic && memorialData.basic.headline) {
+        // Use textContent for plain text (headline)
+        headlineEl.textContent = memorialData.basic.headline;
+    }
+    
+    // Update the opening statement
+    const leadEl = document.querySelector('.obituary-lead');
+    if (leadEl && memorialData.basic && memorialData.basic.openingStatement) {
+        // Use textContent for plain text
+        leadEl.textContent = memorialData.basic.openingStatement;
+    }
+}
 
+// Function to load content back into editor for editing
+function loadLifeStoryForEditing() {
+    const editor = document.getElementById('lifeStory');
+    if (!editor) return;
+    
+    // Load the raw version if available (for editing)
+    if (memorialData.story && memorialData.story.lifeStoryRaw) {
+        editor.innerHTML = memorialData.story.lifeStoryRaw;
+    } else if (memorialData.story && memorialData.story.lifeStory) {
+        // Fallback to sanitized version
+        editor.innerHTML = memorialData.story.lifeStory;
+    }
+}
 
 
 
@@ -9154,11 +9359,63 @@ function formatDate(dateString) {
 
 
 
-
 function generatePreview() {
+    // Save current step data first
+    saveStepData();
+    
     // In a real app, this would generate a preview of the memorial
     showNotification('Generating preview...');
+    
+    // Update the preview with sanitized content
+    if (memorialData.story && memorialData.story.lifeStory) {
+        displayLifeStory(memorialData.story.lifeStory);
+    }
+    
+    // Update other preview elements
+    if (memorialData.basic) {
+        // Update name
+        const nameEl = document.querySelector('.memorial-main-name');
+        if (nameEl) {
+            const fullName = `${memorialData.basic.firstName} ${memorialData.basic.middleName || ''} ${memorialData.basic.lastName}`.trim();
+            nameEl.textContent = fullName; // Safe: using textContent
+        }
+        
+        // Update dates
+        const datesEl = document.querySelector('.memorial-main-dates');
+        if (datesEl) {
+            const birthDate = new Date(memorialData.basic.birthDate);
+            const deathDate = new Date(memorialData.basic.deathDate);
+            datesEl.textContent = `${birthDate.toLocaleDateString()} - ${deathDate.toLocaleDateString()}`;
+        }
+        
+        // Update photos
+        const profilePhotoEl = document.querySelector('.memorial-main-photo');
+        if (profilePhotoEl && memorialData.basic.profilePhoto) {
+            profilePhotoEl.src = memorialData.basic.profilePhoto;
+            profilePhotoEl.onerror = function() {
+                this.src = 'assets/default-memorial-photo.jpg';
+            };
+        }
+    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function previewDevice(device) {
     const frame = document.querySelector('.device-frame');
@@ -9177,6 +9434,11 @@ function previewDevice(device) {
             break;
     }
 }
+
+
+
+
+
 
 function saveDraft() {
     saveStepData();
@@ -9201,7 +9463,85 @@ function publishMemorial() {
     }, 2000);
 }
 
+function publishMemorial() {
+    // Collect all data
+    saveStepData();
+    
+ // Clear any drafts
+    localStorage.removeItem('tayvu_draft_lifestory');
 
+
+    // In a real app, this would:
+    // 1. Save to database
+    // 2. Generate the memorial page
+    // 3. Redirect to the published memorial
+    
+    showNotification('Memorial published successfully!');
+    
+    // For demo, redirect to profile
+    setTimeout(() => {
+        goToProfile();
+    }, 2000);
+}
+
+// ADD ALL OF THIS AUTO-SAVE CODE HERE ↓↓↓
+
+// Auto-save draft while typing
+let autoSaveTimer;
+function initializeRichTextAutoSave() {
+    const lifeStoryEditor = document.getElementById('lifeStory');
+    if (!lifeStoryEditor) return;
+    
+    lifeStoryEditor.addEventListener('input', function() {
+        // Clear existing timer
+        clearTimeout(autoSaveTimer);
+        
+        // Set new timer - save after 2 seconds of no typing
+        autoSaveTimer = setTimeout(() => {
+            const content = lifeStoryEditor.innerHTML;
+            const sanitized = MemorialSanitizer.sanitizeRichText(content);
+            
+            // Store in localStorage as backup
+            localStorage.setItem('tayvu_draft_lifestory', JSON.stringify({
+                raw: content,
+                sanitized: sanitized,
+                timestamp: new Date().toISOString()
+            }));
+            
+            console.log('Draft auto-saved');
+        }, 2000);
+    });
+}
+
+// Load draft if exists
+function loadDraftLifeStory() {
+    const draft = localStorage.getItem('tayvu_draft_lifestory');
+    if (!draft) return;
+    
+    try {
+        const parsed = JSON.parse(draft);
+        const editor = document.getElementById('lifeStory');
+        
+        if (editor && parsed.raw) {
+            // Check if draft is less than 24 hours old
+            const draftAge = Date.now() - new Date(parsed.timestamp).getTime();
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            
+            if (draftAge < oneDayMs) {
+                editor.innerHTML = parsed.raw;
+                showNotification('Draft restored from previous session');
+            } else {
+                // Clear old draft
+                localStorage.removeItem('tayvu_draft_lifestory');
+            }
+        }
+    } catch (e) {
+        console.error('Error loading draft:', e);
+        localStorage.removeItem('tayvu_draft_lifestory');
+    }
+}
+
+// ↑↑↑ END OF AUTO-SAVE CODE
 
 
 
@@ -9521,25 +9861,25 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
       
     </script>
+
+
+
+<!-- Add this script block after DOMPurify CDN -->
+<script src="sanitizer.js"></script>
+<script>
+    // Initialize the sanitizer when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        if (!MemorialSanitizer.init()) {
+            console.error('Failed to initialize HTML sanitizer');
+            // Fallback to basic text content
+        }
+    });
+</script>
+
+
+
 
    
 </body>
