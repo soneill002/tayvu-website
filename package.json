@@ -1,0 +1,8 @@
+{
+  "name": "tayvu-memorial-website",
+  "version": "1.0.0",
+  "description": "Digital memorial website with Netlify Functions",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.3"
+  }
+}
