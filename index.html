@@ -7536,10 +7536,7 @@ window.addEventListener('load', () => {
 
 
 
-        // Initialize Supabase client
-        const { createClient } = window.supabase;
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+      
         // State management
         let currentUser = null;
         let currentPage = 'home';
@@ -7762,54 +7759,80 @@ window.addEventListener('load', () => {
         }
 
         // Authentication functions
-        async function handleSignIn(event) {
-            event.preventDefault();
-            
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            try {
-                const { data, error } = await supabase.auth.signInWithPassword({
-                    email,
-                    password
-                });
-                
-                if (error) throw error;
-                
-                currentUser = data.user;
-                updateAuthUI(true);
-                closeModal('signin');
-                showNotification('Successfully signed in!');
-            } catch (error) {
-                showError('emailError', error.message);
-            }
+      async function handleSignIn(event) {
+    event.preventDefault();
+    
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    try {
+        // Use Netlify Function for sign in
+        const response = await fetch(`${FUNCTIONS_URL}/signin`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error);
         }
+        
+        currentUser = result.user;
+        updateAuthUI(true);
+        closeModal('signin');
+        showNotification('Successfully signed in!');
+        
+        // Store the session
+        if (result.session) {
+            localStorage.setItem('supabase.auth.token', JSON.stringify(result.session));
+        }
+    } catch (error) {
+        showError('emailError', error.message);
+    }
+}
 
-        async function handleSignUp(event) {
-            event.preventDefault();
-            
-            const name = document.getElementById('signupName').value;
-            const email = document.getElementById('signupEmail').value;
-            const password = document.getElementById('signupPassword').value;
-            
-            try {
-                const { data, error } = await supabase.auth.signUp({
-                    email,
-                    password,
-                    options: {
-                        data: { name }
-                    }
-                });
-                
-                if (error) throw error;
-                
-                showNotification('Account created! Please check your email to verify.');
-                closeModal('signup');
-                openModal('signin');
-            } catch (error) {
-                showNotification(error.message, 'error');
-            }
+
+
+
+
+     async function handleSignUp(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('signupName').value;
+    const email = document.getElementById('signupEmail').value;
+    const password = document.getElementById('signupPassword').value;
+    
+    try {
+        const response = await fetch(`${FUNCTIONS_URL}/signup`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password, name })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error);
         }
+        
+        showNotification(result.message);
+        closeModal('signup');
+        openModal('signin');
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+
+
+
+
 
         async function handleSignOut() {
     try {
