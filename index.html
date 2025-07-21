@@ -8268,10 +8268,6 @@ function switchProfileTab(tab) {
 }
 
 
-
-
-
-
 function loadMyMemorials() {
     // Mock data for demonstration - replace with actual data from database
     const memorials = [
@@ -8287,106 +8283,53 @@ function loadMyMemorials() {
     
     const container = document.getElementById('myMemorials');
     
-    // Clear container safely
-    while (container.firstChild) {
-        container.removeChild(container.firstChild);
+    if (!container) {
+        console.error('myMemorials container not found');
+        return;
     }
-    
-    // Build elements safely
-    memorials.forEach(memorial => {
-        // Create card element
-        const card = document.createElement('div');
-        card.className = 'memorial-card';
-        card.onclick = () => viewMemorial(memorial.id);
-        
-        // Create image container
-        const imageContainer = document.createElement('div');
-        imageContainer.className = 'memorial-card-image';
-        
-        // Create and validate image
-        const img = document.createElement('img');
-        const sanitizedSrc = MemorialSanitizer.sanitizeURL(memorial.photo);
-        if (sanitizedSrc && MemorialSanitizer.isValidImageSource(sanitizedSrc)) {
-            img.src = sanitizedSrc;
-        } else {
-            img.src = 'assets/default-memorial-photo.jpg'; // Fallback image
-        }
-        img.alt = MemorialSanitizer.sanitizeText(memorial.name);
-        img.onerror = function() {
-            this.src = 'assets/default-memorial-photo.jpg';
-        };
-        
-        imageContainer.appendChild(img);
-        
-        // Create content container
-        const content = document.createElement('div');
-        content.className = 'memorial-card-content';
-        
-        // Create name element
-        const name = document.createElement('h3');
-        name.className = 'memorial-card-name';
-        name.textContent = MemorialSanitizer.sanitizeText(memorial.name);
-        
-        // Create dates element
-        const dates = document.createElement('p');
-        dates.className = 'memorial-card-dates';
-        dates.textContent = MemorialSanitizer.sanitizeText(memorial.dates);
-        
-        // Assemble card
-        content.appendChild(name);
-        content.appendChild(dates);
-        card.appendChild(imageContainer);
-        card.appendChild(content);
-        container.appendChild(card);
-    });
-
-
-
-    const container = document.getElementById('myMemorials');
     
     if (memorials.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
-                <i class="fas fa-monument"></i>
+                <div class="empty-state-icon">
+                    <i class="fas fa-monument"></i>
+                </div>
                 <h3>No memorials yet</h3>
                 <p>Create your first memorial to honor a loved one</p>
-              <button class="btn-primary" onclick="goToCreateMemorial()">
+                <button class="btn-primary" onclick="goToCreateMemorial()">
                     <i class="fas fa-plus"></i>
                     Create Memorial
                 </button>
             </div>
         `;
     } else {
-  container.innerHTML = memorials.map(memorial => `
-    <div class="memorial-card" onclick="viewMemorial(${memorial.id})">
-        <div class="memorial-card-image">
-            <img src="${memorial.photo}" alt="${memorial.name}">
-        </div>
-        <div class="memorial-card-content">
-            <h3 class="memorial-card-name">${memorial.name}</h3>
-            <p class="memorial-card-dates">${memorial.dates}</p>
-            <div class="memorial-card-stats">
-                <span class="memorial-card-stat">
-                    <i class="fas fa-images"></i>
-                    <span>${memorial.photos}</span>  <!-- MAKE SURE it's <span> not just text -->
-                </span>
-                <span class="memorial-card-stat">
-                    <i class="fas fa-comment"></i>
-                    <span>${memorial.tributes}</span>  <!-- MAKE SURE it's <span> not just text -->
-                </span>
+        container.innerHTML = memorials.map(memorial => `
+            <div class="memorial-card" onclick="viewMemorial(${memorial.id})">
+                <div class="memorial-card-image">
+                    <img src="${memorial.photo}" alt="${memorial.name}">
+                </div>
+                <div class="memorial-card-content">
+                    <h3 class="memorial-card-name">${memorial.name}</h3>
+                    <p class="memorial-card-dates">${memorial.dates}</p>
+                    <div class="memorial-card-stats">
+                        <span class="memorial-card-stat">
+                            <i class="fas fa-images"></i>
+                            <span>${memorial.photos}</span>
+                        </span>
+                        <span class="memorial-card-stat">
+                            <i class="fas fa-comment"></i>
+                            <span>${memorial.tributes}</span>
+                        </span>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
-`).join('');
+        `).join('');
     }
-
-
-
-
-
-
-
 }
+
+
+
+
 
 
 
