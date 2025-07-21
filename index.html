@@ -5031,6 +5031,62 @@ css/* Cherished Moments Upload Interface - Improved */
         }
 
 
+
+
+ /* Loading state for app initialization */
+        .app-loading {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .app-loading::after {
+            content: 'Loading...';
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            z-index: 9999;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        /* Spinner for buttons */
+        .fa-spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* Cherished Moments Section - Complete Redesign */
 
 
@@ -7499,35 +7555,119 @@ css/* Cherished Moments Upload Interface - Improved */
 
 
 
-        // Supabase Configuration
-        // Netlify Functions Configuration
+// Supabase Configuration - Professional Implementation
 let supabase = null;
+let configCache = null;
 const FUNCTIONS_URL = '/.netlify/functions';
 
-// Initialize the app with Netlify Functions
-async function initializeApp() {
+// Get Supabase configuration with caching
+async function getSupabaseConfig() {
+    // Check session storage cache first
+    const cached = sessionStorage.getItem('supabase_config');
+    if (cached) {
+        return JSON.parse(cached);
+    }
+    
     try {
-        // Get configuration from Netlify Function
         const response = await fetch(`${FUNCTIONS_URL}/get-config`);
+        if (!response.ok) {
+            throw new Error(`Config fetch failed: ${response.status}`);
+        }
+        
         const config = await response.json();
         
-        // Initialize Supabase with the config
-        const { createClient } = window.supabase;
-        supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
+        // Validate config has required fields
+        if (!config.supabaseUrl || !config.supabaseAnonKey) {
+            throw new Error('Invalid configuration received');
+        }
         
-        // Check if user is already logged in
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-            currentUser = user;
+        // Cache for this session
+        sessionStorage.setItem('supabase_config', JSON.stringify(config));
+        
+        return config;
+    } catch (error) {
+        console.error('Configuration error:', error);
+        throw new Error('Unable to load application configuration');
+    }
+}
+
+// Initialize the app with proper error handling and auth state management
+async function initializeApp() {
+    try {
+        // Show loading state (optional - add a loading indicator to your UI)
+        console.log('Initializing application...');
+        
+        // Get config (cached after first load)
+        const config = await getSupabaseConfig();
+        
+        // Initialize Supabase client with enhanced options
+        const { createClient } = window.supabase;
+        supabase = createClient(config.supabaseUrl, config.supabaseAnonKey, {
+            auth: {
+                persistSession: true,
+                autoRefreshToken: true,
+                detectSessionInUrl: true,
+                storageKey: 'tayvu-auth-token',
+                storage: window.localStorage
+            }
+        });
+        
+        // Set up auth state listener for real-time auth changes
+        supabase.auth.onAuthStateChange((event, session) => {
+            console.log('Auth state changed:', event);
+            
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                currentUser = session.user;
+                updateAuthUI(true);
+            } else if (event === 'SIGNED_OUT') {
+                currentUser = null;
+                updateAuthUI(false);
+            } else if (event === 'USER_UPDATED') {
+                currentUser = session.user;
+                // Refresh any user-specific UI elements
+                if (currentPage === 'profile') {
+                    loadProfileData();
+                }
+            }
+        });
+        
+        // Check for existing session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+            console.error('Session check error:', error);
+        } else if (session) {
+            currentUser = session.user;
             updateAuthUI(true);
+            console.log('Restored existing session for:', session.user.email);
         }
         
         console.log('App initialized successfully');
+        
     } catch (error) {
         console.error('Failed to initialize app:', error);
-        showNotification('Failed to load configuration. Please try again later.', 'error');
+        showNotification('Failed to load application. Please refresh the page.', 'error');
+        
+        // Show a retry button if initialization fails
+        const retryButton = document.createElement('button');
+        retryButton.textContent = 'Retry';
+        retryButton.onclick = () => location.reload();
+        retryButton.style.cssText = 'position: fixed; top: 80px; right: 20px; z-index: 9999;';
+        document.body.appendChild(retryButton);
     }
 }
+
+// Call initialization when page loads with proper error handling
+window.addEventListener('load', () => {
+    initializeApp().catch(error => {
+        console.error('Critical initialization error:', error);
+    });
+});
+
+
+
+
+
+
 
 // Call initialization when page loads
 window.addEventListener('load', () => {
@@ -7758,74 +7898,204 @@ window.addEventListener('load', () => {
             openModal('signup');
         }
 
+
+
+
+
+
         // Authentication functions
-      async function handleSignIn(event) {
+   async function handleSignIn(event) {
     event.preventDefault();
     
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
+    // Check if Supabase is initialized
+    if (!supabase) {
+        showNotification('Application not initialized. Please refresh the page.', 'error');
+        return;
+    }
+    
+    // Get form elements
+    const submitButton = event.target.querySelector('button[type="submit"]');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    
+    // Disable form during submission
+    const originalText = submitButton.textContent;
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
+    emailInput.disabled = true;
+    passwordInput.disabled = true;
+    
+    // Clear any previous errors
+    document.getElementById('emailError').style.display = 'none';
+    document.getElementById('passwordError').style.display = 'none';
     
     try {
-        // Use Netlify Function for sign in
-        const response = await fetch(`${FUNCTIONS_URL}/signin`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password })
-        });
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
         
-        const result = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(result.error);
+        // Basic validation
+        if (!email || !password) {
+            throw new Error('Please enter both email and password');
         }
         
-        currentUser = result.user;
-        updateAuthUI(true);
+        // Sign in with Supabase directly
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
+        
+        if (error) throw error;
+        
+        // Success! The onAuthStateChange listener will handle the UI update
+        console.log('Sign in successful:', data.user.email);
         closeModal('signin');
         showNotification('Successfully signed in!');
         
-        // Store the session
-        if (result.session) {
-            localStorage.setItem('supabase.auth.token', JSON.stringify(result.session));
+        // Reset form
+        event.target.reset();
+        
+        // Redirect to profile if that was the intended destination
+        if (window.pendingRedirect === 'profile') {
+            window.pendingRedirect = null;
+            showPage('profile');
         }
+        
     } catch (error) {
-        showError('emailError', error.message);
+        console.error('Sign-in error:', error);
+        
+        // User-friendly error messages
+        let errorMessage = 'Sign in failed. Please try again.';
+        let errorField = 'emailError';
+        
+        if (error.message.includes('Invalid login credentials')) {
+            errorMessage = 'Invalid email or password';
+        } else if (error.message.includes('Email not confirmed')) {
+            errorMessage = 'Please verify your email before signing in';
+        } else if (error.message.includes('Invalid email')) {
+            errorMessage = 'Please enter a valid email address';
+        } else if (error.message.includes('password')) {
+            errorMessage = 'Password is incorrect';
+            errorField = 'passwordError';
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+        
+        showError(errorField, errorMessage);
+        
+    } finally {
+        // Re-enable form
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
+        emailInput.disabled = false;
+        passwordInput.disabled = false;
     }
 }
 
 
 
-
-
-     async function handleSignUp(event) {
+async function handleSignUp(event) {
     event.preventDefault();
     
-    const name = document.getElementById('signupName').value;
-    const email = document.getElementById('signupEmail').value;
-    const password = document.getElementById('signupPassword').value;
+    // Check if Supabase is initialized
+    if (!supabase) {
+        showNotification('Application not initialized. Please refresh the page.', 'error');
+        return;
+    }
+    
+    // Get form elements
+    const submitButton = event.target.querySelector('button[type="submit"]');
+    const nameInput = document.getElementById('signupName');
+    const emailInput = document.getElementById('signupEmail');
+    const passwordInput = document.getElementById('signupPassword');
+    
+    // Disable form during submission
+    const originalText = submitButton.textContent;
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
+    nameInput.disabled = true;
+    emailInput.disabled = true;
+    passwordInput.disabled = true;
     
     try {
-        const response = await fetch(`${FUNCTIONS_URL}/signup`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password, name })
-        });
+        const name = nameInput.value.trim();
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
         
-        const result = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(result.error);
+        // Validation
+        if (!name || !email || !password) {
+            throw new Error('Please fill in all fields');
         }
         
-        showNotification(result.message);
+        if (password.length < 6) {
+            throw new Error('Password must be at least 6 characters');
+        }
+        
+        // Email validation regex
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            throw new Error('Please enter a valid email address');
+        }
+        
+        // Sign up with Supabase directly
+        const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    name: name,
+                    created_at: new Date().toISOString()
+                },
+                emailRedirectTo: `${window.location.origin}/#signin`
+            }
+        });
+        
+        if (error) throw error;
+        
+        // Check if email confirmation is required
+        if (data.user && !data.session) {
+            showNotification(
+                'Account created! Please check your email to verify your account before signing in.',
+                'success'
+            );
+        } else if (data.session) {
+            // Auto-signed in (if email confirmation is disabled)
+            showNotification('Account created successfully!', 'success');
+        }
+        
+        // Reset form and close modal
+        event.target.reset();
         closeModal('signup');
-        openModal('signin');
+        
+        // Show sign in modal after a short delay
+        setTimeout(() => {
+            openModal('signin');
+        }, 500);
+        
     } catch (error) {
-        showNotification(error.message, 'error');
+        console.error('Sign-up error:', error);
+        
+        // User-friendly error messages
+        let errorMessage = 'Sign up failed. Please try again.';
+        
+        if (error.message.includes('already registered')) {
+            errorMessage = 'This email is already registered. Please sign in.';
+        } else if (error.message.includes('valid email')) {
+            errorMessage = 'Please enter a valid email address';
+        } else if (error.message.includes('password')) {
+            errorMessage = error.message;
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+        
+        showNotification(errorMessage, 'error');
+        
+    } finally {
+        // Re-enable form
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
+        nameInput.disabled = false;
+        emailInput.disabled = false;
+        passwordInput.disabled = false;
     }
 }
 
@@ -7833,18 +8103,47 @@ window.addEventListener('load', () => {
 
 
 
-
-        async function handleSignOut() {
+async function handleSignOut() {
+    if (!supabase) {
+        showNotification('Application not initialized', 'error');
+        return;
+    }
+    
     try {
-        await supabase.auth.signOut();
+        // Show loading state
+        showNotification('Signing out...', 'info');
+        
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        
+        // Clear any cached data
+        sessionStorage.removeItem('supabase_config');
+        localStorage.removeItem('tayvu-auth-token');
+        
+        // The onAuthStateChange listener will handle updating the UI
         currentUser = null;
         updateAuthUI(false);
-        showPage('home');  // Changed from closeModal('profile')
+        
+        // Redirect to home page
+        showPage('home');
+        
         showNotification('Successfully signed out');
+        
     } catch (error) {
-        showNotification('Error signing out', 'error');
+        console.error('Sign out error:', error);
+        showNotification('Error signing out. Please try again.', 'error');
     }
 }
+
+
+
+
+
+   
+
+
+
+
 
 
 // Profile page functions
@@ -8957,14 +9256,38 @@ function publishMemorial() {
         }
 
         // Utility functions
-        function showError(fieldId, message) {
-            const errorElement = document.getElementById(fieldId);
-            errorElement.textContent = message;
-            errorElement.style.display = 'block';
-            setTimeout(() => {
-                errorElement.style.display = 'none';
-            }, 5000);
+   function showError(fieldId, message) {
+    const errorElement = document.getElementById(fieldId);
+    if (!errorElement) {
+        console.error(`Error element ${fieldId} not found`);
+        showNotification(message, 'error');
+        return;
+    }
+    
+    errorElement.textContent = message;
+    errorElement.style.display = 'block';
+    
+    // Also add error styling to the input
+    const inputField = errorElement.previousElementSibling;
+    if (inputField && inputField.tagName === 'INPUT') {
+        inputField.style.borderColor = '#E53E3E';
+    }
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        errorElement.style.display = 'none';
+        if (inputField && inputField.tagName === 'INPUT') {
+            inputField.style.borderColor = '';
         }
+    }, 5000);
+}
+
+
+
+
+
+
+
 
         function showNotification(message, type = 'success') {
             // Create notification element
