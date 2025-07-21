@@ -7558,6 +7558,7 @@ css/* Cherished Moments Upload Interface - Improved */
 // Supabase Configuration - Professional Implementation
 let supabase = null;
 let configCache = null;
+let isInitialized = false; // Add flag to prevent duplicate initialization
 const FUNCTIONS_URL = '/.netlify/functions';
 
 // Get Supabase configuration with caching
@@ -7593,6 +7594,12 @@ async function getSupabaseConfig() {
 
 // Initialize the app with proper error handling and auth state management
 async function initializeApp() {
+  // Prevent duplicate initialization
+    if (isInitialized) {
+        console.log('App already initialized, skipping...');
+        return;
+    }
+
     try {
         // Show loading state (optional - add a loading indicator to your UI)
         console.log('Initializing application...');
@@ -7642,6 +7649,7 @@ async function initializeApp() {
         }
         
         console.log('App initialized successfully');
+        isInitialized = true; // Set flag
         
     } catch (error) {
         console.error('Failed to initialize app:', error);
@@ -7657,10 +7665,15 @@ async function initializeApp() {
 }
 
 // Call initialization when page loads with proper error handling
+// Call initialization when page loads with proper error handling
 window.addEventListener('load', () => {
-    initializeApp().catch(error => {
-        console.error('Critical initialization error:', error);
-    });
+    // Only initialize once
+    if (!window.appInitialized) {
+        window.appInitialized = true;
+        initializeApp().catch(error => {
+            console.error('Critical initialization error:', error);
+        });
+    }
 });
 
 
@@ -7669,10 +7682,6 @@ window.addEventListener('load', () => {
 
 
 
-// Call initialization when page loads
-window.addEventListener('load', () => {
-    initializeApp();
-});
 
 
 
@@ -7681,14 +7690,7 @@ window.addEventListener('load', () => {
         let currentUser = null;
         let currentPage = 'home';
 
-        // Check authentication on load
-        window.addEventListener('load', async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                currentUser = user;
-                updateAuthUI(true);
-            }
-        });
+       
 
         // Navigation scroll effect
         window.addEventListener('scroll', () => {
@@ -8271,6 +8273,18 @@ function switchProfileTab(tab) {
 
 
 function loadMyMemorials() {
+    // Mock data for demonstration - replace with actual data from database
+    const memorials = [
+        {
+            id: 1,
+            name: 'Margaret Rose Thompson',
+            dates: 'March 15, 1945 - December 3, 2023',
+            photo: 'https://images.unsplash.com/photo-1566616213894-2d4e1baee5d8?w=200&h=200&fit=crop',
+            photos: 24,
+            tributes: 18
+        }
+    ];
+    
     const container = document.getElementById('myMemorials');
     
     // Clear container safely
@@ -8334,17 +8348,6 @@ function loadMyMemorials() {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
     const container = document.getElementById('myMemorials');
     
     if (memorials.length === 0) {
@@ -8353,7 +8356,7 @@ function loadMyMemorials() {
                 <i class="fas fa-monument"></i>
                 <h3>No memorials yet</h3>
                 <p>Create your first memorial to honor a loved one</p>
-                <button class="btn-primary" onclick="openModal('createMemorial')">
+              <button class="btn-primary" onclick="goToCreateMemorial()">
                     <i class="fas fa-plus"></i>
                     Create Memorial
                 </button>
@@ -9349,16 +9352,6 @@ function formatDate(dateString) {
 
 
 
-
-
-
-
-
-
-
-
-
-
 function generatePreview() {
     // Save current step data first
     saveStepData();
@@ -9366,9 +9359,40 @@ function generatePreview() {
     // In a real app, this would generate a preview of the memorial
     showNotification('Generating preview...');
     
-    // Update the preview with sanitized content
-    if (memorialData.story && memorialData.story.lifeStory) {
-        displayLifeStory(memorialData.story.lifeStory);
+    // Instead of using iframe, show a preview modal or navigate to a preview section
+    const previewFrame = document.getElementById('memorialPreview');
+    if (previewFrame) {
+        // Set to a blank page or remove the iframe approach
+        previewFrame.style.display = 'none';
+        
+        // Create a preview message
+        const previewContainer = previewFrame.parentElement;
+        if (!previewContainer.querySelector('.preview-message')) {
+            const message = document.createElement('div');
+            message.className = 'preview-message';
+            message.style.cssText = `
+                padding: 3rem;
+                text-align: center;
+                color: var(--text-secondary);
+                background: var(--gradient-soft);
+                border-radius: 10px;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+            `;
+            message.innerHTML = `
+                <i class="fas fa-eye" style="font-size: 3rem; margin-bottom: 1rem; color: var(--primary-sage);"></i>
+                <h3 style="margin-bottom: 1rem;">Memorial Preview Ready</h3>
+                <p>Your memorial has been prepared. Click "Publish Memorial" to make it live.</p>
+                <button class="btn-secondary" onclick="showPage('exampleMemorial')" style="margin-top: 1rem;">
+                    <i class="fas fa-external-link-alt"></i>
+                    View Example Memorial
+                </button>
+            `;
+            previewContainer.appendChild(message);
+        }
     }
     
     // Update other preview elements
@@ -9377,7 +9401,7 @@ function generatePreview() {
         const nameEl = document.querySelector('.memorial-main-name');
         if (nameEl) {
             const fullName = `${memorialData.basic.firstName} ${memorialData.basic.middleName || ''} ${memorialData.basic.lastName}`.trim();
-            nameEl.textContent = fullName; // Safe: using textContent
+            nameEl.textContent = fullName;
         }
         
         // Update dates
@@ -9397,7 +9421,21 @@ function generatePreview() {
             };
         }
     }
+    
+    // Update the preview with sanitized content
+    if (memorialData.story && memorialData.story.lifeStory) {
+        displayLifeStory(memorialData.story.lifeStory);
+    }
 }
+
+
+
+
+
+
+
+
+
 
 
 
@@ -9868,18 +9906,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- DOMPurify CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
-<!-- Add this script block after DOMPurify CDN -->
-<script src="sanitizer.js"></script>
-
-
-<!-- Add this script block after DOMPurify CDN -->
+<!-- Sanitizer script -->
 <script src="sanitizer.js"></script>
 <script>
     // Initialize the sanitizer when the page loads
     document.addEventListener('DOMContentLoaded', function() {
-        if (!MemorialSanitizer.init()) {
-            console.error('Failed to initialize HTML sanitizer');
-            // Fallback to basic text content
+        // Check if sanitizer already initialized
+        if (typeof MemorialSanitizer !== 'undefined' && !window.sanitizerInitialized) {
+            window.sanitizerInitialized = true;
+            if (!MemorialSanitizer.init()) {
+                console.error('Failed to initialize HTML sanitizer');
+                // Fallback to basic text content
+            }
         }
     });
 </script>
