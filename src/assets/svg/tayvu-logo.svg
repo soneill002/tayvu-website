@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<svg width="240" height="85" viewBox="0 0 240 85" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <!-- Tree foliage gradient - vibrant earthy greens -->
+        <linearGradient id="navFoliageGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#6B9174;stop-opacity:1" />
+            <stop offset="50%" style="stop-color:#9B8B7E;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#E4B755;stop-opacity:1" />
+        </linearGradient>
+        
+        <!-- Trunk gradient - rich browns -->
+        <linearGradient id="navTrunkGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#8B6D47;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#6B5536;stop-opacity:1" />
+        </linearGradient>
+        
+        <!-- Background circle gradient -->
+        <radialGradient id="navBgGradient">
+            <stop offset="0%" style="stop-color:#FFF9F0;stop-opacity:0.8" />
+            <stop offset="70%" style="stop-color:#E8D5B7;stop-opacity:0.2" />
+            <stop offset="100%" style="stop-color:#E8D5B7;stop-opacity:0" />
+        </radialGradient>
+    </defs>
+    
+    <!-- Background circle -->
+    <circle cx="35" cy="35" r="30" fill="url(#navBgGradient)"/>
+    
+    <!-- Tree design -->
+    <g transform="translate(35, 35)">
+        <!-- Tree trunk -->
+        <path d="M -3,12 L -3,0 L -1.5,-4 L 0,-6 L 1.5,-4 L 3,0 L 3,12 Z" 
+              fill="url(#navTrunkGradient)" 
+              opacity="0.9"/>
+        
+        <!-- Tree roots -->
+        <path d="M -3,12 Q -6,15 -8,18 M 3,12 Q 6,15 8,18 M 0,12 L 0,16" 
+              stroke="#8B7355" 
+              stroke-width="1.2" 
+              fill="none" 
+              stroke-linecap="round"
+              opacity="0.5"/>
+        
+        <!-- Main foliage with more vibrant colors -->
+        <circle cx="0" cy="-10" r="14" fill="url(#navFoliageGradient)" opacity="0.9"/>
+        <circle cx="-7" cy="-7" r="10" fill="#6B9174" opacity="0.7"/>
+        <circle cx="7" cy="-7" r="10" fill="#E4B755" opacity="0.6"/>
+        <circle cx="0" cy="-14" r="8" fill="#CF7939" opacity="0.5"/>
+        
+        <!-- Small leaves -->
+        <g transform="translate(-8, -16)">
+            <ellipse cx="0" cy="0" rx="3" ry="5" fill="#7C9885" opacity="0.7" transform="rotate(-15)"/>
+        </g>
+        <g transform="translate(8, -14)">
+            <ellipse cx="0" cy="0" rx="3" ry="5" fill="#8B8680" opacity="0.7" transform="rotate(15)"/>
+        </g>
+        <g transform="translate(0, -20)">
+            <ellipse cx="0" cy="0" rx="2.5" ry="4" fill="#A39B8B" opacity="0.6"/>
+        </g>
+    </g>
+    
+    <!-- Text -->
+    <text x="78" y="43" font-family="'Segoe UI', -apple-system, sans-serif" font-size="32" font-weight="300" fill="#3A3633">
+        Tayvu
+    </text>
+    
+    <!-- Tagline -->
+    <text x="78" y="58" font-family="'Segoe UI', -apple-system, sans-serif" font-size="11" font-weight="400" fill="#8B8680" letter-spacing="1">
+        MEMORIAL SPACES
+    </text>
+</svg>
