@@ -1,5 +1,5 @@
 // src/js/api/supabaseClient.js
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 let supabase;
 
@@ -15,9 +15,7 @@ export function getClient() {
   const finalKey = key || window.__supabase?.anonKey;
 
   if (!finalUrl || !finalKey) {
-    console.error(
-      "Supabase credentials missing — set SUPABASE_URL & SUPABASE_ANON_KEY"
-    );
+    console.error('Supabase credentials missing — set SUPABASE_URL & SUPABASE_ANON_KEY');
     return null;
   }
 
