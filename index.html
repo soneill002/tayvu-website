@@ -28,7 +28,7 @@
 
 
 
-            <a href="#home" class="logo" onclick="showPage('home')">
+            <a href="#home" class="logo" data-page="home">
                 <img src="/src/assets/svg/tayvu-logo.svg"
                      alt="Tayvu logo"
                      width="240" height="85" />
@@ -36,10 +36,10 @@
 
             
             <ul class="nav-links">
-                <li><a href="#home" onclick="showPage('home')">Home</a></li>
-                <li><a href="#about" onclick="showPage('about')">About</a></li>
-                <li><a href="#pricing" onclick="showPage('pricing')">Pricing</a></li>
-                <li><a href="#faq" onclick="showPage('faq')">FAQ</a></li>
+                <li><a href="#home" data-page="home">Home</a></li>
+                <li><a href="#about" data-page="about">About</a></li>
+                <li><a href="#pricing" data-page="pricing">Pricing</a></li>
+                <li><a href="#faq" data-page="faq">FAQ</a></li>
          
             </ul>
             
@@ -63,10 +63,10 @@
     <!-- Mobile Menu -->
     <div class="mobile-menu" id="mobileMenu">
         <ul class="mobile-menu-links">
-            <li><a href="#home" onclick="showPage('home'); toggleMobileMenu()">Home</a></li>
-            <li><a href="#about" onclick="showPage('about'); toggleMobileMenu()">About</a></li>
-            <li><a href="#pricing" onclick="showPage('pricing'); toggleMobileMenu()">Pricing</a></li>
-            <li><a href="#faq" onclick="showPage('faq'); toggleMobileMenu()">FAQ</a></li>
+            <li><a href="#home" data-page="home" onclick="toggleMobileMenu()">Home</a></li>
+            <li><a href="#about" data-page="about" onclick="toggleMobileMenu()">About</a></li>
+            <li><a href="#pricing" data-page="pricing" onclick="toggleMobileMenu()">Pricing</a></li>
+            <li><a href="#faq" data-page="faq" onclick="toggleMobileMenu()">FAQ</a></li>
            
         </ul>
         <div class="mobile-menu-auth">
@@ -113,7 +113,7 @@
                                     A life filled with love, laughter, and endless compassion...
                                 </p>
 
-                               <button class="memorial-card-button" onclick="showPage('exampleMemorial')">
+                               <button class="memorial-card-button" data-page="exampleMemorial">
     <i class="fas fa-eye"></i>
     <span>See Example</span>
 </button>
@@ -290,7 +290,7 @@
     Start Creating
 </a>
 
-                         <button class="btn-secondary" onclick="showPage('exampleMemorial')">
+                         <button class="btn-secondary" data-page="exampleMemorial">
     <i class="fas fa-eye"></i>
     View Example
 </button>
@@ -436,7 +436,7 @@
                         <i class="fas fa-heart"></i>
                         Create Memorial
                     </button>
-                    <button class="btn-secondary" onclick="showPage('pricing')">
+                    <button class="btn-secondary" data-page="pricing">
                         <i class="fas fa-tag"></i>
                         View Pricing
                     </button>
@@ -1791,9 +1791,9 @@
             <div class="footer-section">
                 <h4>Quick Links</h4>
                 <ul>
-                    <li><a href="#home" onclick="showPage('home')">Home</a></li>
-                    <li><a href="#about" onclick="showPage('about')">About Us</a></li>
-                    <li><a href="#pricing" onclick="showPage('pricing')">Pricing</a></li>
+                    <li><a href="#home" data-page="home">Home</a></li>
+                    <li><a href="#about" data-page="about">About Us</a></li>
+                    <li><a href="#pricing" data-page="pricing">Pricing</a></li>
                  
                 </ul>
             </div>
@@ -1834,7 +1834,7 @@
                 <h2>Sign In</h2>
                 <button class="close-modal" onclick="closeModal('signin')">&times;</button>
             </div>
-            <form id="signinForm" onsubmit="handleSignIn(event)">
+            <form id="signinForm">
                 <div class="form-group">
                     <label for="email">Email</label>
                     <input type="email" id="email" name="email" required>
@@ -1860,7 +1860,7 @@
                 <h2>Create Account</h2>
                 <button class="close-modal" onclick="closeModal('signup')">&times;</button>
             </div>
-            <form id="signupForm" onsubmit="handleSignUp(event)">
+            <form id="signupForm">
                 <div class="form-group">
                     <label for="signupName">Full Name</label>
                     <input type="text" id="signupName" name="name" required>
@@ -2280,11 +2280,7 @@ window.addEventListener('load', () => {
 
 
 
-        // Mobile menu
-        function toggleMobileMenu() {
-            const menu = document.getElementById('mobileMenu');
-            menu.classList.toggle('active');
-        }
+        
 
         // Modal functions
         function openModal(type) {
@@ -2371,184 +2367,8 @@ class APIError extends Error {
 // Initialize API client
 const apiClient = new SecureAPIClient();
 
-
-
-async function handleSignIn(event) {
-    event.preventDefault();
-    
-    const form = event.target;
-    const submitButton = form.querySelector('button[type="submit"]');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    
-    // Clear previous errors
-    document.querySelectorAll('.form-error').forEach(err => {
-        err.style.display = 'none';
-    });
-    
-    // Disable form
-    const originalText = submitButton.textContent;
-    submitButton.disabled = true;
-    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
-    
-    try {
-        const email = emailInput.value.trim();
-        const password = passwordInput.value;
-        
-        // Send to server
-        const response = await apiClient.request('auth-signin', {
-            method: 'POST',
-            body: JSON.stringify({ email, password })
-        });
-        
-        // Success!
-        apiClient.setToken(response.session.access_token);
-        currentUser = response.user;
-        updateAuthUI(true);
-        closeModal('signin');
-        showNotification('Successfully signed in!');
-        
-        // Reset form
-        form.reset();
-        
-    } catch (error) {
-        console.error('Sign-in error:', error);
-        
-        if (error.status === 401) {
-            showError('emailError', 'Invalid email or password');
-        } else if (error.field) {
-            showError(`${error.field}Error`, error.message);
-        } else {
-            showError('emailError', error.message || 'Sign in failed');
-        }
-    } finally {
-        submitButton.disabled = false;
-        submitButton.textContent = originalText;
-    }
-}
-
-
-
-async function handleSignUp(event) {
-    event.preventDefault();
-    
-    const form = event.target;
-    const submitButton = form.querySelector('button[type="submit"]');
-    
-    // Clear errors
-    document.querySelectorAll('.form-error').forEach(err => {
-        err.style.display = 'none';
-    });
-    
-    // Disable form
-    const originalText = submitButton.textContent;
-    submitButton.disabled = true;
-    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
-    
-    try {
-        const formData = {
-            name: document.getElementById('signupName').value.trim(),
-            email: document.getElementById('signupEmail').value.trim(),
-            password: document.getElementById('signupPassword').value,
-            acceptTerms: true
-        };
-        
-        // Send to server
-        const response = await apiClient.request('auth-signup', {
-            method: 'POST',
-            body: JSON.stringify(formData)
-        });
-        
-        // Success!
-        showNotification(response.message || 'Account created! Please check your email.', 'success');
-        form.reset();
-        closeModal('signup');
-        setTimeout(() => openModal('signin'), 500);
-        
-    } catch (error) {
-        console.error('Sign-up error:', error);
-        
-        if (error.field === 'email') {
-            const errorEl = document.getElementById('signupEmailError');
-            if (!errorEl) {
-                // Create error element if it doesn't exist
-                const emailInput = document.getElementById('signupEmail');
-                const errorSpan = document.createElement('span');
-                errorSpan.className = 'form-error';
-                errorSpan.id = 'signupEmailError';
-                errorSpan.style.color = '#E53E3E';
-                errorSpan.style.fontSize = '0.875rem';
-                errorSpan.style.marginTop = '0.25rem';
-                errorSpan.style.display = 'block';
-                errorSpan.textContent = error.message;
-                emailInput.parentNode.appendChild(errorSpan);
-            } else {
-                errorEl.textContent = error.message;
-                errorEl.style.display = 'block';
-            }
-        } else {
-            showNotification(error.message || 'Sign up failed', 'error');
-        }
-    } finally {
-        submitButton.disabled = false;
-        submitButton.textContent = originalText;
-    }
-}
-
-
-   
-
-
-
-
-
-
-
-
-
-
-async function handleSignOut() {
-    if (!supabase) {
-        showNotification('Application not initialized', 'error');
-        return;
-    }
-    
-    try {
-        // Show loading state
-        showNotification('Signing out...', 'info');
-        
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-        
-        // Clear any cached data
-        sessionStorage.removeItem('supabase_config');
-        localStorage.removeItem('tayvu-auth-token');
-        
-        // The onAuthStateChange listener will handle updating the UI
-        currentUser = null;
-        updateAuthUI(false);
-        
-        // Redirect to home page
-        showPage('home');
-        
-        showNotification('Successfully signed out');
-        
-    } catch (error) {
-        console.error('Sign out error:', error);
-        showNotification('Error signing out. Please try again.', 'error');
-    }
-}
-
-
-
-
-
-   
-
-
-
-
-
+// expose apiClient to window so modules can see it 
+window.apiClient = apiClient;   
 
 // Profile page functions
 function goToProfile() {
@@ -3627,19 +3447,6 @@ function handleMomentDragEnd(e) {
     draggedMomentIndex = null;
 }
 
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
-    });
-}
-
-
-
-
-
 
 
 function generatePreview() {
@@ -3683,7 +3490,7 @@ function generatePreview() {
             <i class="fas fa-eye" style="font-size: 3rem; margin-bottom: 1rem; color: var(--primary-sage);"></i>
             <h3 style="margin-bottom: 1rem;">Memorial Preview Ready</h3>
             <p>Your memorial has been prepared. Click "Publish Memorial" to make it live.</p>
-            <button class="btn-secondary" onclick="showPage('exampleMemorial')" style="margin-top: 1rem;">
+            <button class="btn-secondary" data-page="exampleMemorial" style="margin-top: 1rem;">
                 <i class="fas fa-external-link-alt"></i>
                 View Example Memorial
             </button>
@@ -3906,64 +3713,7 @@ function loadDraftLifeStory() {
             showNotification(`Selected ${plan} plan - Payment integration coming soon!`);
         }
 
-        // Utility functions
-   function showError(fieldId, message) {
-    const errorElement = document.getElementById(fieldId);
-    if (!errorElement) {
-        console.error(`Error element ${fieldId} not found`);
-        showNotification(message, 'error');
-        return;
-    }
-    
-    errorElement.textContent = message;
-    errorElement.style.display = 'block';
-    
-    // Also add error styling to the input
-    const inputField = errorElement.previousElementSibling;
-    if (inputField && inputField.tagName === 'INPUT') {
-        inputField.style.borderColor = '#E53E3E';
-    }
-    
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-        errorElement.style.display = 'none';
-        if (inputField && inputField.tagName === 'INPUT') {
-            inputField.style.borderColor = '';
-        }
-    }, 5000);
-}
-
-
-
-
-
-
-
-
-        function showNotification(message, type = 'success') {
-            // Create notification element
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 100px;
-                right: 20px;
-                padding: 1rem 2rem;
-                background: ${type === 'success' ? 'var(--primary-color)' : '#E53E3E'};
-                color: white;
-                border-radius: 10px;
-                box-shadow: var(--shadow-lg);
-                z-index: 3000;
-                animation: slideIn 0.3s ease;
-            `;
-            notification.textContent = message;
-            
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.style.animation = 'fadeOut 0.3s ease';
-                setTimeout(() => notification.remove(), 300);
-            }, 3000);
-        }
+        
 
         // Handle back/forward navigation
         window.addEventListener('popstate', () => {
