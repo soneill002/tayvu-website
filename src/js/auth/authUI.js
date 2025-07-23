@@ -1,11 +1,44 @@
-/* global openModal, supabase, showPage, currentUser:writable */
+/* global supabase, currentUser:writable */
 
 // src/js/auth/authUI.js
-import { showNotification, showError } from '@/utils/ui.js';
-import { apiClient, updateAuthUI, closeModal } from '@/legacyGlobals.js';
+import { showNotification, showError, qs } from '@/utils/ui.js';
+import { apiClient } from '@/api/apiClient.js';
+import { openModal, closeModal } from '@/utils/modal.js';
+import { showPage } from '@/router.js';
 
 // Touch currentUser so ESLint counts it as used
 void currentUser;
+
+/* ---------- UI toggle helper (was window.updateAuthUI) ---------- */
+function updateAuthUI(isLoggedIn) {
+  const signinBtn = document.querySelector('.btn-signin');
+  const profileBtn = document.querySelector('.profile-btn');
+
+  if (isLoggedIn) {
+    signinBtn.style.display = 'none';
+    profileBtn.style.display = 'flex';
+
+    if (currentUser) {
+      const initial = (currentUser.user_metadata?.name ||
+        currentUser.email ||
+        'U')[0].toUpperCase();
+
+      document.getElementById('navProfileInitial').textContent = initial;
+
+      if (currentUser.user_metadata?.avatar_url) {
+        document.getElementById('navProfilePhoto').src = currentUser.user_metadata.avatar_url;
+        qs('#navProfilePhoto').style.display = 'block';
+        qs('#navProfileInitial').style.display = 'none';
+      } else {
+        qs('#navProfilePhoto').style.display = 'none';
+        qs('#navProfileInitial').style.display = 'block';
+      }
+    }
+  } else {
+    signinBtn.style.display = 'inline-flex';
+    profileBtn.style.display = 'none';
+  }
+}
 
 /* ── ORIGINAL FUNCTIONS (UNTOUCHED) ── */
 export async function handleSignUp(event) {
