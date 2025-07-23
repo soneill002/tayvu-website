@@ -1,0 +1,39 @@
+/* ---------- PAGE-LEVEL WRAPPERS ---------- */
+.page-section {
+  min-height: calc(100vh - 80px);
+  padding: 5rem 2rem;
+  display: none;
+}
+.page-section.active {
+  display: block;
+}
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ---------- NAVIGATION “SHELL” (structure only) ---------- */
+/* Navigation */
+nav {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  background: rgba(254, 253, 251, 0.9); /* Changed to earthy background */
+  backdrop-filter: blur(20px);
+  z-index: 1000;
+  transition: all 0.3s ease;
+  border-bottom: 1px solid var(--border-color); /* Now uses earthy border */
+}
+
+nav.scrolled {
+  background: rgba(254, 253, 251, 0.98); /* Earthy background */
+  box-shadow: 0 1px 3px rgba(74, 66, 56, 0.05); /* Earthy shadow */
+}
+.nav-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0.75rem 2rem; /* Reduced padding to keep nav height reasonable */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}

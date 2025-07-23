@@ -1,0 +1,157 @@
+/* ---------- TOKENS ---------- */
+:root {
+  /* Earth-tone scale */
+  --primary-sage: #6b9174;
+  --primary-moss: #4f7354;
+  --primary-stone: #9b8b7e;
+  --warm-sand: #e8d5b7;
+  --soft-clay: #d4a29c;
+  --deep-earth: #4a4238;
+
+  /* Purple scale */
+  --purple-primary: #667eea;
+  --purple-secondary: #764ba2;
+  --purple-hover-primary: #5a67d8;
+  --purple-hover-secondary: #6b46c1;
+  --purple-shadow: rgba(102, 126, 234, 0.3);
+  --purple-shadow-hover: rgba(118, 75, 162, 0.4);
+
+  /* Accent */
+  --accent-gold: #e4b755;
+  --accent-copper: #cf7939;
+  --accent-warm: #e8b374;
+  --accent-terracotta: #c47858;
+
+  /* Neutrals */
+  --light-cream: #faf8f3;
+  --soft-linen: #f5f2ed;
+  --warm-gray: #a39b8b;
+  --charcoal: #3a3633;
+
+  /* Text  */
+  --text-primary: #2d2926;
+  --text-secondary: #5a524a;
+  --text-light: #8b8680;
+
+  /* Backgrounds & borders */
+  --background: #fefdfb;
+  --background-alt: #faf8f3;
+  --border-color: #e8e2d5;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(74, 66, 56, 0.1);
+  --shadow-md: 0 4px 6px rgba(74, 66, 56, 0.1);
+  --shadow-lg: 0 10px 15px rgba(74, 66, 56, 0.1);
+  --shadow-xl: 0 20px 25px rgba(74, 66, 56, 0.1);
+
+  /* Gradients */
+  --gradient-earth: linear-gradient(135deg, #6b9174 0%, #9b8b7e 50%, #cf7939 100%);
+  --gradient-warm: linear-gradient(135deg, #e8d5b7 0%, #e4b755 50%, #cf7939 100%);
+  --gradient-soft: linear-gradient(135deg, #faf8f3 0%, #f5f2ed 100%);
+  --gradient-hero-text: linear-gradient(135deg, #6b9174 0%, #e4b755 50%, #cf7939 100%);
+
+  /* Aliases */
+  --primary-color: var(--primary-sage);
+  --primary-light: #8fa999;
+  --accent-color: var(--accent-gold);
+
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ---------- RESETS ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--background);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+.serif-text {
+  font-family: 'Merriweather', serif;
+}
+
+/* ---------- ACCESSIBILITY ---------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- ANIMATIONS ---------- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: none;
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* tiny “ready-made” animation helpers */
+.animate-fade-in {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+.animate-slide-in {
+  animation: slideIn 0.6s ease-out forwards;
+}
+.animate-pulse {
+  animation: pulse 2s infinite;
+}
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* ---------- SPINNER UTILITY ---------- */
+.fa-spinner {
+  animation: spin 1s linear infinite;
+}

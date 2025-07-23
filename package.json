@@ -2,17 +2,16 @@
   "name": "tayvu-memorial-website",
   "version": "1.0.0",
   "description": "Digital memorial website with Netlify Functions",
-  "dependencies": {
-    "@supabase/supabase-js": "^2.39.3",
-    "dompurify": "^3.2.6",
-    "isomorphic-dompurify": "^2.12.0",
-    "validator": "^13.12.0",
-    "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2"
-  },
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "netlify": "netlify dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint \"src/**/*.js\"",
+    "format": "prettier --write .",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky install"
   },
   "repository": {
     "type": "git",
@@ -24,5 +23,38 @@
   "bugs": {
     "url": "https://github.com/soneill002/tayvu-website/issues"
   },
-  "homepage": "https://github.com/soneill002/tayvu-website#readme"
+  "homepage": "https://github.com/soneill002/tayvu-website#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.3",
+    "bcryptjs": "^2.4.3",
+    "dompurify": "^3.2.6",
+    "isomorphic-dompurify": "^2.12.0",
+    "jsonwebtoken": "^9.0.2",
+    "validator": "^13.12.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-import-resolver-alias": "^1.1.2",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.3",
+    "husky": "^8.0.0",
+    "lint-staged": "^15.5.2",
+    "netlify-cli": "^17.38.1",
+    "prettier": "^3.6.2",
+    "vite": "^7.0.5"
+  },
+  "lint-staged": {
+    "*.{json,css,html}": [
+      "prettier --write"
+    ],
+    "src/**/*.{js,jsx,ts,tsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ]
+  },
+  "eslintIgnore": [
+    "netlify/functions/**",
+    "sanitizer.js"
+  ]
 }
