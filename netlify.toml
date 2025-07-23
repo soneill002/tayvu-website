@@ -1,12 +1,32 @@
+########################################
+# netlify.toml – revised for Vite build
+########################################
+
 [build]
-  publish = "."
+  command = "npm run build"   # vite build
+  publish = "dist"            # Vite outputs to /dist
 
 [functions]
   directory = "netlify/functions"
 
+# PR-preview (and branch-deploy) builds use the same settings
+[pr]
+  command = "npm run build"
+  publish = "dist"
+
+########################################
+# Security headers (unchanged)
+########################################
 [[headers]]
   for = "/*"
   [headers.values]
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
+
+########################################
+# (Optional) local env vars for `netlify dev`
+########################################
+[context.development.environment]
+  VITE_SUPABASE_URL      = "http://placeholder.local"
+  VITE_SUPABASE_ANON_KEY = "skip"
