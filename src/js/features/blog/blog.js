@@ -4,7 +4,7 @@ import { showNotification } from '@/utils/ui.js';
 // Contentful configuration
 const SPACE_ID = 'anitqnp5kmpd'; // Your actual space ID
 const ACCESS_TOKEN = 'WWotlcYyA2rF4ziPtWUUuNoqxbFIJURCAN7MbWeO_Es'; // Your actual token
-const CONTENT_TYPE = 'blogPost';
+const CONTENT_TYPE = 'Tayvu Blog';
 
 // State management
 let allPosts = [];
