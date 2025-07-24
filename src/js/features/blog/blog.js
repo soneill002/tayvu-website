@@ -248,8 +248,7 @@ function createPostCard(post, isFeatured = false) {
             <i class="fas fa-user-circle"></i>
             ${escapeHtml(post.author.name)}
           </span>
-          <span class="blog-post-date">${formattedDate}</span>
-        </div>
+          </div>
       </div>
     </article>
   `;
