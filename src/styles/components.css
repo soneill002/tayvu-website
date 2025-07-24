@@ -5117,3 +5117,98 @@ css/* Cherished Moments Upload Interface - Improved */
     font-size: 1rem;
   }
 }
+
+/* Single Blog Post Styles */
+.single-post-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.single-post-header {
+  margin-bottom: 2rem;
+}
+
+.btn-back {
+  background: none;
+  border: 2px solid var(--border-color);
+  padding: 0.75rem 1.5rem;
+  border-radius: 25px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-back:hover {
+  background: var(--background-alt);
+  border-color: var(--primary-sage);
+  color: var(--primary-sage);
+}
+
+.single-post {
+  background: white;
+  border-radius: 20px;
+  padding: 3rem;
+  box-shadow: 0 5px 20px rgba(74, 66, 56, 0.08);
+}
+
+.single-post-image {
+  width: 100%;
+  height: 400px;
+  object-fit: cover;
+  border-radius: 15px;
+  margin-bottom: 2rem;
+}
+
+.single-post-title {
+  font-size: 2.5rem;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  font-family: 'Merriweather', serif;
+  line-height: 1.3;
+}
+
+.single-post-author-line {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.single-post-excerpt {
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.single-post-content {
+  font-size: 1.125rem;
+  line-height: 1.8;
+  color: var(--text-primary);
+}
+
+.single-post-content p {
+  margin-bottom: 1.5rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .single-post {
+    padding: 1.5rem;
+  }
+  
+  .single-post-title {
+    font-size: 2rem;
+  }
+  
+  .single-post-image {
+    height: 250px;
+  }
+}

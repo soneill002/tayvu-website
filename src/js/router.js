@@ -54,6 +54,23 @@ export function initRouter() {
       return;
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     /* ---------- open / close modals ---------- */
     const opener = e.target.closest('[data-modal]');
     if (opener) {
@@ -68,6 +85,14 @@ export function initRouter() {
       closeModal(closer.dataset.modalClose);
       return;
     }
+
+
+
+
+
+
+
+
 
     /* ---------- profile button ---------- */
     const profileBtn = e.target.closest('[data-action="profile"]');
@@ -90,6 +115,34 @@ export function initRouter() {
     const page = location.hash.slice(1) || 'home';
     showPage(page, { skipPush: true }); // ⚠️  don’t push again
   });
+
+
+  /* — Handle blog post navigation — */
+  window.addEventListener('hashchange', () => {
+    if (window.location.hash === '#blog') {
+      const blogPostEl = document.getElementById('blogPost');
+      const blogEl = document.getElementById('blog');
+      if (blogPostEl && blogEl) {
+        blogPostEl.style.display = 'none';
+        blogEl.style.display = 'block';
+      }
+    }
+  });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   /* — initial render on first load — */
   const initial = location.hash.slice(1) || 'home';

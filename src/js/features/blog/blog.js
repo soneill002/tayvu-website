@@ -284,9 +284,51 @@ window.loadMorePosts = function() {
   displayPosts();
 };
 
-// Open individual blog post (for future implementation)
+// Open individual blog post
 window.openBlogPost = function(slug) {
-  // For now, just log - you can implement full post view later
-  console.log('Opening post:', slug);
-  // In future: window.location.hash = `#blog/${slug}`;
+  const post = allPosts.find(p => p.slug === slug);
+  if (!post) return;
+  
+  // Hide blog grid, show single post
+  document.getElementById('blog').style.display = 'none';
+  document.getElementById('blogPost').style.display = 'block';
+  
+  // Create post HTML
+  const postHTML = `
+    <div class="single-post">
+      ${post.featuredImage ? `
+        <img src="${post.featuredImage.url}?w=1200&h=600&fit=fill" 
+             alt="${post.title}" 
+             class="single-post-image" />
+      ` : ''}
+      
+      <div class="single-post-meta">
+        <span class="blog-post-category">${formatCategory(post.category)}</span>
+      </div>
+      
+      <h1 class="single-post-title">${post.title}</h1>
+      
+      <div class="single-post-author-line">
+        <span class="blog-post-author">
+          <i class="fas fa-user-circle"></i>
+          ${post.author.name}
+        </span>
+        <span class="reading-time">
+          <i class="fas fa-clock"></i>
+          ${post.readingTime} min read
+        </span>
+      </div>
+      
+      <div class="single-post-excerpt">${post.excerpt}</div>
+      
+      <div class="single-post-content">
+        ${post.content.split('\n').map(paragraph => 
+          paragraph.trim() ? `<p>${paragraph}</p>` : ''
+        ).join('')}
+      </div>
+    </div>
+  `;
+  
+  document.getElementById('singlePostContent').innerHTML = postHTML;
+  window.scrollTo(0, 0);
 };
