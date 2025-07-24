@@ -240,4 +240,3 @@ export function initAuthUI() {
   // Initial UI update based on current auth state
   updateAuthUI(!!window.currentUser);
 }
-}
