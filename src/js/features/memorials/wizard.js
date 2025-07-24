@@ -1,4 +1,5 @@
 /*  src/js/features/createMemorial/wizard.js  */
+let clickHandlerBound = false;
 import {
   showNotification,
   qs /* ← you already export this from utils/ui.js */
@@ -8,8 +9,12 @@ import { MemorialSanitizer } from '@/utils/sanitizer.js';
 /* ──────────────────────────────────────────
      STATE
      ────────────────────────────────────────── */
+// let currentStep = 1;
+// const totalSteps = 5;
+
 let currentStep = 1;
-const totalSteps = 5;
+// Always count however many .form-step panels you actually have
+let totalSteps = 0;
 
 const memorialData = {
   basic: {},
@@ -24,8 +29,14 @@ const memorialData = {
      ────────────────────────────────────────── */
 export function initWizard() {
   currentStep = 1;
+  // Re-calculate on init in case you add/remove steps or mis-number your circles
+  totalSteps = document.querySelectorAll('.form-step').length;
   updateProgress();
-  wireDelegatedClicks();
+  // only bind once
+  if (!clickHandlerBound) {
+    wireDelegatedClicks();
+    clickHandlerBound = true;
+  }
 }
 
 export { nextStep, previousStep }; // consumed elsewhere if needed
