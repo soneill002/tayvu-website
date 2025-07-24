@@ -1,4 +1,4 @@
-/ src/js/auth/authUI.js
+// src/js/auth/authUI.js
 import { showNotification, showError, qs } from '@/utils/ui.js';
 import { getClient } from '@/api/supabaseClient.js';
 import { openModal, closeModal } from '@/utils/modal.js';
