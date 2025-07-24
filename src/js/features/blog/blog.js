@@ -69,7 +69,6 @@ async function loadBlogPosts() {
   }
 }
 
-
 // Process Contentful response data
 function processContentfulData(data) {
   const { items, includes } = data;
@@ -91,40 +90,6 @@ function processContentfulData(data) {
       }
     });
   }
-  
-
-
-
-// Helper function to extract text from rich text
-function extractTextFromRichText(richText) {
-  let text = '';
-  
-  function processNode(node) {
-    if (node.nodeType === 'text') {
-      text += node.value + ' ';
-    } else if (node.content) {
-      node.content.forEach(processNode);
-    }
-  }
-  
-  if (richText.content) {
-    richText.content.forEach(processNode);
-  }
-  
-  return text.trim();
-}
-
-
-
-
-
-
-
-
-
-
-
-
   
   // Process posts
   return items.map(item => {
@@ -154,21 +119,46 @@ function extractTextFromRichText(richText) {
       }
     }
     
+    // Extract text from rich text content
+    let contentText = '';
+    if (fields.content?.content) {
+      contentText = extractTextFromRichText(fields.content);
+    }
+    
     return {
       id: item.sys.id,
       title: fields.title || 'Untitled',
       slug: fields.slug || '',
       excerpt: fields.excerpt || '',
       category: fields.category || 'general',
-      content: fields.content || '',
+      content: contentText,
       publishDate: fields.publishDate || new Date().toISOString(),
       featuredImage,
       author: author || { name: 'Tayvu Team' },
       tags: fields.tags || [],
       featured: fields.featured || false,
-      readingTime: fields.readingTime || calculateReadingTime(fields.content)
+      readingTime: fields.readingTime || calculateReadingTime(contentText)
     };
   });
+}
+
+// Helper function to extract text from rich text
+function extractTextFromRichText(richText) {
+  let text = '';
+  
+  function processNode(node) {
+    if (node.nodeType === 'text') {
+      text += node.value + ' ';
+    } else if (node.content) {
+      node.content.forEach(processNode);
+    }
+  }
+  
+  if (richText.content) {
+    richText.content.forEach(processNode);
+  }
+  
+  return text.trim();
 }
 
 // Calculate reading time
