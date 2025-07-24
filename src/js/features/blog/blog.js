@@ -12,11 +12,24 @@ let displayedPosts = 0;
 const postsPerPage = 9;
 let isLoading = false;
 
+
 // Initialize blog
 export function initBlog() {
   // Reset state when navigating to blog
   displayedPosts = 0;
   allPosts = [];
+  
+  // Always show blog grid and hide single post view
+  const blogSection = document.getElementById('blog');
+  const blogPostSection = document.getElementById('blogPost');
+  
+  if (blogSection) {
+    blogSection.style.display = 'block';
+  }
+  
+  if (blogPostSection) {
+    blogPostSection.style.display = 'none';
+  }
   
   // Add event listener for blog post clicks
   const blogGrid = document.getElementById('blogGrid');
@@ -27,6 +40,9 @@ export function initBlog() {
   // Load posts
   loadBlogPosts();
 }
+
+
+
 
 
 // Handle blog post clicks
@@ -433,6 +449,18 @@ export function cleanupBlog() {
   const blogGrid = document.getElementById('blogGrid');
   if (blogGrid) {
     blogGrid.removeEventListener('click', handleBlogPostClick);
+  }
+  
+  // Reset blog view to grid when leaving
+  const blogSection = document.getElementById('blog');
+  const blogPostSection = document.getElementById('blogPost');
+  
+  if (blogSection) {
+    blogSection.style.display = 'block';
+  }
+  
+  if (blogPostSection) {
+    blogPostSection.style.display = 'none';
   }
 }
 
