@@ -144,19 +144,24 @@ function processContentfulData(data) {
       }
     }
     
-    // Extract text from rich text content
+   // Extract text from rich text content
     let contentText = '';
+    let contentHtml = '';
     if (fields.content?.content) {
       contentText = extractTextFromRichText(fields.content);
+      contentHtml = richTextToHtml(fields.content);
     }
-    
+
+
+
     return {
       id: item.sys.id,
       title: fields.title || 'Untitled',
       slug: fields.slug || '',
       excerpt: fields.excerpt || '',
       category: fields.category || 'general',
-      content: contentText,
+      content: contentHtml, // Use HTML version for display
+      contentText: contentText, // Keep plain text for reading time
       publishDate: fields.publishDate || new Date().toISOString(),
       featuredImage,
       author: author || { name: 'Tayvu Team' },
@@ -166,6 +171,119 @@ function processContentfulData(data) {
     };
   });
 }
+
+// Helper function to convert rich text to HTML
+function richTextToHtml(richText) {
+  if (!richText || !richText.content) return '';
+  
+  function processNode(node) {
+    if (node.nodeType === 'text') {
+      // Handle text formatting
+      let text = node.value;
+      if (node.marks && node.marks.length > 0) {
+        node.marks.forEach(mark => {
+          switch (mark.type) {
+            case 'bold':
+              text = `<strong>${text}</strong>`;
+              break;
+            case 'italic':
+              text = `<em>${text}</em>`;
+              break;
+            case 'underline':
+              text = `<u>${text}</u>`;
+              break;
+            case 'code':
+              text = `<code>${text}</code>`;
+              break;
+          }
+        });
+      }
+      return text;
+    }
+    
+    if (node.nodeType === 'paragraph') {
+      const content = node.content ? node.content.map(processNode).join('') : '';
+      return `<p>${content}</p>`;
+    }
+    
+    if (node.nodeType === 'heading-1') {
+      const content = node.content ? node.content.map(processNode).join('') : '';
+      return `<h1>${content}</h1>`;
+    }
+    
+    if (node.nodeType === 'heading-2') {
+      const content = node.content ? node.content.map(processNode).join('') : '';
+      return `<h2>${content}</h2>`;
+    }
+    
+    if (node.nodeType === 'heading-3') {
+      const content = node.content ? node.content.map(processNode).join('') : '';
+      return `<h3>${content}</h3>`;
+    }
+    
+    if (node.nodeType === 'heading-4') {
+      const content = node.content ? node.content.map(processNode).join('') : '';
+      return `<h4>${content}</h4>`;
+    }
+    
+    if (node.nodeType === 'heading-5') {
+      const content = node.content ? node.content.map(processNode).join('') : '';
+      return `<h5>${content}</h5>`;
+    }
+    
+    if (node.nodeType === 'heading-6') {
+      const content = node.content ? node.content.map(processNode).join('') : '';
+      return `<h6>${content}</h6>`;
+    }
+    
+    if (node.nodeType === 'blockquote') {
+      const content = node.content ? node.content.map(processNode).join('') : '';
+      return `<blockquote>${content}</blockquote>`;
+    }
+    
+    if (node.nodeType === 'unordered-list') {
+      const items = node.content ? node.content.map(processNode).join('') : '';
+      return `<ul>${items}</ul>`;
+    }
+    
+    if (node.nodeType === 'ordered-list') {
+      const items = node.content ? node.content.map(processNode).join('') : '';
+      return `<ol>${items}</ol>`;
+    }
+    
+    if (node.nodeType === 'list-item') {
+      const content = node.content ? node.content.map(processNode).join('') : '';
+      return `<li>${content}</li>`;
+    }
+    
+    if (node.nodeType === 'hr') {
+      return '<hr>';
+    }
+    
+    if (node.nodeType === 'hyperlink') {
+      const content = node.content ? node.content.map(processNode).join('') : '';
+      const url = node.data?.uri || '#';
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer">${content}</a>`;
+    }
+    
+    // Handle embedded entries (like images)
+    if (node.nodeType === 'embedded-asset-block') {
+      // This would need access to the asset data
+      return ''; // For now, skip embedded assets
+    }
+    
+    // If we don't recognize the node type, process its content if it has any
+    if (node.content && Array.isArray(node.content)) {
+      return node.content.map(processNode).join('');
+    }
+    
+    return '';
+  }
+  
+  return richText.content.map(processNode).join('');
+}
+
+
 
 // Helper function to extract text from rich text
 function extractTextFromRichText(richText) {
@@ -356,12 +474,10 @@ function openBlogPost(slug) {
         </span>
       </div>
       
-      <div class="single-post-excerpt">${post.excerpt}</div>
+       <div class="single-post-excerpt">${post.excerpt}</div>
       
       <div class="single-post-content">
-        ${post.content.split('\n').map(paragraph => 
-          paragraph.trim() ? `<p>${paragraph}</p>` : ''
-        ).join('')}
+        ${post.content}
       </div>
     </div>
   `;
