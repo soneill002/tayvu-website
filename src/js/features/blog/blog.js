@@ -69,6 +69,7 @@ async function loadBlogPosts() {
   }
 }
 
+
 // Process Contentful response data
 function processContentfulData(data) {
   const { items, includes } = data;
@@ -142,7 +143,9 @@ function processContentfulData(data) {
   });
 }
 
-// Add this new function to extract text from rich text
+
+
+// Helper function to extract text from rich text
 function extractTextFromRichText(richText) {
   let text = '';
   
@@ -160,9 +163,6 @@ function extractTextFromRichText(richText) {
   
   return text.trim();
 }
-
-
-
 
 
 
