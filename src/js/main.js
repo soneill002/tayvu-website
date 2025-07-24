@@ -1,4 +1,3 @@
-
 // src/js/main.js
 import '@/legacyGlobals/currentUser.js'; // ← must be the very first import
 import '../styles/base.css';
@@ -30,8 +29,13 @@ window.goToCreateMemorial = function () {
 
 // Initialize Supabase first, then everything else
 async function initApp() {
+  console.log('Starting app initialization...');
+  
   // Initialize Supabase and wait for it
-  await initSupabase();
+  const supabaseReady = await initSupabase();
+  if (!supabaseReady) {
+    console.error('Failed to initialize Supabase - check your environment variables');
+  }
   
   // Then initialize everything else
   initRouter();
@@ -45,6 +49,8 @@ async function initApp() {
   initExampleMemorial();
   initPricing();
   initScrollFade();
+  
+  console.log('App initialization complete');
 }
 
 // Start the app

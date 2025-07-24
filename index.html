@@ -51,7 +51,7 @@
         </ul>
 
         <div class="auth-buttons">
-          <a href="#" class="btn-signin" onclick="openModal('signin')">Sign In</a>
+          <a href="#" class="btn-signin" data-modal="signin">Sign In</a>
           <button class="profile-btn" data-action="profile" aria-label="Profile">
             <img
               src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop"
@@ -1984,7 +1984,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <h2>Sign In</h2>
-          <button class="close-modal" onclick="closeModal('signin')">&times;</button>
+          <button class="close-modal" data-modal-close="signin">&times;</button>
         </div>
         <form id="signinForm">
           <div class="form-group">
@@ -1998,7 +1998,7 @@
             <span class="form-error" id="passwordError">Password is required</span>
           </div>
           <div class="form-actions">
-            <button type="button" class="btn-secondary" onclick="showSignUp()">
+            <button type="button" class="btn-secondary" data-action="show-signup">
               Create Account
             </button>
             <button type="submit" class="btn-primary">Sign In</button>

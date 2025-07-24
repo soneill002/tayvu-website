@@ -1,33 +1,31 @@
-/// src/js/auth/authUI.js
+// src/js/auth/authUI.js
 import { showNotification, showError, qs } from '@/utils/ui.js';
 import { getClient } from '@/api/supabaseClient.js';
 import { openModal, closeModal } from '@/utils/modal.js';
 import { showPage } from '@/router.js';
 
-/* ---------- UI toggle helper (was window.updateAuthUI) ---------- */
+/* ---------- UI toggle helper ---------- */
 function updateAuthUI(isLoggedIn) {
   const signinBtn = document.querySelector('.btn-signin');
   const profileBtn = document.querySelector('.profile-btn');
 
-  if (isLoggedIn) {
+  if (isLoggedIn && window.currentUser) {
     signinBtn.style.display = 'none';
     profileBtn.style.display = 'flex';
 
-    if (window.currentUser) {
-      const initial = (window.currentUser.user_metadata?.name ||
-        window.currentUser.email ||
-        'U')[0].toUpperCase();
+    const initial = (window.currentUser.user_metadata?.name ||
+      window.currentUser.email ||
+      'U')[0].toUpperCase();
 
-      document.getElementById('navProfileInitial').textContent = initial;
+    document.getElementById('navProfileInitial').textContent = initial;
 
-      if (window.currentUser.user_metadata?.avatar_url) {
-        document.getElementById('navProfilePhoto').src = window.currentUser.user_metadata.avatar_url;
-        qs('#navProfilePhoto').style.display = 'block';
-        qs('#navProfileInitial').style.display = 'none';
-      } else {
-        qs('#navProfilePhoto').style.display = 'none';
-        qs('#navProfileInitial').style.display = 'block';
-      }
+    if (window.currentUser.user_metadata?.avatar_url) {
+      document.getElementById('navProfilePhoto').src = window.currentUser.user_metadata.avatar_url;
+      qs('#navProfilePhoto').style.display = 'block';
+      qs('#navProfileInitial').style.display = 'none';
+    } else {
+      qs('#navProfilePhoto').style.display = 'none';
+      qs('#navProfileInitial').style.display = 'block';
     }
   } else {
     signinBtn.style.display = 'inline-flex';
@@ -44,7 +42,7 @@ export async function handleSignUp(event) {
   const supabase = getClient();
 
   if (!supabase) {
-    showNotification('Application not initialized', 'error');
+    showNotification('Application not initialized. Please refresh the page.', 'error');
     return;
   }
 
@@ -63,13 +61,14 @@ export async function handleSignUp(event) {
     const email = document.getElementById('signupEmail').value.trim();
     const password = document.getElementById('signupPassword').value;
 
-    // Use Supabase auth directly
+    // Create account with Supabase Auth
     const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
+      email: email,
+      password: password,
       options: {
         data: {
-          name: name
+          name: name,
+          created_at: new Date().toISOString()
         }
       }
     });
@@ -77,33 +76,20 @@ export async function handleSignUp(event) {
     if (error) throw error;
 
     // Success!
-    showNotification('Account created! Please check your email to verify.', 'success');
+    showNotification('Account created! Please check your email to verify your account.', 'success');
     form.reset();
     closeModal('signup');
-    setTimeout(() => openModal('signin'), 500);
+    
+    // Show sign in modal after delay
+    setTimeout(() => openModal('signin'), 1000);
+    
   } catch (error) {
     console.error('Sign-up error:', error);
 
     if (error.message?.includes('already registered')) {
-      const errorEl = document.getElementById('signupEmailError');
-      if (!errorEl) {
-        // Create error element if it doesn't exist
-        const emailInput = document.getElementById('signupEmail');
-        const errorSpan = document.createElement('span');
-        errorSpan.className = 'form-error';
-        errorSpan.id = 'signupEmailError';
-        errorSpan.style.color = '#E53E3E';
-        errorSpan.style.fontSize = '0.875rem';
-        errorSpan.style.marginTop = '0.25rem';
-        errorSpan.style.display = 'block';
-        errorSpan.textContent = 'This email is already registered';
-        emailInput.parentNode.appendChild(errorSpan);
-      } else {
-        errorEl.textContent = 'This email is already registered';
-        errorEl.style.display = 'block';
-      }
+      showError('signupEmailError', 'This email is already registered');
     } else {
-      showNotification(error.message || 'Sign up failed', 'error');
+      showNotification(error.message || 'Failed to create account', 'error');
     }
   } finally {
     submitButton.disabled = false;
@@ -117,16 +103,14 @@ export async function handleSignIn(event) {
 
   const form = event.target;
   const submitButton = form.querySelector('button[type="submit"]');
-  const emailInput = document.getElementById('email');
-  const passwordInput = document.getElementById('password');
   const supabase = getClient();
 
   if (!supabase) {
-    showNotification('Application not initialized', 'error');
+    showNotification('Application not initialized. Please refresh the page.', 'error');
     return;
   }
 
-  // Clear previous errors
+  // Clear errors
   document.querySelectorAll('.form-error').forEach((err) => {
     err.style.display = 'none';
   });
@@ -137,32 +121,29 @@ export async function handleSignIn(event) {
   submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
 
   try {
-    const email = emailInput.value.trim();
-    const password = passwordInput.value;
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
 
-    // Use Supabase auth directly
+    // Sign in with Supabase Auth
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
+      email: email,
+      password: password
     });
 
     if (error) throw error;
 
-    // Success! The auth state listener will handle updating currentUser
-    closeModal('signin');
-    showNotification('Successfully signed in!');
+    // Success! Auth state listener will handle the rest
+    showNotification('Welcome back!', 'success');
     form.reset();
-    
-    // Update UI immediately
-    updateAuthUI(true);
+    closeModal('signin');
     
   } catch (error) {
     console.error('Sign-in error:', error);
-
-    if (error.status === 400 || error.message?.includes('Invalid')) {
+    
+    if (error.message?.includes('Invalid') || error.message?.includes('credentials')) {
       showError('emailError', 'Invalid email or password');
     } else {
-      showError('emailError', error.message || 'Sign in failed');
+      showError('emailError', error.message || 'Failed to sign in');
     }
   } finally {
     submitButton.disabled = false;
@@ -180,24 +161,15 @@ export async function handleSignOut() {
   }
 
   try {
-    // Show loading state
     showNotification('Signing out...', 'info');
 
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
 
-    // Clear any cached data
-    sessionStorage.removeItem('supabase_config');
-    localStorage.removeItem('tayvu-auth-token');
-
-    // The onAuthStateChange listener will handle updating currentUser
-    window.currentUser = null;
-    updateAuthUI(false);
-
-    // Redirect to home page
+    // Auth state listener will handle clearing currentUser
+    showNotification('Signed out successfully');
     showPage('home');
-
-    showNotification('Successfully signed out');
+    
   } catch (error) {
     console.error('Sign out error:', error);
     showNotification('Error signing out. Please try again.', 'error');
@@ -206,16 +178,25 @@ export async function handleSignOut() {
 
 /* ── Initialize Auth UI ── */
 export function initAuthUI() {
+  console.log('Initializing Auth UI...');
+  
   // Listen for auth state changes
   document.addEventListener('auth:state', (event) => {
-    const { session } = event.detail;
+    console.log('Auth state event received:', event.detail);
+    const { session, user } = event.detail;
     updateAuthUI(!!session);
   });
 
   // Form handlers
   document.addEventListener('submit', (e) => {
-    if (e.target.matches('#signupForm')) return handleSignUp(e);
-    if (e.target.matches('#signinForm')) return handleSignIn(e);
+    if (e.target.matches('#signupForm')) {
+      e.preventDefault();
+      handleSignUp(e);
+    }
+    if (e.target.matches('#signinForm')) {
+      e.preventDefault();
+      handleSignIn(e);
+    }
   });
 
   // Sign out handler
@@ -226,7 +207,7 @@ export function initAuthUI() {
     }
   });
 
-  // Modal helpers
+  // Modal helpers (for onclick attributes in HTML)
   window.showSignUp = () => {
     closeModal('signin');
     openModal('signup');
@@ -237,6 +218,6 @@ export function initAuthUI() {
     openModal('signin');
   };
 
-  // Initial UI update based on current auth state
+  // Initial UI state
   updateAuthUI(!!window.currentUser);
 }
