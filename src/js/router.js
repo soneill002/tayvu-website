@@ -1,7 +1,7 @@
 /*  src/js/router.js
     Navigation, mobile-menu toggle, FAQ, modal delegation
 -------------------------------------------------------------------------- */
-
+import { initBlog } from '@/features/blog/blog.js';
 import { showNotification, toggleMobileMenu } from '@/utils/ui.js';
 import { openModal, closeModal } from '@/utils/modal.js';
 import { goToProfile, loadProfileData } from '@/features/profile/profileData.js';
@@ -31,6 +31,10 @@ export function showPage(pageId, { skipPush = false } = {}) {
 
   /* lazy-load profile data when needed */
   if (pageId === 'profile' && isLoggedIn()) loadProfileData();
+  
+  /* ===== ADD THESE 2 LINES ===== */
+  /* lazy-load blog data when needed */
+  if (pageId === 'blog') initBlog();
 }
 
 /* ──────────────────────────────────────────

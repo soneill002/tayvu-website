@@ -786,13 +786,34 @@
       </div>
     </section>
 
- <!-- Blog Page -->
-    <section id="blog" class="page-section">
-      <div class="page-container">
-        <h1>Blog</h1>
-        <p>Coming soon...</p>
-      </div>
-    </section>
+    <!-- Blog Page -->
+   <section id="blog" class="page-section">
+    <div class="page-container">
+    <div class="blog-header animate-fade-in">
+      <h1>Honoring Lives, Preserving Memories</h1>
+      <p>Resources and insights for creating meaningful digital memorials</p>
+    </div>
+    
+    <!-- Loading State -->
+    <div class="blog-loading" id="blogLoading">
+      <div class="loading-spinner"></div>
+      <p>Loading articles...</p>
+    </div>
+    
+    <!-- Blog Grid -->
+    <div class="blog-grid" id="blogGrid" style="display: none;">
+      <!-- Blog posts will be dynamically loaded here -->
+    </div>
+    
+    <!-- Load More Button -->
+    <div class="blog-load-more" id="blogLoadMore" style="display: none;">
+      <button class="btn-secondary" onclick="loadMorePosts()">
+        Load More Articles
+        <i class="fas fa-arrow-down"></i>
+      </button>
+    </div>
+    </div>
+   </section>
 
 
     <!-- Profile Page -->
