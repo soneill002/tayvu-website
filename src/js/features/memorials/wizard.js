@@ -1,4 +1,4 @@
-/*  src/js/features/createMemorial/wizard.js  */
+/*  src/js/features/memorials/wizard.js  */
 let clickHandlerBound = false;
 import {
   showNotification,
