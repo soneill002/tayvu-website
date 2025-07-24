@@ -18,9 +18,34 @@ export function initBlog() {
   displayedPosts = 0;
   allPosts = [];
   
+  // Add event listener for blog post clicks
+  const blogGrid = document.getElementById('blogGrid');
+  if (blogGrid) {
+    blogGrid.addEventListener('click', handleBlogPostClick);
+  }
+  
   // Load posts
   loadBlogPosts();
 }
+
+
+// Handle blog post clicks
+function handleBlogPostClick(event) {
+  // Find the closest parent element with class 'blog-post-card'
+  const postCard = event.target.closest('.blog-post-card');
+  
+  // If we found a post card, get its slug and open the post
+  if (postCard) {
+    const slug = postCard.dataset.slug;
+    if (slug) {
+      openBlogPost(slug);
+    }
+  }
+}
+
+
+
+
 
 // Load blog posts from Contentful
 async function loadBlogPosts() {
@@ -232,7 +257,7 @@ function createPostCard(post, isFeatured = false) {
     'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI0U4RDVCNyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iSW50ZXIsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM2QjkxNzQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5UYXl2dSBCbG9nPC90ZXh0Pjwvc3ZnPg==';
   
   return `
-    <article class="blog-post-card ${featuredClass}" onclick="openBlogPost('${post.slug}')">
+    <article class="blog-post-card ${featuredClass}" data-slug="${post.slug}">
       <img 
         src="${imageUrl}${post.featuredImage ? '?w=800&h=400&fit=fill' : ''}" 
         alt="${post.featuredImage?.title || post.title}" 
@@ -284,8 +309,20 @@ window.loadMorePosts = function() {
   displayPosts();
 };
 
+
+// Cleanup function to remove event listeners
+export function cleanupBlog() {
+  const blogGrid = document.getElementById('blogGrid');
+  if (blogGrid) {
+    blogGrid.removeEventListener('click', handleBlogPostClick);
+  }
+}
+
+
+
+
 // Open individual blog post
-window.openBlogPost = function(slug) {
+function openBlogPost(slug) {
   const post = allPosts.find(p => p.slug === slug);
   if (!post) return;
   
