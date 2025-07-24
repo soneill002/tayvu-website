@@ -92,56 +92,6 @@ function processContentfulData(data) {
     });
   }
   
-  // Process posts
-  return items.map(item => {
-    const fields = item.fields;
-    
-    // Get featured image
-    let featuredImage = null;
-    if (fields.featuredImage?.sys?.id) {
-      const asset = assetMap[fields.featuredImage.sys.id];
-      if (asset?.fields?.file?.url) {
-        featuredImage = {
-          url: `https:${asset.fields.file.url}`,
-          title: asset.fields.title || fields.title
-        };
-      }
-    }
-    
-    // Get author
-    let author = null;
-    if (fields.author?.sys?.id) {
-      const authorEntry = authorMap[fields.author.sys.id];
-      if (authorEntry?.fields) {
-        author = {
-          name: authorEntry.fields.name || 'Tayvu Team',
-          bio: authorEntry.fields.bio
-        };
-      }
-    }
-    
-    // Extract text from rich text content
-    let contentText = '';
-    if (fields.content?.content) {
-      contentText = extractTextFromRichText(fields.content);
-    }
-    
-    return {
-      id: item.sys.id,
-      title: fields.title || 'Untitled',
-      slug: fields.slug || '',
-      excerpt: fields.excerpt || '',
-      category: fields.category || 'general',
-      content: contentText,
-      publishDate: fields.publishDate || new Date().toISOString(),
-      featuredImage,
-      author: author || { name: 'Tayvu Team' },
-      tags: fields.tags || [],
-      featured: fields.featured || false,
-      readingTime: fields.readingTime || calculateReadingTime(contentText)
-    };
-  });
-}
 
 
 
