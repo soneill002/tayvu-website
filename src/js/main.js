@@ -39,6 +39,20 @@ async function initApp() {
   
   // Then initialize everything else
   initRouter();
+  // Safety check to ensure proper page visibility
+document.addEventListener('DOMContentLoaded', () => {
+  // Hide all pages except the current one
+  const currentHash = window.location.hash.slice(1) || 'home';
+  document.querySelectorAll('.page-section').forEach(section => {
+    if (section.id === currentHash) {
+      section.classList.add('active');
+      section.style.display = 'block';
+    } else {
+      section.classList.remove('active');
+      section.style.display = 'none';
+    }
+  });
+});
   initAuthUI();
 
   /* feature boosts */
