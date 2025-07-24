@@ -199,13 +199,29 @@ export function initAuthUI() {
     }
   });
 
-  // Sign out handler
-  document.addEventListener('click', (e) => {
-    if (e.target.closest('[data-action="signout"]')) {
-      e.preventDefault();
-      handleSignOut();
-    }
-  });
+// Sign out handler
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-action="signout"]')) {
+    e.preventDefault();
+    handleSignOut();
+  }
+});
+
+// Show signup/signin modal handlers
+document.addEventListener('click', (e) => {
+  if (e.target.matches('[data-action="show-signup"]')) {
+    e.preventDefault();
+    closeModal('signin');
+    openModal('signup');
+  }
+  
+  if (e.target.matches('[data-action="show-signin"]')) {
+    e.preventDefault();
+    closeModal('signup');
+    openModal('signin');
+  }
+});
+
 
   // Modal helpers (for onclick attributes in HTML)
   window.showSignUp = () => {
