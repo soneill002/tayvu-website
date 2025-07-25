@@ -144,38 +144,3 @@ function toggleFaq(btn) {
   /* reopen only if it wasn't already open */
   if (!wasOpen) item.classList.add('active');
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  /* — initial render on first load — */
-  const initial = location.hash.slice(1) || 'home';
-  showPage(initial, { skipPush: true });
-}
-
-/* ──────────────────────────────────────────
-   FAQ ACCORDION (open + close)
-   ────────────────────────────────────────── */
-function toggleFaq(btn) {
-  const item = btn.closest('.faq-item');
-  const category = btn.closest('.faq-category');
-  const wasOpen = item.classList.contains('active'); // remember state
-
-  /* close ALL items first */
-  category.querySelectorAll('.faq-item').forEach((i) => i.classList.remove('active'));
-
-  /* reopen only if it wasn’t already open */
-  if (!wasOpen) item.classList.add('active');
-}
