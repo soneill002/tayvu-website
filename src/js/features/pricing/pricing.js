@@ -12,6 +12,10 @@ export function initPricing() {
       return openModal('signin');
     }
 
-    showNotification(`Selected ${plan} plan — payment integration coming soon!`);
+    // Updated to handle the single premium plan
+    if (plan === 'premium') {
+      showNotification('Premium memorial selected — payment integration coming soon!');
+      // In the future, this would redirect to checkout with the premium plan
+    }
   });
 }
