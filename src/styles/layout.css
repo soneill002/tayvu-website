@@ -57,7 +57,20 @@ nav.scrolled {
   display: none !important;
 }
 
-/* Remove the aggressive visibility and position rules - they were breaking JavaScript */
-/* ========== END FIX ========== */
+/* ========== FIX FOR BLOG APPEARING ON ALL PAGES ========== */
+.page-section {
+  display: none !important;
+}
 
+.page-section.active {
+  display: block !important;
+}
+
+#blog:not(.active) {
+  display: none !important;
+}
+
+#blogPost:not(.active) {
+  display: none !important;
+}
 /* ========== END FIX ========== */

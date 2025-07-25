@@ -12,7 +12,7 @@ const isLoggedIn = () => Boolean(window.currentUser);
 /* ──────────────────────────────────────────
    PAGE SWITCHER
    ────────────────────────────────────────── */
- export function showPage(pageId, { skipPush = false } = {}) {
+export function showPage(pageId, { skipPush = false } = {}) {
   /* gate-keep the profile page */
   if (pageId === 'profile' && !isLoggedIn()) {
     showNotification('Please sign in to view your profile');
@@ -23,19 +23,14 @@ const isLoggedIn = () => Boolean(window.currentUser);
   /* Hide ALL page sections */
   document.querySelectorAll('.page-section').forEach((section) => {
     section.classList.remove('active');
+    section.style.display = 'none';
   });
 
   /* Show the target page */
   const targetSection = document.getElementById(pageId);
   if (targetSection) {
     targetSection.classList.add('active');
-  }
-
-  /* Special handling for blogPost */
-  if (pageId === 'blogPost') {
-    // Make sure blog section is hidden when viewing a post
-    const blogSection = document.getElementById('blog');
-    if (blogSection) blogSection.classList.remove('active');
+    targetSection.style.display = 'block';
   }
 
   /* update URL & scroll position (unless instructed not to) */
@@ -48,10 +43,6 @@ const isLoggedIn = () => Boolean(window.currentUser);
   /* lazy-load blog data when needed */
   if (pageId === 'blog') initBlog();
 }
-
-
-
-
 
 /* ──────────────────────────────────────────
    GLOBAL CLICK DELEGATION
@@ -70,23 +61,6 @@ export function initRouter() {
       return;
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     /* ---------- open / close modals ---------- */
     const opener = e.target.closest('[data-modal]');
     if (opener) {
@@ -101,14 +75,6 @@ export function initRouter() {
       closeModal(closer.dataset.modalClose);
       return;
     }
-
-
-
-
-
-
-
-
 
     /* ---------- profile button ---------- */
     const profileBtn = e.target.closest('[data-action="profile"]');
@@ -128,29 +94,56 @@ export function initRouter() {
 
   /* — back / forward browser buttons — */
   window.addEventListener('popstate', () => {
-  const page = location.hash.slice(1) || 'home';
-  showPage(page, { skipPush: true });
-});
+    const page = location.hash.slice(1) || 'home';
+    showPage(page, { skipPush: true });
+  });
 
-
-/* — Handle blog post navigation — */
+  /* — Handle blog post navigation — */
   window.addEventListener('hashchange', () => {
     const hash = window.location.hash;
     
     if (hash === '#blog') {
-      // Show blog, hide blog post
+      // Return to blog grid from single post
       const blogPostEl = document.getElementById('blogPost');
       const blogEl = document.getElementById('blog');
-      if (blogPostEl) blogPostEl.classList.remove('active');
-      if (blogEl) blogEl.classList.add('active');
+      
+      if (blogPostEl) {
+        blogPostEl.style.display = 'none';
+        blogPostEl.classList.remove('active');
+      }
+      
+      if (blogEl) {
+        blogEl.style.display = 'block';
+        blogEl.classList.add('active');
+      }
+      
+      // Re-initialize blog to ensure proper state
+      initBlog();
     } else if (hash === '#blogPost') {
-      // Show blog post, hide blog
-      const blogPostEl = document.getElementById('blogPost');
-      const blogEl = document.getElementById('blog');
-      if (blogEl) blogEl.classList.remove('active');
-      if (blogPostEl) blogPostEl.classList.add('active');
+      // This case is handled by the blog.js openBlogPost function
+      return;
     }
   });
+
+  /* — initial render on first load — */
+  const initial = location.hash.slice(1) || 'home';
+  showPage(initial, { skipPush: true });
+}
+
+/* ──────────────────────────────────────────
+   FAQ ACCORDION (open + close)
+   ────────────────────────────────────────── */
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  const category = btn.closest('.faq-category');
+  const wasOpen = item.classList.contains('active'); // remember state
+
+  /* close ALL items first */
+  category.querySelectorAll('.faq-item').forEach((i) => i.classList.remove('active'));
+
+  /* reopen only if it wasn't already open */
+  if (!wasOpen) item.classList.add('active');
+}
 
 
 
