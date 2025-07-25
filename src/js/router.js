@@ -12,7 +12,7 @@ const isLoggedIn = () => Boolean(window.currentUser);
 /* ──────────────────────────────────────────
    PAGE SWITCHER
    ────────────────────────────────────────── */
-  export function showPage(pageId, { skipPush = false } = {}) {
+ export function showPage(pageId, { skipPush = false } = {}) {
   /* gate-keep the profile page */
   if (pageId === 'profile' && !isLoggedIn()) {
     showNotification('Please sign in to view your profile');
@@ -20,28 +20,22 @@ const isLoggedIn = () => Boolean(window.currentUser);
     return;
   }
 
-  /* CRITICAL FIX: Force hide ALL page sections */
-  const allSections = document.querySelectorAll('.page-section');
-  allSections.forEach((section) => {
-    // Remove active class
+  /* Hide ALL page sections */
+  document.querySelectorAll('.page-section').forEach((section) => {
     section.classList.remove('active');
-    // Force hide with multiple methods
-    section.style.display = 'none';
-    section.style.visibility = 'hidden';
-    section.style.position = 'absolute';
-    section.style.left = '-9999px';
   });
 
-  /* Then show only the target page */
+  /* Show the target page */
   const targetSection = document.getElementById(pageId);
   if (targetSection) {
-    // Add active class
     targetSection.classList.add('active');
-    // Force show with multiple methods
-    targetSection.style.display = 'block';
-    targetSection.style.visibility = 'visible';
-    targetSection.style.position = 'static';
-    targetSection.style.left = 'auto';
+  }
+
+  /* Special handling for blogPost */
+  if (pageId === 'blogPost') {
+    // Make sure blog section is hidden when viewing a post
+    const blogSection = document.getElementById('blog');
+    if (blogSection) blogSection.classList.remove('active');
   }
 
   /* update URL & scroll position (unless instructed not to) */
@@ -55,20 +49,9 @@ const isLoggedIn = () => Boolean(window.currentUser);
   if (pageId === 'blog') initBlog();
 }
 
-/* Clean up any lingering page displays */
-function cleanupPageDisplay() {
-  document.querySelectorAll('.page-section').forEach((section) => {
-    if (!section.classList.contains('active')) {
-      section.style.display = 'none';
-      section.style.visibility = 'hidden';
-      section.style.position = 'absolute';
-      section.style.left = '-9999px';
-    }
-  });
-}
 
-// Call cleanup periodically to catch any issues
-setInterval(cleanupPageDisplay, 1000);
+
+
 
 /* ──────────────────────────────────────────
    GLOBAL CLICK DELEGATION
@@ -147,20 +130,25 @@ export function initRouter() {
   window.addEventListener('popstate', () => {
   const page = location.hash.slice(1) || 'home';
   showPage(page, { skipPush: true });
-  // Add cleanup after navigation
-  setTimeout(cleanupPageDisplay, 100);
 });
 
 
-  /* — Handle blog post navigation — */
+/* — Handle blog post navigation — */
   window.addEventListener('hashchange', () => {
-    if (window.location.hash === '#blog') {
+    const hash = window.location.hash;
+    
+    if (hash === '#blog') {
+      // Show blog, hide blog post
       const blogPostEl = document.getElementById('blogPost');
       const blogEl = document.getElementById('blog');
-      if (blogPostEl && blogEl) {
-        blogPostEl.style.display = 'none';
-        blogEl.style.display = 'block';
-      }
+      if (blogPostEl) blogPostEl.classList.remove('active');
+      if (blogEl) blogEl.classList.add('active');
+    } else if (hash === '#blogPost') {
+      // Show blog post, hide blog
+      const blogPostEl = document.getElementById('blogPost');
+      const blogEl = document.getElementById('blog');
+      if (blogEl) blogEl.classList.remove('active');
+      if (blogPostEl) blogPostEl.classList.add('active');
     }
   });
 

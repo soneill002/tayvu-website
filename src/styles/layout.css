@@ -39,57 +39,25 @@ nav.scrolled {
 }
 
 /* ========== FIX FOR BLOG APPEARING ON ALL PAGES ========== */
-/* Force page sections to be hidden by default with higher specificity */
-body .page-section {
+/* Force page sections to be hidden by default */
+.page-section {
   display: none !important;
-  visibility: hidden !important;
-  position: absolute !important;
-  left: -9999px !important;
 }
 
-body .page-section.active {
+.page-section.active {
   display: block !important;
-  visibility: visible !important;
-  position: static !important;
-  left: auto !important;
 }
 
-/* Extra specificity for blog sections */
-body section#blog:not(.active),
-body section#blogPost:not(.active) {
+/* Specific fix for blog sections when not active */
+#blog:not(.active) {
   display: none !important;
-  visibility: hidden !important;
-  position: absolute !important;
-  left: -9999px !important;
-  height: 0 !important;
-  overflow: hidden !important;
 }
 
-body section#blog.active,
-body section#blogPost.active {
-  display: block !important;
-  visibility: visible !important;
-  position: static !important;
-  left: auto !important;
-  height: auto !important;
-  overflow: visible !important;
+#blogPost:not(.active) {
+  display: none !important;
 }
 
-/* Ensure blog content stays within its container */
-#blog .blog-grid,
-#blog .blog-loading,
-#blog .blog-load-more {
-  display: none;
-}
+/* Remove the aggressive visibility and position rules - they were breaking JavaScript */
+/* ========== END FIX ========== */
 
-#blog.active .blog-grid,
-#blog.active .blog-loading,
-#blog.active .blog-load-more {
-  display: block;
-}
-
-/* Prevent any content leak */
-.page-section:not(.active) * {
-  visibility: hidden !important;
-}
 /* ========== END FIX ========== */
