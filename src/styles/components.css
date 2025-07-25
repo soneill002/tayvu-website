@@ -5406,3 +5406,179 @@ css/* Cherished Moments Upload Interface - Improved */
     height: 250px;
   }
 }
+
+
+/* ============================================
+   CLOUDINARY UPLOAD ENHANCEMENTS
+   Added for photo upload functionality
+   ============================================ */
+   .upload-progress-bar {
+  background: linear-gradient(135deg, var(--primary-sage) 0%, var(--primary-moss) 100%);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 15px rgba(107, 145, 116, 0.3);
+  animation: slideDown 0.3s ease;
+}
+
+.upload-progress-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.95rem;
+}
+
+.upload-progress-content i {
+  font-size: 1.25rem;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ──────────────────────────────────────────
+   UPLOADING STATE
+   ────────────────────────────────────────── */
+.moment-preview-item.uploading {
+  position: relative;
+  pointer-events: none;
+}
+
+.upload-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: 10px;
+}
+
+.upload-overlay i {
+  font-size: 2rem;
+  color: var(--primary-sage);
+}
+
+.moment-preview-item.uploading .moment-media {
+  opacity: 0.5;
+}
+
+.moment-preview-item.uploading .moment-remove-btn {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ──────────────────────────────────────────
+   VIDEO THUMBNAILS
+   ────────────────────────────────────────── */
+.video-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 3rem;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.moment-preview-item video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ──────────────────────────────────────────
+   DRAG FEEDBACK ENHANCEMENT
+   ────────────────────────────────────────── */
+.upload-zone-compact.drag-over {
+  background: linear-gradient(135deg, rgba(107, 145, 116, 0.1) 0%, rgba(79, 115, 84, 0.1) 100%);
+  border-color: var(--primary-sage);
+  transform: scale(1.02);
+}
+
+.upload-zone-compact.drag-over .upload-text {
+  transform: scale(1.05);
+}
+
+/* ──────────────────────────────────────────
+   IMPROVED EMPTY STATE
+   ────────────────────────────────────────── */
+.moments-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  color: var(--text-light);
+  grid-column: 1 / -1;
+  min-height: 300px;
+}
+
+.moments-empty-state i {
+  font-size: 4rem;
+  color: var(--border-color);
+  margin-bottom: 1.5rem;
+  opacity: 0.5;
+}
+
+.moments-empty-state h4 {
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+/* ──────────────────────────────────────────
+   CLOUDINARY-OPTIMIZED IMAGE LOADING
+   ────────────────────────────────────────── */
+.moment-media img {
+  background: linear-gradient(
+    45deg,
+    #f0f0f0 25%,
+    #f8f8f8 25%,
+    #f8f8f8 50%,
+    #f0f0f0 50%,
+    #f0f0f0 75%,
+    #f8f8f8 75%,
+    #f8f8f8
+  );
+  background-size: 20px 20px;
+  animation: shimmer 1s linear infinite;
+}
+
+.moment-media img[src] {
+  background: none;
+  animation: none;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 20px 20px;
+  }
+}

@@ -1,6 +1,40 @@
-/*  src/js/features/memorials/moments.js  */
+// src/js/api/cloudinaryClient.js
+/* ──────────────────────────────────────────
+   CLOUDINARY CLIENT - Browser/REST API Version
+   ────────────────────────────────────────── */
+
+// Get from environment variables or hardcode for now
+const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'your-cloud-name';
+const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'tayvu_unsigned';
+
+export const cloudinaryConfig = {
+  cloudName: CLOUDINARY_CLOUD_NAME,
+  uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+  
+  // REST API endpoints (no SDK needed)
+  uploadUrl: `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}`,
+  
+  // Transformation presets for different use cases
+  transformations: {
+    thumbnail: 'c_thumb,w_150,h_150,g_face',
+    profilePhoto: 'c_fill,w_400,h_400,g_face,q_auto',
+    backgroundImage: 'c_fill,w_1600,h_600,q_auto',
+    momentPhoto: 'c_limit,w_1200,h_1200,q_auto',
+    momentThumbnail: 'c_fill,w_300,h_300,q_auto'
+  },
+  
+  // Helper to build transformed URLs
+  getTransformedUrl(url, transformation) {
+    if (!url || !transformation) return url;
+    return url.replace('/upload/', `/upload/${transformation}/`);
+  }
+};
+
+// ============================================
+// Updated src/js/features/memorials/moments.js
+// ============================================
 import { showNotification, qs, formatDate } from '@/utils/ui.js';
-import { cloudinaryConfig } from '@/api/cloudinaryClient.js'; // ADD THIS IMPORT
+import { cloudinaryConfig } from '@/api/cloudinaryClient.js';
 
 /* ──────────────────────────────────────────
    STATE
@@ -8,14 +42,13 @@ import { cloudinaryConfig } from '@/api/cloudinaryClient.js'; // ADD THIS IMPORT
 let moments = [];
 let momentsViewMode = 'grid';
 let draggedMomentIndex = null;
-let uploadQueue = []; // ADD THIS
-let isUploading = false; // ADD THIS
+let uploadQueue = [];
+let isUploading = false;
 
 /* ──────────────────────────────────────────
    PUBLIC API
    ────────────────────────────────────────── */
 export function initMomentsBoard() {
-  /* drop-zone */
   const dropZone = qs('#momentsDropZone');
   if (dropZone) {
     dropZone.addEventListener('dragover', handleDragOver);
@@ -23,7 +56,6 @@ export function initMomentsBoard() {
     dropZone.addEventListener('drop', handleDrop);
   }
 
-  /* delegated clicks (browse, view-mode) */
   document.getElementById('step4')?.addEventListener('click', (e) => {
     if (e.target.closest('.btn-upload') || e.target.closest('[data-moments-browse]')) {
       return selectMoments();
@@ -34,29 +66,11 @@ export function initMomentsBoard() {
     }
   });
 
-  //   /* first render */
   updateMomentsDisplay();
   updateMomentsCount();
 }
 
-/* expose if other modules need the raw array */
 export const getMoments = () => moments;
-
-/* ADD THIS NEW EXPORT FUNCTION */
-export function getMomentsForSave() {
-  return moments.filter(m => !m.uploading).map(m => ({
-    type: m.type,
-    url: m.url,
-    thumbnailUrl: m.thumbnailUrl,
-    publicId: m.publicId,
-    caption: m.caption,
-    date: m.date,
-    fileName: m.fileName
-  }));
-}
-
-// Make it globally available for the wizard
-window.getMomentsForSave = getMomentsForSave;
 
 /* ──────────────────────────────────────────
    DRAG-AND-DROP UPLOAD
@@ -76,7 +90,7 @@ function handleDrop(e) {
   const files = Array.from(e.dataTransfer.files).filter(
     file => file.type.startsWith('image/') || file.type.startsWith('video/')
   );
-  handleMultipleUploads(files); // CHANGED THIS
+  handleMultipleUploads(files);
 }
 
 /* ──────────────────────────────────────────
@@ -89,12 +103,11 @@ function selectMoments() {
   input.multiple = true;
   input.onchange = ({ target }) => {
     const files = Array.from(target.files);
-    handleMultipleUploads(files); // CHANGED THIS
+    handleMultipleUploads(files);
   };
   input.click();
 }
 
-/* ADD THESE NEW FUNCTIONS FOR CLOUDINARY UPLOAD */
 /* ──────────────────────────────────────────
    CLOUDINARY UPLOAD
    ────────────────────────────────────────── */
@@ -178,10 +191,9 @@ async function processUploadQueue() {
   showNotification('All uploads complete!', 'success');
 }
 
-/* REPLACE THE OLD addMoment FUNCTION WITH THIS */
 async function addMoment(file) {
   try {
-    // Create temporary moment with local URL for immediate feedback
+    // Show loading state for this specific file
     const tempId = Date.now() + Math.random();
     const tempMoment = {
       id: tempId,
@@ -203,15 +215,12 @@ async function addMoment(file) {
     // Update moment with Cloudinary data
     const momentIndex = moments.findIndex(m => m.id === tempId);
     if (momentIndex !== -1) {
-      // Generate thumbnail URL for images
-      const thumbnailUrl = file.type.startsWith('video/') 
-        ? cloudinaryData.thumbnail_url 
-        : cloudinaryData.secure_url.replace('/upload/', `/upload/${cloudinaryConfig.transformations.momentThumbnail}/`);
-      
       moments[momentIndex] = {
         ...moments[momentIndex],
         url: cloudinaryData.secure_url,
-        thumbnailUrl: thumbnailUrl,
+        thumbnailUrl: file.type.startsWith('video/') 
+          ? cloudinaryData.thumbnail_url 
+          : cloudinaryData.secure_url.replace('/upload/', `/upload/${cloudinaryConfig.transformations.momentThumbnail}/`),
         publicId: cloudinaryData.public_id,
         resourceType: cloudinaryData.resource_type,
         uploading: false
@@ -226,14 +235,89 @@ async function addMoment(file) {
     
   } catch (error) {
     console.error('Upload error:', error);
-    // Remove failed upload from moments
-    moments = moments.filter(m => !m.uploading);
-    updateMomentsDisplay();
     throw error;
   }
 }
 
-/* ADD THESE NEW UI FUNCTIONS */
+/* ──────────────────────────────────────────
+   UI UPDATES
+   ────────────────────────────────────────── */
+function updateMomentsDisplay() {
+  const grid = qs('#momentsPreviewGrid');
+  const emptyState = qs('#momentsEmptyState');
+  
+  if (!grid) return;
+  
+  if (moments.length === 0) {
+    emptyState.style.display = 'flex';
+    grid.innerHTML = '';
+    return;
+  }
+  
+  emptyState.style.display = 'none';
+  
+  grid.innerHTML = moments
+    .map((moment, index) => {
+      const isVideo = moment.type === 'video';
+      const displayUrl = moment.thumbnailUrl || moment.url;
+      
+      return `
+        <div class="moment-preview-item ${momentsViewMode === 'list' ? 'list-view' : ''} ${moment.uploading ? 'uploading' : ''}" 
+             data-moment-index="${index}"
+             draggable="${!moment.uploading}"
+             ondragstart="handleMomentDragStart(event, ${index})"
+             ondragover="handleMomentDragOver(event)"
+             ondrop="handleMomentDrop(event, ${index})"
+             ondragend="handleMomentDragEnd(event)">
+          
+          ${moment.uploading ? '<div class="upload-overlay"><i class="fas fa-spinner fa-spin"></i></div>' : ''}
+          
+          <div class="moment-media">
+            ${isVideo ? `
+              <video src="${moment.url}" controls>
+                <source src="${moment.url}" type="${moment.type}">
+              </video>
+              <div class="video-indicator">
+                <i class="fas fa-play-circle"></i>
+              </div>
+            ` : `
+              <img src="${displayUrl}" alt="${moment.fileName}" loading="lazy">
+            `}
+          </div>
+          
+          <button type="button" 
+                  class="moment-remove-btn" 
+                  onclick="removeMoment(${index})"
+                  ${moment.uploading ? 'disabled' : ''}>
+            <i class="fas fa-times"></i>
+          </button>
+          
+          <div class="moment-caption">
+            <input type="text" 
+                   class="caption-input" 
+                   placeholder="Add a caption..."
+                   value="${moment.caption || ''}"
+                   onchange="updateMomentCaption(${index}, this.value)"
+                   ${moment.uploading ? 'disabled' : ''}>
+            <div class="moment-date">${formatDate(moment.date)}</div>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+function updateMomentsCount() {
+  const photos = moments.filter(m => m.type === 'photo' && !m.uploading).length;
+  const videos = moments.filter(m => m.type === 'video' && !m.uploading).length;
+  
+  const photoCount = qs('#photoCount');
+  const videoCount = qs('#videoCount');
+  
+  if (photoCount) photoCount.textContent = photos;
+  if (videoCount) videoCount.textContent = videos;
+}
+
 /* ──────────────────────────────────────────
    UPLOAD PROGRESS UI
    ────────────────────────────────────────── */
@@ -262,167 +346,48 @@ function updateUploadProgress(remaining) {
   }
 }
 
-/* UPDATE THE RENDERING FUNCTION */
 /* ──────────────────────────────────────────
-   RENDERING
+   MOMENT ACTIONS
    ────────────────────────────────────────── */
-function updateMomentsDisplay() {
-  const grid = qs('#momentsPreviewGrid');
-  if (!grid) return;
-
-  const emptyState = qs('#momentsEmptyState');
-  if (moments.length === 0) {
-    emptyState?.style.setProperty('display', 'block');
-    grid.innerHTML = '';
-    emptyState && grid.appendChild(emptyState);
-    return;
-  }
-  emptyState?.style.setProperty('display', 'none');
-
-  grid.innerHTML = moments
-    .map(
-      (m, i) => `
-    <div class="moment-preview-item ${momentsViewMode === 'list' ? 'list-view' : ''} ${m.uploading ? 'uploading' : ''}"
-         draggable="${!m.uploading}"
-         data-id="${m.id}"
-         ondragstart="handleMomentDragStart(event, ${i})"
-         ondragover="handleMomentDragOver(event)"
-         ondrop="handleMomentDrop(event, ${i})"
-         ondragend="handleMomentDragEnd(event)">
-      
-      ${m.uploading ? '<div class="upload-overlay"><i class="fas fa-spinner fa-spin"></i></div>' : ''}
-      
-      <div class="moment-preview-image">
-        ${
-          m.type === 'video'
-            ? `<video src="${m.url}" muted></video>
-               <div class="video-indicator-overlay"><i class="fas fa-play"></i></div>`
-            : `<img src="${m.thumbnailUrl || m.url}" alt="${m.caption || 'Moment'}" loading="lazy">`
-        }
-      </div>
-      <div class="moment-actions">
-        <button class="moment-action-btn" onclick="editMomentCaption(${i})" title="Edit caption" ${m.uploading ? 'disabled' : ''}>
-          <i class="fas fa-pen"></i>
-        </button>
-        <button class="moment-action-btn" onclick="removeMoment(${i})" title="Remove" ${m.uploading ? 'disabled' : ''}>
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      <div class="moment-caption">
-        <input class="caption-input" type="text"
-               placeholder="Add a caption (optional)"
-               value="${m.caption}"
-               onchange="updateMomentCaption(${i}, this.value)"
-               ${m.uploading ? 'disabled' : ''}>
-        ${momentsViewMode === 'grid' ? `<div class="moment-date">${formatDate(m.date)}</div>` : ''}
-      </div>
-    </div>`
-    )
-    .join('');
-}
-
-function updateMomentsCount() {
-  const photoEl = qs('#photoCount');
-  const videoEl = qs('#videoCount');
-  if (!photoEl || !videoEl) return; // ← bail if step-4 isn't in the DOM yet
-
-  // Only count uploaded moments, not uploading ones
-  photoEl.textContent = moments.filter((m) => m.type === 'photo' && !m.uploading).length;
-  videoEl.textContent = moments.filter((m) => m.type === 'video' && !m.uploading).length;
-}
-
-/* ──────────────────────────────────────────
-   VIEW TOGGLE & CAPTION EDIT
-   ────────────────────────────────────────── */
-function changeGridView(view) {
-  momentsViewMode = view;
-  document.querySelectorAll('.view-btn').forEach((b) => b.classList.remove('active'));
-  event.target.closest('.view-btn').classList.add('active');
-
-  const grid = qs('#momentsPreviewGrid');
-  grid?.classList.toggle('list-view', view === 'list');
-  updateMomentsDisplay();
-}
-
-function updateMomentCaption(i, caption) {
-  if (moments[i]) moments[i].caption = caption;
-}
-
-/* eslint-disable-next-line no-unused-vars */
-function editMomentCaption(i) {
-  const input = event.target.closest('.moment-preview-item')?.querySelector('.caption-input');
-  input?.focus();
-  input?.select();
-}
-
-/* ──────────────────────────────────────────
-   REMOVE
-   ────────────────────────────────────────── */
-function removeMoment(i) {
-  const moment = moments[i];
-  if (moment && moment.uploading) return; // Don't allow removal during upload
+window.removeMoment = function(index) {
+  const moment = moments[index];
+  if (moment && moment.uploading) return;
   
-  if (confirm('Are you sure you want to remove this moment?')) {
-    moments.splice(i, 1);
+  if (confirm('Remove this moment?')) {
+    moments.splice(index, 1);
     updateMomentsDisplay();
     updateMomentsCount();
     showNotification('Moment removed');
   }
-}
+};
+
+window.updateMomentCaption = function(index, caption) {
+  if (moments[index]) {
+    moments[index].caption = caption;
+  }
+};
+
+window.changeGridView = function(view) {
+  momentsViewMode = view;
+  document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelector(`.view-btn:has(.fa-${view === 'grid' ? 'th' : 'list'})`).classList.add('active');
+  updateMomentsDisplay();
+};
 
 /* ──────────────────────────────────────────
-   DRAG REORDER
+   EXPORT MOMENTS DATA
    ────────────────────────────────────────── */
-function handleMomentDragStart(e, i) {
-  if (moments[i].uploading) {
-    e.preventDefault();
-    return;
-  }
-  draggedMomentIndex = i;
-  e.target.classList.add('dragging');
-}
-function handleMomentDragOver(e) {
-  e.preventDefault();
-  e.currentTarget.classList.add('drag-over');
-}
-function handleMomentDrop(e, dropIdx) {
-  e.preventDefault();
-  e.currentTarget.classList.remove('drag-over');
-
-  if (draggedMomentIndex !== null && draggedMomentIndex !== dropIdx) {
-    const [dragged] = moments.splice(draggedMomentIndex, 1);
-    moments.splice(draggedMomentIndex < dropIdx ? dropIdx - 1 : dropIdx, 0, dragged);
-    updateMomentsDisplay();
-    showNotification('Moments reordered');
-  }
-}
-function handleMomentDragEnd(e) {
-  e.target.classList.remove('dragging');
-  document
-    .querySelectorAll('.moment-preview-item')
-    .forEach((el) => el.classList.remove('drag-over'));
-  draggedMomentIndex = null;
+export function getMomentsForSave() {
+  return moments.filter(m => !m.uploading).map(m => ({
+    type: m.type,
+    url: m.url,
+    thumbnailUrl: m.thumbnailUrl,
+    publicId: m.publicId,
+    caption: m.caption,
+    date: m.date,
+    fileName: m.fileName
+  }));
 }
 
-/* ──────────────────────────────────────────
-   TEMP GLOBAL SHIM – keeps any inline attrs working
-   Remove once all inline handlers are gone.
-   ────────────────────────────────────────── */
-Object.assign(window, {
-  handleDragOver,
-  handleDragLeave,
-  handleDrop,
-  selectMoments,
-  addMoment,
-  updateMomentsDisplay,
-  updateMomentsCount,
-  changeGridView,
-  updateMomentCaption,
-  editMomentCaption,
-  removeMoment,
-  handleMomentDragStart,
-  handleMomentDragOver,
-  handleMomentDrop,
-  handleMomentDragEnd,
-  getMomentsForSave // ADD THIS
-});
+// Also make it available globally for the wizard
+window.getMomentsForSave = getMomentsForSave;

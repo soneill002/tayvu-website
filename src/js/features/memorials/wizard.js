@@ -5,6 +5,7 @@ import {
   qs /* ← you already export this from utils/ui.js */
 } from '@/utils/ui.js';
 import { MemorialSanitizer } from '@/utils/sanitizer.js';
+import { cloudinaryConfig } from '@/api/cloudinaryClient.js'; // ADD THIS IMPORT
 
 /* ──────────────────────────────────────────
      STATE
@@ -40,6 +41,113 @@ export function initWizard() {
 }
 
 export { nextStep, previousStep }; // consumed elsewhere if needed
+
+/* ──────────────────────────────────────────
+     CLOUDINARY UPLOAD FUNCTIONS
+     ────────────────────────────────────────── */
+async function uploadImage(type) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  
+  input.onchange = async ({ target }) => {
+    const file = target.files?.[0];
+    if (!file) return;
+    
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      showNotification('Please select an image file', 'error');
+      return;
+    }
+    
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit for profile/background
+      showNotification('Image size must be less than 10MB', 'error');
+      return;
+    }
+    
+    try {
+      showNotification('Uploading image...', 'info');
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+      
+      // Use memorial ID if available, otherwise use 'draft'
+      const memorialId = window.currentMemorialId || 'draft';
+      formData.append('folder', `tayvu/memorials/${memorialId}/${type}`);
+      
+      const response = await fetch(
+        `${cloudinaryConfig.uploadUrl}/image/upload`,
+        { method: 'POST', body: formData }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      // Update preview based on type
+      if (type === 'profile') {
+        const preview = qs('#profilePhotoPreview');
+        if (preview) {
+          // Apply profile photo transformation
+          const transformedUrl = cloudinaryConfig.getTransformedUrl(
+            data.secure_url,
+            cloudinaryConfig.transformations.profilePhoto
+          );
+          preview.src = transformedUrl;
+          preview.style.display = 'block';
+          preview.dataset.publicId = data.public_id;
+          preview.dataset.originalUrl = data.secure_url;
+        }
+      } else if (type === 'background') {
+        const preview = qs('#backgroundPhotoPreview');
+        if (preview) {
+          // Apply background transformation
+          const transformedUrl = cloudinaryConfig.getTransformedUrl(
+            data.secure_url,
+            cloudinaryConfig.transformations.backgroundImage
+          );
+          preview.src = transformedUrl;
+          preview.style.display = 'block';
+          preview.dataset.publicId = data.public_id;
+          preview.dataset.originalUrl = data.secure_url;
+        }
+      }
+      
+      showNotification('Image uploaded successfully!', 'success');
+      
+    } catch (error) {
+      console.error('Upload error:', error);
+      showNotification('Failed to upload image. Please try again.', 'error');
+    }
+  };
+  
+  input.click();
+}
+
+// Make uploadImage globally available for onclick handlers
+window.uploadImage = uploadImage;
+
+// Function to select default background
+function selectDefaultBackground(bgUrl) {
+  const preview = qs('#backgroundPhotoPreview');
+  if (preview) {
+    preview.src = bgUrl;
+    preview.style.display = 'block';
+    preview.dataset.isDefault = 'true';
+  }
+  
+  // Update UI to show selection
+  document.querySelectorAll('.default-bg-option').forEach(opt => {
+    opt.classList.remove('selected');
+  });
+  event.target.closest('.default-bg-option')?.classList.add('selected');
+}
+
+// Make it globally available
+window.selectDefaultBackground = selectDefaultBackground;
 
 /* ──────────────────────────────────────────
      INTERNAL HELPERS
@@ -131,6 +239,14 @@ function validateCurrentStep() {
         return false;
       }
       if (!validateDates()) return false;
+      
+      // Check if profile photo is uploaded
+      const profilePhoto = qs('#profilePhotoPreview');
+      if (!profilePhoto?.src || profilePhoto.src === '' || profilePhoto.style.display === 'none') {
+        showNotification('Please upload a profile photo', 'error');
+        return false;
+      }
+      
       return true;
     }
 
@@ -162,6 +278,9 @@ function validateCurrentStep() {
 function saveStepData() {
   switch (currentStep) {
     case 1:
+      const profilePhoto = qs('#profilePhotoPreview');
+      const backgroundPhoto = qs('#backgroundPhotoPreview');
+      
       memorialData.basic = {
         firstName: qs('#firstName').value,
         middleName: qs('#middleName').value,
@@ -170,8 +289,11 @@ function saveStepData() {
         deathDate: qs('#deathDate').value,
         headline: qs('#headline').value,
         openingStatement: qs('#openingStatement').value,
-        profilePhoto: qs('#profilePhotoPreview')?.src,
-        backgroundPhoto: qs('#backgroundPhotoPreview')?.src
+        profilePhoto: profilePhoto?.src,
+        profilePhotoPublicId: profilePhoto?.dataset.publicId,
+        backgroundPhoto: backgroundPhoto?.src,
+        backgroundPhotoPublicId: backgroundPhoto?.dataset.publicId,
+        backgroundPhotoIsDefault: backgroundPhoto?.dataset.isDefault === 'true'
       };
       break;
     case 2: {
@@ -199,7 +321,12 @@ function saveStepData() {
       memorialData.serviceNote = qs('#serviceNote')?.value || '';
       break;
     case 4:
-      memorialData.moments = window.moments || []; // moments handled in moments.js
+      // Import moments data from moments.js
+      if (window.getMomentsForSave) {
+        memorialData.moments = window.getMomentsForSave();
+      } else {
+        memorialData.moments = window.moments || [];
+      }
       break;
     case 5:
       memorialData.settings = {
@@ -256,20 +383,26 @@ function previewDevice(device) {
 
 function saveDraft() {
   saveStepData();
-  // In a real app, this would save to database
+  // Save to localStorage including uploaded image data
+  localStorage.setItem('tayvu_memorial_draft', JSON.stringify({
+    data: memorialData,
+    timestamp: new Date().toISOString()
+  }));
   showNotification('Draft saved successfully!');
 }
 
 function publishMemorial() {
   saveStepData();
   localStorage.removeItem('tayvu_draft_lifestory');
+  localStorage.removeItem('tayvu_memorial_draft');
 
   // In a real app, this would:
-  // 1. Save to database
+  // 1. Save to database with all Cloudinary URLs
   // 2. Generate the memorial page
   // 3. Redirect to the published memorial
 
   showNotification('Memorial published successfully!');
+  console.log('Publishing memorial with data:', memorialData);
 
   // For demo, redirect to profile
   setTimeout(() => window.goToProfile?.(), 2000);
