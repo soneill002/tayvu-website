@@ -6,7 +6,7 @@
 }
 
 .logo svg {
-  height: 70px; /* Increased from 60px to show tagline */
+  height: 85px; /* Increased from 60px to show tagline */
   width: auto;
 }
 
@@ -4462,14 +4462,14 @@ css/* Cherished Moments Upload Interface - Improved */
 /* Tablet size */
 @media (max-width: 768px) {
   .logo svg {
-    height: 60px; /* Adjusted for tablets */
+    height: 70px; /* Adjusted for tablets */
   }
 }
 
 /* Mobile size */
 @media (max-width: 480px) {
   .logo svg {
-    height: 55px; /* Adjusted for mobile */
+    height: 65px; /* Adjusted for mobile */
   }
 
   /* Hide tagline on small screens for space */
