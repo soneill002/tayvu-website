@@ -468,13 +468,30 @@ export function cleanupBlog() {
 
 
 // Open individual blog post
+// Open individual blog post
 function openBlogPost(slug) {
   const post = allPosts.find(p => p.slug === slug);
-  if (!post) return;
+  if (!post) {
+    console.error('Post not found with slug:', slug);
+    return;
+  }
   
-  // Hide blog grid, show single post
-  document.getElementById('blog').style.display = 'none';
-  document.getElementById('blogPost').style.display = 'block';
+  // Hide blog grid, show single post using classes
+  const blogSection = document.getElementById('blog');
+  const blogPostSection = document.getElementById('blogPost');
+  
+  if (blogSection) {
+    blogSection.classList.remove('active');
+    blogSection.style.display = 'none';
+  }
+  
+  if (blogPostSection) {
+    blogPostSection.classList.add('active');
+    blogPostSection.style.display = 'block';
+  }
+  
+  // Update URL
+  window.location.hash = '#blogPost';
   
   // Create post HTML
   const postHTML = `
@@ -512,4 +529,4 @@ function openBlogPost(slug) {
   
   document.getElementById('singlePostContent').innerHTML = postHTML;
   window.scrollTo(0, 0);
-};
+}
