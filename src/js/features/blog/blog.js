@@ -154,7 +154,7 @@ function processContentfulData(data) {
       const authorEntry = authorMap[fields.author.sys.id];
       if (authorEntry?.fields) {
         author = {
-          name: authorEntry.fields.name || 'Tayvu Team',
+          name: authorEntry.fields.name || 'Gather Memorials Team',
           bio: authorEntry.fields.bio
         };
       }
@@ -180,7 +180,7 @@ function processContentfulData(data) {
       contentText: contentText, // Keep plain text for reading time
       publishDate: fields.publishDate || new Date().toISOString(),
       featuredImage,
-      author: author || { name: 'Tayvu Team' },
+      author: author || { name: 'Gather Memorials Team' },
       tags: fields.tags || [],
       featured: fields.featured || false,
       readingTime: fields.readingTime || calculateReadingTime(contentText)
