@@ -23,35 +23,35 @@
     </defs>
     
     <!-- Background circle -->
-    <circle cx="35" cy="35" r="30" fill="url(#navBgGradient)"/>
+    <circle cx="42" cy="42" r="38" fill="url(#navBgGradient)"/>
     
     <!-- Tree design -->
-    <g transform="translate(35, 35)">
-        <!-- Tree trunk - extended slightly longer -->
-        <path d="M -3,15 L -3,0 L -1.5,-4 L 0,-6 L 1.5,-4 L 3,0 L 3,15 Z" 
+    <g transform="translate(42, 42)">
+        <!-- Tree trunk - extended and thicker -->
+        <path d="M -4,20 L -4,0 L -2,-5 L 0,-8 L 2,-5 L 4,0 L 4,20 Z" 
               fill="url(#navTrunkGradient)" 
               opacity="0.9"/>
         
         <!-- Main foliage with more vibrant colors -->
-        <circle cx="0" cy="-10" r="14" fill="url(#navFoliageGradient)" opacity="0.9"/>
-        <circle cx="-7" cy="-7" r="10" fill="#6B9174" opacity="0.7"/>
-        <circle cx="7" cy="-7" r="10" fill="#E4B755" opacity="0.6"/>
-        <circle cx="0" cy="-14" r="8" fill="#CF7939" opacity="0.5"/>
+        <circle cx="0" cy="-14" r="18" fill="url(#navFoliageGradient)" opacity="0.9"/>
+        <circle cx="-9" cy="-10" r="13" fill="#6B9174" opacity="0.7"/>
+        <circle cx="9" cy="-10" r="13" fill="#E4B755" opacity="0.6"/>
+        <circle cx="0" cy="-18" r="10" fill="#CF7939" opacity="0.5"/>
         
         <!-- Small leaves -->
-        <g transform="translate(-8, -16)">
-            <ellipse cx="0" cy="0" rx="3" ry="5" fill="#7C9885" opacity="0.7" transform="rotate(-15)"/>
+        <g transform="translate(-10, -20)">
+            <ellipse cx="0" cy="0" rx="4" ry="6" fill="#7C9885" opacity="0.7" transform="rotate(-15)"/>
         </g>
-        <g transform="translate(8, -14)">
-            <ellipse cx="0" cy="0" rx="3" ry="5" fill="#8B8680" opacity="0.7" transform="rotate(15)"/>
+        <g transform="translate(10, -18)">
+            <ellipse cx="0" cy="0" rx="4" ry="6" fill="#8B8680" opacity="0.7" transform="rotate(15)"/>
         </g>
-        <g transform="translate(0, -20)">
-            <ellipse cx="0" cy="0" rx="2.5" ry="4" fill="#A39B8B" opacity="0.6"/>
+        <g transform="translate(0, -26)">
+            <ellipse cx="0" cy="0" rx="3" ry="5" fill="#A39B8B" opacity="0.6"/>
         </g>
     </g>
     
     <!-- Text - Updated to "Gather Memorials" -->
-    <text x="78" y="46" font-family="'Segoe UI', -apple-system, sans-serif" font-size="32" font-weight="300" fill="#3A3633">
+    <text x="90" y="46" font-family="'Segoe UI', -apple-system, sans-serif" font-size="32" font-weight="300" fill="#3A3633">
         Gather Memorials
     </text>
 </svg>
