@@ -1,146 +1,420 @@
-/*  src/js/router.js
-    Navigation, mobile-menu toggle, FAQ, modal delegation
--------------------------------------------------------------------------- */
+/* src/js/router.js */
 import { initBlog } from '@/features/blog/blog.js';
-import { showNotification, toggleMobileMenu } from '@/utils/ui.js';
-import { openModal, closeModal } from '@/utils/modal.js';
-import { goToProfile, loadProfileData } from '@/features/profile/profileData.js';
-
-/* simple auth helper (window.currentUser is populated by initSupabase) */
-const isLoggedIn = () => Boolean(window.currentUser);
+import { initFAQ } from '@/features/faq/faq.js';
+import { initMemorialView, cleanupMemorialView } from '@/features/memorials/memorialView.js';
 
 /* ──────────────────────────────────────────
-   PAGE SWITCHER
+   ROUTE CONFIGURATION
    ────────────────────────────────────────── */
-export function showPage(pageId, { skipPush = false } = {}) {
-  /* gate-keep the profile page */
-  if (pageId === 'profile' && !isLoggedIn()) {
-    showNotification('Please sign in to view your profile');
-    openModal('signin');
-    return;
+const routes = {
+  home: {
+    title: 'GatherMemorials - Create Beautiful Online Memorials',
+    requiresAuth: false
+  },
+  about: {
+    title: 'About Us - GatherMemorials',
+    requiresAuth: false
+  },
+  createMemorial: {
+    title: 'Create Memorial - GatherMemorials',
+    requiresAuth: true,
+    authMessage: 'Please sign in to create a memorial'
+  },
+  profile: {
+    title: 'My Profile - GatherMemorials',
+    requiresAuth: true,
+    authMessage: 'Please sign in to view your profile'
+  },
+  blog: {
+    title: 'Blog - GatherMemorials',
+    requiresAuth: false,
+    init: initBlog
+  },
+  pricing: {
+    title: 'Pricing - GatherMemorials',
+    requiresAuth: false
+  },
+  faq: {
+    title: 'FAQ - GatherMemorials',
+    requiresAuth: false,
+    init: initFAQ
+  },
+  contact: {
+    title: 'Contact Us - GatherMemorials',
+    requiresAuth: false
+  },
+  privacy: {
+    title: 'Privacy Policy - GatherMemorials',
+    requiresAuth: false
+  },
+  terms: {
+    title: 'Terms of Service - GatherMemorials',
+    requiresAuth: false
   }
-
-  /* Hide ALL page sections */
-  document.querySelectorAll('.page-section').forEach((section) => {
-    section.classList.remove('active');
-    section.style.display = 'none';
-  });
-
-  /* Show the target page */
-  const targetSection = document.getElementById(pageId);
-  if (targetSection) {
-    targetSection.classList.add('active');
-    targetSection.style.display = 'block';
-  }
-
-  /* update URL & scroll position (unless instructed not to) */
-  if (!skipPush) history.pushState(null, '', `#${pageId}`);
-  window.scrollTo(0, 0);
-
-  /* lazy-load profile data when needed */
-  if (pageId === 'profile' && isLoggedIn()) loadProfileData();
-  
-  /* lazy-load blog data when needed */
-  if (pageId === 'blog') initBlog();
-}
+};
 
 /* ──────────────────────────────────────────
-   GLOBAL CLICK DELEGATION
+   STATE
+   ────────────────────────────────────────── */
+let currentPage = null;
+let previousPage = null;
+
+/* ──────────────────────────────────────────
+   PUBLIC API
    ────────────────────────────────────────── */
 export function initRouter() {
-  document.addEventListener('click', (e) => {
-    /* ---------- nav links ---------- */
-    const link = e.target.closest('[data-page]');
-    if (link) {
-      e.preventDefault();
-      showPage(link.dataset.page); // normal push
-      const mobileMenu = document.getElementById('mobileMenu');
-      if (mobileMenu?.classList.contains('active') && link.closest('#mobileMenu')) {
-        toggleMobileMenu();
-      }
-      return;
-    }
+  // Handle hash changes
+  window.addEventListener('hashchange', handleRouteChange);
+  
+  // Handle initial load
+  handleRouteChange();
+  
+  // Handle browser back/forward buttons
+  window.addEventListener('popstate', handleRouteChange);
+}
 
-    /* ---------- open / close modals ---------- */
-    const opener = e.target.closest('[data-modal]');
-    if (opener) {
-      e.preventDefault();
-      openModal(opener.dataset.modal);
-      return;
-    }
-
-    const closer = e.target.closest('[data-modal-close]');
-    if (closer) {
-      e.preventDefault();
-      closeModal(closer.dataset.modalClose);
-      return;
-    }
-
-    /* ---------- profile button ---------- */
-    const profileBtn = e.target.closest('[data-action="profile"]');
-    if (profileBtn) {
-      e.preventDefault();
-      goToProfile();
-      return;
-    }
-
-    /* ---------- FAQ accordion ---------- */
-    const faqBtn = e.target.closest('[data-faq-toggle]');
-    if (faqBtn) {
-      e.preventDefault();
-      toggleFaq(faqBtn);
-    }
-  });
-
-  /* — back / forward browser buttons — */
-  window.addEventListener('popstate', () => {
-    const page = location.hash.slice(1) || 'home';
-    showPage(page, { skipPush: true });
-  });
-
-  /* — Handle blog post navigation — */
-  window.addEventListener('hashchange', () => {
-    const hash = window.location.hash;
+export function showPage(page) {
+  // Store previous page for potential redirects
+  previousPage = currentPage;
+  
+  // Handle memorial pages with ID/slug
+  if (page.startsWith('memorial/')) {
+    showMemorialPage(page);
+    return;
+  }
+  
+  // Handle blog post pages
+  if (page.startsWith('blog/')) {
+    showBlogPost(page);
+    return;
+  }
+  
+  // Check if route exists
+  if (!routes[page]) {
+    console.warn(`Route not found: ${page}`);
+    showPage('home');
+    return;
+  }
+  
+  const route = routes[page];
+  
+  // Check authentication
+  if (route.requiresAuth && !window.currentUser) {
+    import('@/utils/ui.js').then(({ showNotification }) => {
+      showNotification(route.authMessage || 'Please sign in to continue');
+    });
     
-    if (hash === '#blog') {
-      // Return to blog grid from single post
-      const blogPostEl = document.getElementById('blogPost');
-      const blogEl = document.getElementById('blog');
-      
-      if (blogPostEl) {
-        blogPostEl.style.display = 'none';
-        blogPostEl.classList.remove('active');
-      }
-      
-      if (blogEl) {
-        blogEl.style.display = 'block';
-        blogEl.classList.add('active');
-      }
-      
-      // Re-initialize blog to ensure proper state
-      initBlog();
-    } else if (hash === '#blogPost') {
-      // This case is handled by the blog.js openBlogPost function
-      return;
+    // Store intended destination for after login
+    sessionStorage.setItem('redirectAfterLogin', page);
+    
+    import('@/utils/modal.js').then(({ openModal }) => {
+      openModal('signin');
+    });
+    return;
+  }
+  
+  // Update page title
+  document.title = route.title || 'GatherMemorials';
+  
+  // Hide all sections
+  hideAllSections();
+  
+  // Show the requested section
+  const section = document.getElementById(page);
+  if (section) {
+    section.style.display = 'block';
+    currentPage = page;
+    
+    // Scroll to top
+    window.scrollTo(0, 0);
+    
+    // Run page-specific initialization if defined
+    if (route.init) {
+      route.init();
     }
-  });
-
-  /* — initial render on first load — */
-  const initial = location.hash.slice(1) || 'home';
-  showPage(initial, { skipPush: true });
+    
+    // Update active nav items
+    updateActiveNavItems(page);
+    
+    // Close mobile menu if open
+    closeMobileMenu();
+    
+    // Track page view (analytics)
+    trackPageView(page);
+  } else {
+    console.error(`Section not found: ${page}`);
+    showPage('home');
+  }
 }
 
 /* ──────────────────────────────────────────
-   FAQ ACCORDION (open + close)
+   MEMORIAL ROUTING
    ────────────────────────────────────────── */
-function toggleFaq(btn) {
-  const item = btn.closest('.faq-item');
-  const category = btn.closest('.faq-category');
-  const wasOpen = item.classList.contains('active'); // remember state
-
-  /* close ALL items first */
-  category.querySelectorAll('.faq-item').forEach((i) => i.classList.remove('active'));
-
-  /* reopen only if it wasn't already open */
-  if (!wasOpen) item.classList.add('active');
+function showMemorialPage(page) {
+  const memorialId = page.split('/')[1];
+  
+  if (!memorialId) {
+    showPage('home');
+    return;
+  }
+  
+  // Clean up previous memorial view if any
+  if (currentPage && currentPage.startsWith('memorial/')) {
+    cleanupMemorialView();
+  }
+  
+  // Update page title (will be updated again once memorial loads)
+  document.title = 'Loading Memorial... - GatherMemorials';
+  
+  // Hide all sections
+  hideAllSections();
+  
+  // Show memorial view section
+  const memorialSection = document.getElementById('memorialView');
+  if (!memorialSection) {
+    // Create memorial section if it doesn't exist
+    createMemorialSection();
+  } else {
+    memorialSection.style.display = 'block';
+  }
+  
+  currentPage = page;
+  
+  // Initialize memorial view
+  initMemorialView(memorialId);
+  
+  // Update nav (no nav item for individual memorials)
+  updateActiveNavItems('');
+  
+  // Track memorial view
+  trackPageView(`memorial/${memorialId}`);
 }
+
+/* ──────────────────────────────────────────
+   BLOG POST ROUTING
+   ────────────────────────────────────────── */
+function showBlogPost(page) {
+  const postSlug = page.split('/')[1];
+  
+  if (!postSlug) {
+    showPage('blog');
+    return;
+  }
+  
+  // Show blog section
+  hideAllSections();
+  const blogSection = document.getElementById('blog');
+  if (blogSection) {
+    blogSection.style.display = 'block';
+    currentPage = page;
+    
+    // Let blog module handle the specific post
+    import('@/features/blog/blog.js').then(({ showBlogPost }) => {
+      showBlogPost(postSlug);
+    });
+    
+    updateActiveNavItems('blog');
+  }
+}
+
+/* ──────────────────────────────────────────
+   ROUTE CHANGE HANDLER
+   ────────────────────────────────────────── */
+function handleRouteChange() {
+  const hash = window.location.hash.slice(1); // Remove #
+  const page = hash || 'home';
+  
+  // Handle query parameters if any
+  const [pageName, ...params] = page.split('?');
+  
+  showPage(pageName);
+  
+  // Handle post-login redirect
+  if (window.currentUser && sessionStorage.getItem('redirectAfterLogin')) {
+    const redirect = sessionStorage.getItem('redirectAfterLogin');
+    sessionStorage.removeItem('redirectAfterLogin');
+    
+    // Small delay to ensure auth state is fully updated
+    setTimeout(() => {
+      showPage(redirect);
+    }, 100);
+  }
+}
+
+/* ──────────────────────────────────────────
+   UTILITY FUNCTIONS
+   ────────────────────────────────────────── */
+function hideAllSections() {
+  document.querySelectorAll('.page-section').forEach((section) => {
+    section.style.display = 'none';
+  });
+}
+
+function updateActiveNavItems(activePage) {
+  // Update desktop nav
+  document.querySelectorAll('.nav-menu a').forEach((link) => {
+    const linkPage = link.getAttribute('href')?.slice(1) || '';
+    if (linkPage === activePage) {
+      link.classList.add('active');
+    } else {
+      link.classList.remove('active');
+    }
+  });
+  
+  // Update mobile nav
+  document.querySelectorAll('.mobile-menu a').forEach((link) => {
+    const linkPage = link.getAttribute('href')?.slice(1) || '';
+    if (linkPage === activePage) {
+      link.classList.add('active');
+    } else {
+      link.classList.remove('active');
+    }
+  });
+}
+
+function closeMobileMenu() {
+  const mobileMenu = document.querySelector('.mobile-menu');
+  const menuToggle = document.querySelector('.mobile-menu-toggle');
+  
+  if (mobileMenu && mobileMenu.classList.contains('active')) {
+    mobileMenu.classList.remove('active');
+    if (menuToggle) {
+      menuToggle.setAttribute('aria-expanded', 'false');
+    }
+  }
+}
+
+function createMemorialSection() {
+  const section = document.createElement('section');
+  section.id = 'memorialView';
+  section.className = 'page-section memorial-view-page';
+  section.style.display = 'none';
+  section.innerHTML = `
+    <div class="memorial-header">
+      <div class="memorial-background">
+        <img id="memorialBackgroundPhoto" src="/assets/default-memorial-bg.jpg" alt="">
+      </div>
+      <div class="memorial-profile">
+        <img id="memorialProfilePhoto" src="/assets/default-avatar.jpg" alt="">
+        <h1 id="memorialName"></h1>
+        <p id="memorialDates" class="memorial-dates"></p>
+      </div>
+    </div>
+
+    <div class="memorial-content container">
+      <!-- Memorial Info -->
+      <section class="memorial-info">
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Born</span>
+            <span id="memorialBirthDate" class="info-value">-</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Passed</span>
+            <span id="memorialDeathDate" class="info-value">-</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Obituary -->
+      <section class="memorial-section obituary-section">
+        <h2>Obituary</h2>
+        <div id="memorialObituary" class="obituary-content"></div>
+      </section>
+
+      <!-- Life Story -->
+      <section class="memorial-section life-story-section">
+        <h2>Life Story</h2>
+        <div id="memorialLifeStory" class="life-story-content"></div>
+      </section>
+
+      <!-- Services -->
+      <section class="memorial-section services-section">
+        <h2>Service Information</h2>
+        <div id="memorialServices"></div>
+      </section>
+
+      <!-- Moments Gallery -->
+      <section class="memorial-section moments-section">
+        <h2>Memories</h2>
+        <div id="memorialMomentsGrid" class="moments-grid"></div>
+      </section>
+
+      <!-- Guestbook -->
+      <section class="memorial-section guestbook-section">
+        <h2>Messages of Love</h2>
+        <div class="guestbook-header">
+          <p>Share your memories and messages</p>
+          <button class="btn-primary" data-action="open-guestbook">
+            <i class="fas fa-pen"></i> Leave a Message
+          </button>
+        </div>
+        <div class="guestbook-entries"></div>
+      </section>
+    </div>
+  `;
+  
+  // Add to main content area
+  const main = document.querySelector('main') || document.body;
+  main.appendChild(section);
+}
+
+function trackPageView(page) {
+  // Google Analytics tracking (if implemented)
+  if (typeof gtag !== 'undefined') {
+    gtag('config', 'GA_MEASUREMENT_ID', {
+      page_path: `/#${page}`
+    });
+  }
+  
+  // Custom analytics
+  console.log(`Page view: ${page}`);
+}
+
+/* ──────────────────────────────────────────
+   NAVIGATION HELPERS
+   ────────────────────────────────────────── */
+export function navigateTo(page) {
+  window.location.hash = `#${page}`;
+}
+
+export function goBack() {
+  if (previousPage) {
+    showPage(previousPage);
+  } else {
+    showPage('home');
+  }
+}
+
+export function getCurrentPage() {
+  return currentPage;
+}
+
+/* ──────────────────────────────────────────
+   AUTH STATE CHANGE HANDLER
+   ────────────────────────────────────────── */
+// Listen for auth state changes to handle protected routes
+document.addEventListener('auth:state', (event) => {
+  const { user } = event.detail;
+  
+  // If user just logged in and we have a redirect
+  if (user && sessionStorage.getItem('redirectAfterLogin')) {
+    const redirect = sessionStorage.getItem('redirectAfterLogin');
+    sessionStorage.removeItem('redirectAfterLogin');
+    showPage(redirect);
+  }
+  
+  // If user logged out and on a protected page
+  if (!user && currentPage && routes[currentPage]?.requiresAuth) {
+    showPage('home');
+    import('@/utils/ui.js').then(({ showNotification }) => {
+      showNotification('Please sign in to continue');
+    });
+  }
+});
+
+/* ──────────────────────────────────────────
+   MAKE FUNCTIONS GLOBAL (for legacy support)
+   ────────────────────────────────────────── */
+window.showPage = showPage;
+window.navigateTo = navigateTo;

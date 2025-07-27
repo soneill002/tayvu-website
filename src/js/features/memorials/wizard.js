@@ -5,14 +5,12 @@ import {
   qs /* ← you already export this from utils/ui.js */
 } from '@/utils/ui.js';
 import { MemorialSanitizer } from '@/utils/sanitizer.js';
-import { cloudinaryConfig } from '@/api/cloudinaryClient.js'; // ADD THIS IMPORT
+import { cloudinaryConfig } from '@/api/cloudinaryClient.js';
+import { getClient } from '@/api/supabaseClient.js';
 
 /* ──────────────────────────────────────────
      STATE
      ────────────────────────────────────────── */
-// let currentStep = 1;
-// const totalSteps = 5;
-
 let currentStep = 1;
 // Always count however many .form-step panels you actually have
 let totalSteps = 0;
@@ -32,8 +30,23 @@ export function initWizard() {
   currentStep = 1;
   // Re-calculate on init in case you add/remove steps or mis-number your circles
   totalSteps = document.querySelectorAll('.form-step').length;
-  updateProgress();
-  // only bind once
+  
+  // Try to load draft from Supabase first
+  loadDraftFromSupabase().then(hasDraft => {
+    if (hasDraft) {
+      showNotification('Draft loaded', 'info');
+    } else {
+      // Fall back to localStorage draft
+      const savedDraft = localStorage.getItem('memorialDraft');
+      if (savedDraft) {
+        Object.assign(memorialData, JSON.parse(savedDraft));
+      }
+    }
+    
+    updateProgress();
+  });
+  
+  // Only bind once
   if (!clickHandlerBound) {
     wireDelegatedClicks();
     clickHandlerBound = true;
@@ -150,6 +163,348 @@ function selectDefaultBackground(bgUrl) {
 window.selectDefaultBackground = selectDefaultBackground;
 
 /* ──────────────────────────────────────────
+   DRAFT MANAGEMENT WITH SUPABASE
+   ────────────────────────────────────────── */
+async function saveDraftToSupabase() {
+  const supabase = getClient();
+  if (!supabase || !window.currentUser) {
+    console.log('Cannot save draft - user not authenticated');
+    return;
+  }
+
+  try {
+    // Prepare draft data
+    const draftData = {
+      user_id: window.currentUser.id,
+      deceased_name: memorialData.basic.name || 'Untitled Memorial',
+      birth_date: memorialData.basic.birthDate || null,
+      death_date: memorialData.basic.deathDate || null,
+      profile_photo_url: qs('#profilePhotoPreview')?.src || null,
+      profile_photo_public_id: qs('#profilePhotoPreview')?.dataset.publicId || null,
+      background_photo_url: qs('#backgroundPhotoPreview')?.src || null,
+      background_photo_public_id: qs('#backgroundPhotoPreview')?.dataset.publicId || null,
+      obituary: memorialData.story.obituary || '',
+      life_story: memorialData.story.lifeStory || '',
+      privacy_setting: memorialData.settings.privacy || 'public',
+      is_published: false,
+      is_draft: true
+    };
+
+    // Check if we already have a draft ID
+    let draftId = localStorage.getItem('currentDraftId');
+    
+    if (draftId) {
+      // Update existing draft
+      const { error } = await supabase
+        .from('memorials')
+        .update(draftData)
+        .eq('id', draftId)
+        .eq('user_id', window.currentUser.id);
+        
+      if (error) throw error;
+    } else {
+      // Create new draft
+      const { data, error } = await supabase
+        .from('memorials')
+        .insert(draftData)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      // Store draft ID for future updates
+      localStorage.setItem('currentDraftId', data.id);
+      window.currentMemorialId = data.id;
+    }
+    
+    showNotification('Draft saved', 'success');
+  } catch (error) {
+    console.error('Error saving draft:', error);
+    // Fall back to localStorage if Supabase fails
+    localStorage.setItem('memorialDraft', JSON.stringify(memorialData));
+  }
+}
+
+// Replace the existing saveDraft function
+async function saveDraft() {
+  saveStepData();
+  await saveDraftToSupabase();
+}
+
+// Add function to load draft from Supabase
+async function loadDraftFromSupabase() {
+  const supabase = getClient();
+  if (!supabase || !window.currentUser) return false;
+
+  try {
+    // Find user's most recent draft
+    const { data: drafts, error } = await supabase
+      .from('memorials')
+      .select('*')
+      .eq('user_id', window.currentUser.id)
+      .eq('is_draft', true)
+      .eq('is_published', false)
+      .order('updated_at', { ascending: false })
+      .limit(1);
+
+    if (error) throw error;
+    
+    if (drafts && drafts.length > 0) {
+      const draft = drafts[0];
+      
+      // Store draft ID
+      localStorage.setItem('currentDraftId', draft.id);
+      window.currentMemorialId = draft.id;
+      
+      // Populate memorial data
+      memorialData.basic = {
+        name: draft.deceased_name,
+        birthDate: draft.birth_date,
+        deathDate: draft.death_date
+      };
+      
+      memorialData.story = {
+        obituary: draft.obituary || '',
+        lifeStory: draft.life_story || ''
+      };
+      
+      memorialData.settings = {
+        privacy: draft.privacy_setting || 'public'
+      };
+      
+      // Load photos into preview
+      if (draft.profile_photo_url) {
+        const profilePreview = qs('#profilePhotoPreview');
+        if (profilePreview) {
+          profilePreview.src = draft.profile_photo_url;
+          profilePreview.style.display = 'block';
+          profilePreview.dataset.publicId = draft.profile_photo_public_id || '';
+        }
+      }
+      
+      if (draft.background_photo_url) {
+        const bgPreview = qs('#backgroundPhotoPreview');
+        if (bgPreview) {
+          bgPreview.src = draft.background_photo_url;
+          bgPreview.style.display = 'block';
+          bgPreview.dataset.publicId = draft.background_photo_public_id || '';
+        }
+      }
+      
+      // Load any saved moments
+      await loadDraftMoments(draft.id);
+      
+      // Load any saved services
+      await loadDraftServices(draft.id);
+      
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error loading draft from Supabase:', error);
+    return false;
+  }
+}
+
+// Add function to load draft moments
+async function loadDraftMoments(memorialId) {
+  const supabase = getClient();
+  if (!supabase) return;
+
+  try {
+    const { data: moments, error } = await supabase
+      .from('memorial_moments')
+      .select('*')
+      .eq('memorial_id', memorialId)
+      .order('display_order');
+
+    if (error) throw error;
+    
+    if (moments && moments.length > 0) {
+      // Pass moments to the moments module
+      window.loadExistingMoments?.(moments);
+    }
+  } catch (error) {
+    console.error('Error loading draft moments:', error);
+  }
+}
+
+// Add function to load draft services
+async function loadDraftServices(memorialId) {
+  const supabase = getClient();
+  if (!supabase) return;
+
+  try {
+    const { data: services, error } = await supabase
+      .from('memorial_services')
+      .select('*')
+      .eq('memorial_id', memorialId);
+
+    if (error) throw error;
+    
+    if (services && services.length > 0) {
+      memorialData.services = services.map(s => ({
+        type: s.service_type,
+        date: s.service_date,
+        time: s.service_time,
+        locationName: s.location_name,
+        address: s.location_address,
+        city: s.location_city,
+        state: s.location_state,
+        additionalInfo: s.additional_info,
+        isVirtual: s.is_virtual,
+        virtualUrl: s.virtual_meeting_url
+      }));
+    }
+  } catch (error) {
+    console.error('Error loading draft services:', error);
+  }
+}
+
+/* ──────────────────────────────────────────
+   PUBLISH MEMORIAL TO SUPABASE
+   ────────────────────────────────────────── */
+async function publishMemorial() {
+  const supabase = getClient();
+  if (!supabase || !window.currentUser) {
+    showNotification('Please sign in to publish', 'error');
+    return;
+  }
+
+  const btn = qs('[data-wizard-publish]');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
+
+  try {
+    // Get moments data from moments.js
+    const momentsData = window.getMomentsForSave?.() || [];
+    
+    // Prepare memorial data
+    const memorialToSave = {
+      user_id: window.currentUser.id,
+      deceased_name: memorialData.basic.name,
+      birth_date: memorialData.basic.birthDate || null,
+      death_date: memorialData.basic.deathDate || null,
+      profile_photo_url: qs('#profilePhotoPreview')?.src || null,
+      profile_photo_public_id: qs('#profilePhotoPreview')?.dataset.publicId || null,
+      background_photo_url: qs('#backgroundPhotoPreview')?.src || null,
+      background_photo_public_id: qs('#backgroundPhotoPreview')?.dataset.publicId || null,
+      obituary: memorialData.story.obituary || '',
+      life_story: memorialData.story.lifeStory || '',
+      privacy_setting: memorialData.settings.privacy || 'public',
+      is_published: true,
+      is_draft: false,
+      published_at: new Date().toISOString()
+    };
+
+    let memorial;
+    const draftId = localStorage.getItem('currentDraftId');
+    
+    if (draftId) {
+      // Update existing draft to published
+      const { data, error } = await supabase
+        .from('memorials')
+        .update(memorialToSave)
+        .eq('id', draftId)
+        .eq('user_id', window.currentUser.id)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      memorial = data;
+    } else {
+      // Create new memorial
+      const { data, error } = await supabase
+        .from('memorials')
+        .insert(memorialToSave)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      memorial = data;
+    }
+
+    // Generate and update slug
+    const { data: slugData } = await supabase
+      .rpc('generate_memorial_slug', { name: memorialData.basic.name });
+    
+    if (slugData) {
+      await supabase
+        .from('memorials')
+        .update({ slug: slugData })
+        .eq('id', memorial.id);
+      
+      memorial.slug = slugData;
+    }
+
+    // Save services if any
+    if (memorialData.services?.length > 0) {
+      // Delete existing services first (in case of draft update)
+      await supabase
+        .from('memorial_services')
+        .delete()
+        .eq('memorial_id', memorial.id);
+      
+      const services = memorialData.services.map(service => ({
+        memorial_id: memorial.id,
+        service_type: service.type,
+        service_date: service.date,
+        service_time: service.time,
+        location_name: service.locationName,
+        location_address: service.address,
+        location_city: service.city,
+        location_state: service.state,
+        additional_info: service.additionalInfo,
+        is_virtual: service.isVirtual || false,
+        virtual_meeting_url: service.virtualUrl
+      }));
+
+      await supabase.from('memorial_services').insert(services);
+    }
+
+    // Save moments if any
+    if (momentsData.length > 0) {
+      // Delete existing moments first (in case of draft update)
+      await supabase
+        .from('memorial_moments')
+        .delete()
+        .eq('memorial_id', memorial.id);
+      
+      const moments = momentsData.map((moment, index) => ({
+        memorial_id: memorial.id,
+        type: moment.type,
+        url: moment.url,
+        thumbnail_url: moment.thumbnailUrl,
+        cloudinary_public_id: moment.publicId,
+        caption: moment.caption,
+        date_taken: moment.date,
+        file_name: moment.fileName,
+        display_order: index
+      }));
+
+      await supabase.from('memorial_moments').insert(moments);
+    }
+
+    // Clear draft data
+    localStorage.removeItem('memorialDraft');
+    localStorage.removeItem('currentDraftId');
+    
+    showNotification('Memorial published successfully!', 'success');
+    
+    // Redirect to the memorial page
+    window.location.hash = `#memorial/${memorial.slug || memorial.id}`;
+    
+  } catch (error) {
+    console.error('Error publishing memorial:', error);
+    showNotification('Failed to publish memorial. Please try again.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Publish Memorial';
+  }
+}
+
+/* ──────────────────────────────────────────
      INTERNAL HELPERS
      ────────────────────────────────────────── */
 
@@ -225,301 +580,86 @@ function skipStep() {
 
 /* ---------- validation ---------- */
 function validateCurrentStep() {
-  switch (currentStep) {
-    case 1: {
-      const firstName = qs('#firstName').value;
-      const lastName = qs('#lastName').value;
-      const birthDate = qs('#birthDate').value;
-      const deathDate = qs('#deathDate').value;
-      const headline = qs('#headline').value;
-      const opening = qs('#openingStatement').value;
-
-      if (!firstName || !lastName || !birthDate || !deathDate || !headline || !opening) {
-        showNotification('Please fill in all required fields', 'error');
-        return false;
-      }
-      if (!validateDates()) return false;
-      
-      // Check if profile photo is uploaded
-      const profilePhoto = qs('#profilePhotoPreview');
-      if (!profilePhoto?.src || profilePhoto.src === '' || profilePhoto.style.display === 'none') {
-        showNotification('Please upload a profile photo', 'error');
-        return false;
-      }
-      
-      return true;
+  if (currentStep === 1) {
+    const name = qs('#deceasedName')?.value.trim();
+    if (!name) {
+      showNotification('Please enter a name', 'error');
+      return false;
     }
-
-    case 2: {
-      const html = qs('#lifeStory').innerHTML;
-      const text = qs('#lifeStory').textContent.trim();
-      if (text.length < 50) {
-        showNotification('Please write at least 50 characters for the obituary', 'error');
-        return false;
-      }
-      if (html.includes('<script') || html.includes('javascript:')) {
-        showNotification('Invalid content detected.', 'error');
-        return false;
-      }
-      const sanitized = MemorialSanitizer.sanitizeRichText(html);
-      if (sanitized.replace(/<[^>]+>/g, '').trim().length < 50) {
-        showNotification('The obituary content is too short after sanitization', 'error');
-        return false;
-      }
-      return true;
-    }
-
-    default:
-      return true;
   }
+  return true;
 }
 
-/* ---------- save per-step ---------- */
+/* ---------- collect / save data ---------- */
 function saveStepData() {
   switch (currentStep) {
     case 1:
-      const profilePhoto = qs('#profilePhotoPreview');
-      const backgroundPhoto = qs('#backgroundPhotoPreview');
-      
       memorialData.basic = {
-        firstName: qs('#firstName').value,
-        middleName: qs('#middleName').value,
-        lastName: qs('#lastName').value,
-        birthDate: qs('#birthDate').value,
-        deathDate: qs('#deathDate').value,
-        headline: qs('#headline').value,
-        openingStatement: qs('#openingStatement').value,
-        profilePhoto: profilePhoto?.src,
-        profilePhotoPublicId: profilePhoto?.dataset.publicId,
-        backgroundPhoto: backgroundPhoto?.src,
-        backgroundPhotoPublicId: backgroundPhoto?.dataset.publicId,
-        backgroundPhotoIsDefault: backgroundPhoto?.dataset.isDefault === 'true'
+        name: qs('#deceasedName')?.value.trim(),
+        birthDate: qs('#birthDate')?.value,
+        deathDate: qs('#deathDate')?.value
       };
       break;
-    case 2: {
-      const raw = qs('#lifeStory').innerHTML;
-      const sanitized = MemorialSanitizer.sanitizeRichText(raw);
+    case 2:
       memorialData.story = {
-        lifeStory: sanitized,
-        lifeStoryRaw: raw,
-        lifeStoryText: qs('#lifeStory').textContent.trim()
+        obituary: qs('#obituaryEditor')?.innerHTML || '',
+        lifeStory: qs('#lifeStoryEditor')?.innerHTML || ''
       };
       break;
-    }
     case 3:
-      memorialData.services = [];
-      document.querySelectorAll('.service-item-form').forEach((form) => {
-        const svc = {
-          type: form.querySelector('[name="serviceType"]').value,
-          date: form.querySelector('[name="serviceDate"]').value,
-          time: form.querySelector('[name="serviceTime"]').value,
-          locationName: form.querySelector('[name="locationName"]').value,
-          locationAddress: form.querySelector('[name="locationAddress"]').value
-        };
-        if (svc.type) memorialData.services.push(svc);
-      });
-      memorialData.serviceNote = qs('#serviceNote')?.value || '';
+      // Services would be collected here
       break;
     case 4:
-      // Import moments data from moments.js
-      if (window.getMomentsForSave) {
-        memorialData.moments = window.getMomentsForSave();
-      } else {
-        memorialData.moments = window.moments || [];
-      }
+      // Moments are handled by moments.js
       break;
     case 5:
       memorialData.settings = {
-        privacy: document.querySelector('input[name="privacy"]:checked').value
+        privacy: qs('input[name="privacy"]:checked')?.value || 'public'
       };
       break;
   }
 }
 
-/* ---------- preview & publish ---------- */
+/* ---------- preview generation ---------- */
 function generatePreview() {
-  saveStepData();
-  showNotification('Generating preview...');
-  const frame = qs('#memorialPreview');
-  if (frame) frame.style.display = 'none';
-
-  // Replace iframe with a simple placeholder message
-  const container = frame?.parentElement;
-  if (container) {
-    container.querySelector('.preview-message')?.remove();
-    const msg = document.createElement('div');
-    msg.className = 'preview-message';
-    msg.innerHTML = `
-        <i class="fas fa-eye" style="font-size:3rem;margin-bottom:1rem;color:var(--primary-sage)"></i>
-        <h3 style="margin-bottom:1rem;">Memorial Preview Ready</h3>
-        <p>Your memorial has been prepared. Click "Publish Memorial" to make it live.</p>
-        <button class="btn-secondary" data-page="exampleMemorial" style="margin-top:1rem;">
-          <i class="fas fa-external-link-alt"></i> View Example Memorial
-        </button>
-      `;
-    container.appendChild(msg);
-  }
-  console.log('Preview data', memorialData);
+  // Update preview elements
+  qs('#previewName').textContent = memorialData.basic.name || 'Name';
+  qs('#previewDates').textContent = `${memorialData.basic.birthDate || 'Birth'} - ${memorialData.basic.deathDate || 'Death'}`;
+  
+  // Preview photos
+  const profileSrc = qs('#profilePhotoPreview')?.src;
+  if (profileSrc) qs('#previewProfilePhoto').src = profileSrc;
+  
+  const bgSrc = qs('#backgroundPhotoPreview')?.src;
+  if (bgSrc) qs('#previewBackgroundPhoto').src = bgSrc;
+  
+  // Preview story content
+  qs('#previewObituary').innerHTML = memorialData.story.obituary || '<p>No obituary added</p>';
+  qs('#previewLifeStory').innerHTML = memorialData.story.lifeStory || '<p>No life story added</p>';
 }
 
-/* eslint-disable-next-line no-unused-vars */
-function previewDevice(device) {
-  const frame = document.querySelector('.device-frame');
-  if (!frame) return;
-  switch (device) {
-    case 'desktop':
-      frame.style.maxWidth = '1200px';
-      frame.style.height = '600px';
-      break;
-    case 'tablet':
-      frame.style.maxWidth = '768px';
-      frame.style.height = '1024px';
-      break;
-    default:
-      frame.style.maxWidth = '375px';
-      frame.style.height = '667px';
-  }
-}
-
-function saveDraft() {
-  saveStepData();
-  // Save to localStorage including uploaded image data
-  localStorage.setItem('tayvu_memorial_draft', JSON.stringify({
-    data: memorialData,
-    timestamp: new Date().toISOString()
-  }));
-  showNotification('Draft saved successfully!');
-}
-
-function publishMemorial() {
-  saveStepData();
-  localStorage.removeItem('tayvu_draft_lifestory');
-  localStorage.removeItem('tayvu_memorial_draft');
-
-  // In a real app, this would:
-  // 1. Save to database with all Cloudinary URLs
-  // 2. Generate the memorial page
-  // 3. Redirect to the published memorial
-
-  showNotification('Memorial published successfully!');
-  console.log('Publishing memorial with data:', memorialData);
-
-  // For demo, redirect to profile
-  setTimeout(() => window.goToProfile?.(), 2000);
-}
-
-/* ---------- rich-text auto-save ---------- */
-let autoSaveTimer;
+/* ---------- rich text autosave ---------- */
 function initializeRichTextAutoSave() {
-  const editor = qs('#lifeStory');
+  const editor = document.querySelector('.rich-text-editor');
   if (!editor) return;
-  editor.addEventListener('input', () => {
-    // Clear existing timer
-    clearTimeout(autoSaveTimer);
 
-    // Set new timer - save after 2 seconds of no typing
+  let autoSaveTimer;
+  editor.addEventListener('input', () => {
+    clearTimeout(autoSaveTimer);
     autoSaveTimer = setTimeout(() => {
-      const raw = editor.innerHTML;
-      const sanitized = MemorialSanitizer.sanitizeRichText(raw);
-      localStorage.setItem(
-        'tayvu_draft_lifestory',
-        JSON.stringify({
-          raw,
-          sanitized,
-          timestamp: new Date().toISOString()
-        })
-      );
-      console.log('Draft auto-saved');
-    }, 2000);
+      saveStepData();
+      saveDraftToSupabase(); // Save to Supabase
+    }, 2000); // Auto-save after 2 seconds of inactivity
   });
 }
 
 function loadDraftLifeStory() {
-  const draft = localStorage.getItem('tayvu_draft_lifestory');
-  if (!draft) return;
-  try {
-    const { raw, timestamp } = JSON.parse(draft);
-    if (Date.now() - new Date(timestamp).getTime() < 24 * 60 * 60 * 1000) {
-      qs('#lifeStory').innerHTML = raw;
-      showNotification('Draft restored from previous session');
-    } else localStorage.removeItem('tayvu_draft_lifestory');
-  } catch {
-    localStorage.removeItem('tayvu_draft_lifestory');
+  if (memorialData.story?.lifeStory) {
+    const editor = qs('#lifeStoryEditor');
+    if (editor) editor.innerHTML = memorialData.story.lifeStory;
   }
-}
-
-/* ---------- Create Memorial Functions ---------- */
-function validateDates() {
-  const birthDateInput = qs('#birthDate');
-  const deathDateInput = qs('#deathDate');
-  const birthDateError = qs('#birthDateError');
-  const deathDateError = qs('#deathDateError');
-
-  // Get today's date in YYYY-MM-DD format
-  const today = new Date();
-  const todayString = today.toISOString().split('T')[0];
-
-  // Set min and max attributes
-  const minDate = '1850-01-01';
-  birthDateInput.setAttribute('min', minDate);
-  birthDateInput.setAttribute('max', todayString);
-  deathDateInput.setAttribute('min', minDate);
-  deathDateInput.setAttribute('max', todayString);
-
-  // Reset error messages
-  birthDateError.style.display = 'none';
-  deathDateError.style.display = 'none';
-  birthDateError.textContent = '';
-  deathDateError.textContent = '';
-
-  if (birthDateInput.value && deathDateInput.value) {
-    const birthDate = new Date(birthDateInput.value);
-    const deathDate = new Date(deathDateInput.value);
-    const minDateObj = new Date(minDate);
-
-    // Validate birth date
-    if (birthDate < minDateObj) {
-      birthDateError.textContent = 'Date of birth cannot be before 1850';
-      birthDateError.style.display = 'block';
-      birthDateInput.setCustomValidity('Invalid date');
-      return false;
-    } else if (birthDate > today) {
-      birthDateError.textContent = 'Date of birth cannot be in the future';
-      birthDateError.style.display = 'block';
-      birthDateInput.setCustomValidity('Invalid date');
-      return false;
-    } else {
-      birthDateInput.setCustomValidity('');
-    }
-
-    // Validate death date
-    if (deathDate < minDateObj) {
-      deathDateError.textContent = 'Date of passing cannot be before 1850';
-      deathDateError.style.display = 'block';
-      deathDateInput.setCustomValidity('Invalid date');
-      return false;
-    } else if (deathDate > today) {
-      deathDateError.textContent = 'Date of passing cannot be in the future';
-      deathDateError.style.display = 'block';
-      deathDateInput.setCustomValidity('Invalid date');
-      return false;
-    } else if (deathDate <= birthDate) {
-      deathDateError.textContent = 'Date of passing must be after date of birth';
-      deathDateError.style.display = 'block';
-      deathDateInput.setCustomValidity('Invalid date');
-      return false;
-    } else {
-      deathDateInput.setCustomValidity('');
-
-      // Calculate age for additional validation
-      const ageAtDeath = (deathDate - birthDate) / (365.25 * 24 * 60 * 60 * 1000);
-      if (ageAtDeath > 150) {
-        deathDateError.textContent = 'Please verify the dates (age exceeds 150 years)';
-        deathDateError.style.display = 'block';
-        return false;
-      }
-    }
+  if (memorialData.story?.obituary) {
+    const editor = qs('#obituaryEditor');
+    if (editor) editor.innerHTML = memorialData.story.obituary;
   }
-
-  return true;
 }

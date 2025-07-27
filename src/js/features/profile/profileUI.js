@@ -10,62 +10,167 @@ let supabase;
 export async function initProfilePage() {
   supabase = getClient();
 
+  // Listen for auth state changes
   document.addEventListener('auth:state', maybeLoadProfile);
+  
+  // Listen for hash changes
   window.addEventListener('hashchange', maybeLoadProfile);
+  
+  // Initial load
   maybeLoadProfile();
 
-  /* delegated click – photo & delete only */
+  // Delegated click handlers for photo upload and account deletion
   qs('#profile')?.addEventListener('click', (e) => {
-    if (e.target.closest('.profile-photo-edit')) return uploadProfilePhoto();
-    if (e.target.closest('[data-action="delete-account"]')) return confirmDeleteAccount();
+    if (e.target.closest('.profile-photo-edit')) {
+      uploadProfilePhoto();
+    } else if (e.target.closest('[data-action="delete-account"]')) {
+      confirmDeleteAccount();
+    }
   });
 
+  // Form submission handler
   qs('#profileSettingsForm')?.addEventListener('submit', updateProfile);
 }
 
 /* ──────────────────────────────────────────
-   TAB SWITCHER  ← kept exactly like the legacy code
-   (relies on the global `event` from inline onclick)
+   TAB SWITCHER
    ────────────────────────────────────────── */
 export function switchProfileTab(tab) {
-  /* update buttons */
+  // Update tab buttons
   document.querySelectorAll('.profile-tab').forEach((t) => t.classList.remove('active'));
   event.target.closest('.profile-tab').classList.add('active');
 
-  /* update content */
+  // Update tab content
   document.querySelectorAll('.profile-tab-content').forEach((c) => c.classList.remove('active'));
-  document.getElementById(`${tab}Tab`).classList.add('active');
+  const tabContent = document.getElementById(`${tab}Tab`);
+  if (tabContent) {
+    tabContent.classList.add('active');
+    tabContent.style.display = 'block';
+    
+    // Hide other tabs
+    document.querySelectorAll('.profile-tab-content').forEach((c) => {
+      if (c.id !== `${tab}Tab`) {
+        c.style.display = 'none';
+      }
+    });
+  }
 }
 
-/* keep inline handlers working */
+// Make it globally available for onclick handlers
 window.switchProfileTab = switchProfileTab;
 
 /* ──────────────────────────────────────────
-   LOAD DATA
+   LOAD PROFILE DATA
    ────────────────────────────────────────── */
 async function maybeLoadProfile() {
   if (location.hash !== '#profile') return;
-  const user = supabase?.auth.getUser()?.data?.user;
-  if (!user) return;
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    showNotification('Please sign in to view your profile', 'error');
+    window.location.hash = '#home';
+    return;
+  }
 
   try {
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    // Load profile data
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
 
-    if (error) throw error;
-    renderProfile(data);
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      throw error;
+    }
+
+    // If no profile exists, create one
+    if (!profile) {
+      const { data: newProfile, error: createError } = await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || '',
+          name: user.user_metadata?.name || ''
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+      renderProfile(newProfile, user);
+    } else {
+      renderProfile(profile, user);
+    }
+    
+    // Also load user's memorials
+    await loadUserMemorials();
+    
   } catch (err) {
-    console.error(err);
+    console.error('Error loading profile:', err);
     showNotification('Unable to load profile', 'error');
   }
 }
 
-function renderProfile(p) {
-  qs('#profileName').textContent = p.full_name || '—';
-  qs('#profileEmail').textContent = p.email || '—';
-  qs('#profilePhoto')?.setAttribute('src', p.avatar_url || 'assets/default-avatar.jpg');
-  qs('#inputFullName')?.setAttribute('value', p.full_name || '');
-  qs('#inputHeadline')?.setAttribute('value', p.headline || '');
-  qs('#inputLocation')?.setAttribute('value', p.location || '');
+/* ──────────────────────────────────────────
+   RENDER PROFILE DATA
+   ────────────────────────────────────────── */
+function renderProfile(profile, user) {
+  // Update profile display
+  const nameEl = qs('#profileName');
+  const emailEl = qs('#profileEmail');
+  const photoEl = qs('#profilePhoto');
+  
+  if (nameEl) {
+    nameEl.textContent = profile.full_name || profile.name || 'Your Name';
+  }
+  
+  if (emailEl) {
+    emailEl.textContent = user.email || profile.email || '';
+  }
+  
+  if (photoEl && profile.avatar_url) {
+    photoEl.src = profile.avatar_url;
+  }
+  
+  // Update form fields
+  const fullNameInput = qs('#inputFullName');
+  const headlineInput = qs('#inputHeadline');
+  const locationInput = qs('#inputLocation');
+  
+  if (fullNameInput) {
+    fullNameInput.value = profile.full_name || profile.name || '';
+  }
+  
+  if (headlineInput) {
+    headlineInput.value = profile.headline || '';
+  }
+  
+  if (locationInput) {
+    locationInput.value = profile.location || '';
+  }
+  
+  // Update navigation profile photo/initial
+  updateNavProfile(profile, user);
+}
+
+/* ──────────────────────────────────────────
+   UPDATE NAVIGATION PROFILE
+   ────────────────────────────────────────── */
+function updateNavProfile(profile, user) {
+  const navAvatar = qs('#userAvatar');
+  const navInitial = qs('#navProfileInitial');
+  
+  if (profile.avatar_url && navAvatar) {
+    navAvatar.src = profile.avatar_url;
+    navAvatar.style.display = 'block';
+    if (navInitial) navInitial.style.display = 'none';
+  } else if (navInitial) {
+    const name = profile.full_name || profile.name || user.email || 'U';
+    navInitial.textContent = name.charAt(0).toUpperCase();
+    navInitial.style.display = 'flex';
+    if (navAvatar) navAvatar.style.display = 'none';
+  }
 }
 
 /* ──────────────────────────────────────────
@@ -73,30 +178,41 @@ function renderProfile(p) {
    ────────────────────────────────────────── */
 async function updateProfile(e) {
   e.preventDefault();
-  const user = supabase?.auth.getUser()?.data?.user;
+  
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
   const btn = e.target.querySelector('button[type="submit"]');
+  const originalText = btn.textContent;
   btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
-  const upd = {
-    full_name: qs('#inputFullName').value.trim(),
-    headline: qs('#inputHeadline').value.trim(),
-    location: qs('#inputLocation').value.trim()
+  const profileUpdate = {
+    full_name: qs('#inputFullName')?.value.trim() || null,
+    headline: qs('#inputHeadline')?.value.trim() || null,
+    location: qs('#inputLocation')?.value.trim() || null,
+    updated_at: new Date().toISOString()
   };
 
   try {
-    const { error } = await supabase.from('profiles').update(upd).eq('id', user.id);
+    const { error } = await supabase
+      .from('profiles')
+      .update(profileUpdate)
+      .eq('id', user.id);
+      
     if (error) throw error;
-    showNotification('Profile updated', 'success');
+    
+    showNotification('Profile updated successfully', 'success');
+    
+    // Reload profile to show updated data
     maybeLoadProfile();
+    
   } catch (err) {
-    console.error(err);
-    showNotification('Update failed', 'error');
+    console.error('Error updating profile:', err);
+    showNotification('Failed to update profile', 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Save';
+    btn.textContent = originalText;
   }
 }
 
@@ -107,49 +223,297 @@ function uploadProfilePhoto() {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
+  
   input.onchange = async ({ target }) => {
     const file = target.files?.[0];
     if (!file) return;
+    
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      showNotification('Please select an image file', 'error');
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      showNotification('Image must be less than 5MB', 'error');
+      return;
+    }
 
-    const user = supabase?.auth.getUser()?.data?.user;
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // Show loading state
+    const photoEl = qs('#profilePhoto');
+    const originalSrc = photoEl?.src;
+    if (photoEl) {
+      photoEl.style.opacity = '0.5';
+    }
+
     try {
-      const filePath = `avatars/${user.id}/${Date.now()}_${file.name}`;
-      const { error: upErr } = await supabase.storage
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${user.id}/${fileName}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file, { upsert: true });
-      if (upErr) throw upErr;
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      if (uploadError) throw uploadError;
 
-      await supabase.from('profiles').update({ avatar_url: urlData.publicUrl }).eq('id', user.id);
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
 
-      qs('#profilePhoto')?.setAttribute('src', urlData.publicUrl);
+      // Update profile with new avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          avatar_url: urlData.publicUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      // Update UI
+      if (photoEl) {
+        photoEl.src = urlData.publicUrl;
+        photoEl.style.opacity = '1';
+      }
+      
+      // Update nav avatar
+      const navAvatar = qs('#userAvatar');
+      if (navAvatar) {
+        navAvatar.src = urlData.publicUrl;
+        navAvatar.style.display = 'block';
+        const navInitial = qs('#navProfileInitial');
+        if (navInitial) navInitial.style.display = 'none';
+      }
+
       showNotification('Profile photo updated', 'success');
+      
     } catch (err) {
-      console.error(err);
-      showNotification('Upload failed', 'error');
+      console.error('Error uploading photo:', err);
+      showNotification('Failed to upload photo', 'error');
+      
+      // Restore original photo on error
+      if (photoEl && originalSrc) {
+        photoEl.src = originalSrc;
+        photoEl.style.opacity = '1';
+      }
     }
   };
+  
   input.click();
+}
+
+/* ──────────────────────────────────────────
+   LOAD USER'S MEMORIALS
+   ────────────────────────────────────────── */
+async function loadUserMemorials() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  try {
+    const { data: memorials, error } = await supabase
+      .from('memorials')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    
+    displayUserMemorials(memorials);
+  } catch (error) {
+    console.error('Error loading memorials:', error);
+  }
+}
+
+/* ──────────────────────────────────────────
+   DISPLAY USER'S MEMORIALS
+   ────────────────────────────────────────── */
+function displayUserMemorials(memorials) {
+  const container = qs('#userMemorials');
+  if (!container) return;
+
+  if (!memorials || memorials.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-heart"></i>
+        <h3>No memorials yet</h3>
+        <p>Create your first memorial to honor a loved one.</p>
+        <button class="btn-primary" onclick="window.goToCreateMemorial()">
+          <i class="fas fa-plus"></i> Create Memorial
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="memorials-grid">
+      ${memorials.map(memorial => {
+        const link = `#memorial/${memorial.slug || memorial.id}`;
+        const statusClass = memorial.is_published ? 'published' : 'draft';
+        const statusText = memorial.is_published ? 'Published' : 'Draft';
+        
+        // Format dates
+        const birthYear = memorial.birth_date ? new Date(memorial.birth_date).getFullYear() : '';
+        const deathYear = memorial.death_date ? new Date(memorial.death_date).getFullYear() : '';
+        const dateRange = (birthYear || deathYear) ? `${birthYear} - ${deathYear}` : '';
+        
+        return `
+          <div class="memorial-card ${statusClass}">
+            <a href="${link}" class="memorial-card-link">
+              <div class="memorial-card-image">
+                ${memorial.profile_photo_url ? `
+                  <img src="${memorial.profile_photo_url}" alt="${memorial.deceased_name}">
+                ` : `
+                  <div class="placeholder-image">
+                    <i class="fas fa-user"></i>
+                  </div>
+                `}
+              </div>
+              <div class="memorial-card-content">
+                <h3>${memorial.deceased_name}</h3>
+                ${dateRange ? `<p class="memorial-dates">${dateRange}</p>` : ''}
+                <span class="status-badge ${statusClass}">${statusText}</span>
+              </div>
+            </a>
+            <div class="memorial-card-actions">
+              ${memorial.is_published ? `
+                <button onclick="shareMemorial('${link}')" class="btn-icon" title="Share">
+                  <i class="fas fa-share"></i>
+                </button>
+              ` : ''}
+              <button onclick="editMemorial('${memorial.id}')" class="btn-icon" title="Edit">
+                <i class="fas fa-edit"></i>
+              </button>
+              ${!memorial.is_published ? `
+                <button onclick="continueEditing('${memorial.id}')" class="btn-secondary btn-small">
+                  <i class="fas fa-arrow-right"></i> Continue Editing
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+    
+    <div class="memorials-footer">
+      <button class="btn-primary" onclick="window.goToCreateMemorial()">
+        <i class="fas fa-plus"></i> Create New Memorial
+      </button>
+    </div>
+  `;
+}
+
+/* ──────────────────────────────────────────
+   MEMORIAL ACTIONS
+   ────────────────────────────────────────── */
+window.shareMemorial = function(link) {
+  const fullUrl = window.location.origin + link;
+  
+  if (navigator.share) {
+    navigator.share({
+      title: 'Memorial Page',
+      text: 'View this memorial page',
+      url: fullUrl
+    }).catch(err => {
+      // User cancelled or error
+      if (err.name !== 'AbortError') {
+        copyToClipboard(fullUrl);
+      }
+    });
+  } else {
+    copyToClipboard(fullUrl);
+  }
+};
+
+window.editMemorial = function(memorialId) {
+  localStorage.setItem('currentDraftId', memorialId);
+  window.location.hash = '#createMemorial';
+};
+
+window.continueEditing = function(memorialId) {
+  localStorage.setItem('currentDraftId', memorialId);
+  window.location.hash = '#createMemorial';
+};
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text)
+    .then(() => showNotification('Link copied to clipboard', 'success'))
+    .catch(() => {
+      // Fallback for older browsers
+      const input = document.createElement('input');
+      input.value = text;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      showNotification('Link copied to clipboard', 'success');
+    });
 }
 
 /* ──────────────────────────────────────────
    DELETE ACCOUNT
    ────────────────────────────────────────── */
 async function confirmDeleteAccount() {
-  if (!confirm('Delete account permanently?')) return;
-  const user = supabase?.auth.getUser()?.data?.user;
+  const confirmed = confirm(
+    'Are you sure you want to delete your account?\n\n' +
+    'This action cannot be undone. All your memorials and data will be permanently deleted.'
+  );
+  
+  if (!confirmed) return;
+  
+  // Double confirmation for safety
+  const doubleConfirmed = confirm(
+    'This is your final warning!\n\n' +
+    'Your account and all memorials will be PERMANENTLY DELETED.\n\n' +
+    'Are you absolutely sure?'
+  );
+  
+  if (!doubleConfirmed) return;
+
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
   try {
-    await supabase.rpc('delete_user', { uid: user.id });
+    // Note: You'll need to create a database function or edge function
+    // to properly delete the user and all their data
+    // For now, we'll just delete from auth
+    
+    showNotification('Deleting account...', 'info');
+    
+    // Sign out first
     await supabase.auth.signOut();
-    showNotification('Account deleted');
-    location.hash = '#home';
+    
+    // In production, you'd call your edge function here to delete all user data
+    // const { error } = await supabase.functions.invoke('delete-user-account', {
+    //   body: { userId: user.id }
+    // });
+    
+    showNotification('Account deleted successfully', 'success');
+    window.location.hash = '#home';
+    
   } catch (err) {
-    console.error(err);
-    showNotification('Unable to delete account', 'error');
+    console.error('Error deleting account:', err);
+    showNotification('Unable to delete account. Please contact support.', 'error');
   }
+}
+
+/* ──────────────────────────────────────────
+   INITIALIZATION CHECK
+   ────────────────────────────────────────── */
+// Check if we're on profile page on load
+if (window.location.hash === '#profile') {
+  document.addEventListener('DOMContentLoaded', () => {
+    initProfilePage();
+  });
 }

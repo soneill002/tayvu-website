@@ -1,36 +1,40 @@
 /*  src/js/features/memorials/moments.js  */
-import { showNotification, qs, formatDate } from '@/utils/ui.js';
-import { cloudinaryConfig } from '@/api/cloudinaryClient.js'; // ADD THIS IMPORT
+import { showNotification, qs } from '@/utils/ui.js';
+import { cloudinaryConfig } from '@/api/cloudinaryClient.js';
 
 /* ──────────────────────────────────────────
    STATE
    ────────────────────────────────────────── */
 let moments = [];
-let momentsViewMode = 'grid';
-let draggedMomentIndex = null;
-let uploadQueue = []; // ADD THIS
-let isUploading = false; // ADD THIS
+let momentsViewMode = 'grid'; // 'grid' | 'list'
+let isUploading = false;
+let uploadQueue = [];
 
 /* ──────────────────────────────────────────
    PUBLIC API
    ────────────────────────────────────────── */
 export function initMomentsBoard() {
-  /* drop-zone */
-  const dropZone = qs('#momentsDropZone');
-  if (dropZone) {
-    dropZone.addEventListener('dragover', handleDragOver);
-    dropZone.addEventListener('dragleave', handleDragLeave);
-    dropZone.addEventListener('drop', handleDrop);
+  /*
+    Don't wire clicks directly; let the parent pages 
+    handle routing to this dedicated moments page.
+  */
+  const board = qs('#memorialMoments');
+  if (!board) return;
+
+  /* drag-drop zone */
+  const dropzone = qs('#momentsDropzone');
+  if (dropzone) {
+    dropzone.addEventListener('dragover', handleDragOver);
+    dropzone.addEventListener('dragleave', handleDragLeave);
+    dropzone.addEventListener('drop', handleDrop);
   }
 
-  /* delegated clicks (browse, view-mode) */
-  document.getElementById('step4')?.addEventListener('click', (e) => {
-    if (e.target.closest('.btn-upload') || e.target.closest('[data-moments-browse]')) {
-      return selectMoments();
-    }
-    const btn = e.target.closest('.view-btn');
-    if (btn) {
-      changeGridView(btn.querySelector('.fa-list') ? 'list' : 'grid');
+  /* UI delegated clicks */
+  board.addEventListener('click', (e) => {
+    if (e.target.closest('[data-action="select-moments"]')) {
+      selectMoments();
+    } else if (e.target.closest('[data-action="toggle-view"]')) {
+      toggleViewMode();
     }
   });
 
@@ -58,6 +62,27 @@ export function getMomentsForSave() {
 // Make it globally available for the wizard
 window.getMomentsForSave = getMomentsForSave;
 
+// Add this function to load existing moments (for drafts)
+export function loadExistingMoments(existingMoments) {
+  moments = existingMoments.map(m => ({
+    id: m.id,
+    type: m.type,
+    url: m.url,
+    thumbnailUrl: m.thumbnail_url,
+    publicId: m.cloudinary_public_id,
+    caption: m.caption,
+    date: m.date_taken,
+    fileName: m.file_name,
+    uploading: false
+  }));
+  
+  updateMomentsDisplay();
+  updateMomentsCount();
+}
+
+// Make it globally available
+window.loadExistingMoments = loadExistingMoments;
+
 /* ──────────────────────────────────────────
    DRAG-AND-DROP UPLOAD
    ────────────────────────────────────────── */
@@ -76,7 +101,7 @@ function handleDrop(e) {
   const files = Array.from(e.dataTransfer.files).filter(
     file => file.type.startsWith('image/') || file.type.startsWith('video/')
   );
-  handleMultipleUploads(files); // CHANGED THIS
+  handleMultipleUploads(files);
 }
 
 /* ──────────────────────────────────────────
@@ -89,12 +114,11 @@ function selectMoments() {
   input.multiple = true;
   input.onchange = ({ target }) => {
     const files = Array.from(target.files);
-    handleMultipleUploads(files); // CHANGED THIS
+    handleMultipleUploads(files);
   };
   input.click();
 }
 
-/* ADD THESE NEW FUNCTIONS FOR CLOUDINARY UPLOAD */
 /* ──────────────────────────────────────────
    CLOUDINARY UPLOAD
    ────────────────────────────────────────── */
@@ -178,7 +202,9 @@ async function processUploadQueue() {
   showNotification('All uploads complete!', 'success');
 }
 
-/* REPLACE THE OLD addMoment FUNCTION WITH THIS */
+/* ──────────────────────────────────────────
+   ADD MOMENT
+   ────────────────────────────────────────── */
 async function addMoment(file) {
   try {
     // Create temporary moment with local URL for immediate feedback
@@ -233,7 +259,6 @@ async function addMoment(file) {
   }
 }
 
-/* ADD THESE NEW UI FUNCTIONS */
 /* ──────────────────────────────────────────
    UPLOAD PROGRESS UI
    ────────────────────────────────────────── */
@@ -262,7 +287,6 @@ function updateUploadProgress(remaining) {
   }
 }
 
-/* UPDATE THE RENDERING FUNCTION */
 /* ──────────────────────────────────────────
    RENDERING
    ────────────────────────────────────────── */
@@ -296,133 +320,128 @@ function updateMomentsDisplay() {
         ${
           m.type === 'video'
             ? `<video src="${m.url}" muted></video>
-               <div class="video-indicator-overlay"><i class="fas fa-play"></i></div>`
-            : `<img src="${m.thumbnailUrl || m.url}" alt="${m.caption || 'Moment'}" loading="lazy">`
+               <i class="fas fa-play-circle video-indicator"></i>`
+            : `<img src="${m.thumbnailUrl || m.url}" alt="${m.caption || 'Moment'}" />`
         }
       </div>
-      <div class="moment-actions">
-        <button class="moment-action-btn" onclick="editMomentCaption(${i})" title="Edit caption" ${m.uploading ? 'disabled' : ''}>
-          <i class="fas fa-pen"></i>
-        </button>
-        <button class="moment-action-btn" onclick="removeMoment(${i})" title="Remove" ${m.uploading ? 'disabled' : ''}>
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      <div class="moment-caption">
-        <input class="caption-input" type="text"
-               placeholder="Add a caption (optional)"
-               value="${m.caption}"
+      
+      <div class="moment-preview-details">
+        <input type="text"
+               placeholder="Add a caption..."
+               value="${m.caption || ''}"
                onchange="updateMomentCaption(${i}, this.value)"
-               ${m.uploading ? 'disabled' : ''}>
-        ${momentsViewMode === 'grid' ? `<div class="moment-date">${formatDate(m.date)}</div>` : ''}
+               class="moment-caption-input" />
+        
+        <input type="date"
+               value="${m.date || ''}"
+               onchange="updateMomentDate(${i}, this.value)"
+               class="moment-date-input" />
+        
+        <button class="remove-moment" onclick="removeMoment(${i})">
+          <i class="fas fa-trash"></i>
+        </button>
       </div>
-    </div>`
+    </div>
+  `
     )
     .join('');
 }
 
 function updateMomentsCount() {
-  const photoEl = qs('#photoCount');
-  const videoEl = qs('#videoCount');
-  if (!photoEl || !videoEl) return; // ← bail if step-4 isn't in the DOM yet
-
-  // Only count uploaded moments, not uploading ones
-  photoEl.textContent = moments.filter((m) => m.type === 'photo' && !m.uploading).length;
-  videoEl.textContent = moments.filter((m) => m.type === 'video' && !m.uploading).length;
+  const countEl = qs('#momentsCount');
+  if (countEl) {
+    const publishedCount = moments.filter(m => !m.uploading).length;
+    countEl.textContent = `${publishedCount} ${publishedCount === 1 ? 'moment' : 'moments'}`;
+  }
 }
 
 /* ──────────────────────────────────────────
-   VIEW TOGGLE & CAPTION EDIT
+   MOMENT ACTIONS
    ────────────────────────────────────────── */
-function changeGridView(view) {
-  momentsViewMode = view;
-  document.querySelectorAll('.view-btn').forEach((b) => b.classList.remove('active'));
-  event.target.closest('.view-btn').classList.add('active');
-
-  const grid = qs('#momentsPreviewGrid');
-  grid?.classList.toggle('list-view', view === 'list');
-  updateMomentsDisplay();
+function updateMomentCaption(index, caption) {
+  if (moments[index]) {
+    moments[index].caption = caption;
+  }
 }
 
-function updateMomentCaption(i, caption) {
-  if (moments[i]) moments[i].caption = caption;
+function updateMomentDate(index, date) {
+  if (moments[index]) {
+    moments[index].date = date;
+  }
 }
 
-/* eslint-disable-next-line no-unused-vars */
-function editMomentCaption(i) {
-  const input = event.target.closest('.moment-preview-item')?.querySelector('.caption-input');
-  input?.focus();
-  input?.select();
-}
-
-/* ──────────────────────────────────────────
-   REMOVE
-   ────────────────────────────────────────── */
-function removeMoment(i) {
-  const moment = moments[i];
-  if (moment && moment.uploading) return; // Don't allow removal during upload
+function removeMoment(index) {
+  if (!confirm('Remove this moment?')) return;
   
-  if (confirm('Are you sure you want to remove this moment?')) {
-    moments.splice(i, 1);
+  const moment = moments[index];
+  if (moment) {
+    // If it has a publicId, we could delete from Cloudinary here
+    // For now, just remove from array
+    moments.splice(index, 1);
     updateMomentsDisplay();
     updateMomentsCount();
-    showNotification('Moment removed');
   }
 }
 
 /* ──────────────────────────────────────────
-   DRAG REORDER
+   VIEW MODE TOGGLE
    ────────────────────────────────────────── */
-function handleMomentDragStart(e, i) {
-  if (moments[i].uploading) {
-    e.preventDefault();
-    return;
+function toggleViewMode() {
+  momentsViewMode = momentsViewMode === 'grid' ? 'list' : 'grid';
+  updateMomentsDisplay();
+  
+  // Update button icon
+  const btn = qs('[data-action="toggle-view"]');
+  if (btn) {
+    btn.innerHTML = momentsViewMode === 'grid' 
+      ? '<i class="fas fa-list"></i>' 
+      : '<i class="fas fa-th"></i>';
   }
-  draggedMomentIndex = i;
-  e.target.classList.add('dragging');
-}
-function handleMomentDragOver(e) {
-  e.preventDefault();
-  e.currentTarget.classList.add('drag-over');
-}
-function handleMomentDrop(e, dropIdx) {
-  e.preventDefault();
-  e.currentTarget.classList.remove('drag-over');
-
-  if (draggedMomentIndex !== null && draggedMomentIndex !== dropIdx) {
-    const [dragged] = moments.splice(draggedMomentIndex, 1);
-    moments.splice(draggedMomentIndex < dropIdx ? dropIdx - 1 : dropIdx, 0, dragged);
-    updateMomentsDisplay();
-    showNotification('Moments reordered');
-  }
-}
-function handleMomentDragEnd(e) {
-  e.target.classList.remove('dragging');
-  document
-    .querySelectorAll('.moment-preview-item')
-    .forEach((el) => el.classList.remove('drag-over'));
-  draggedMomentIndex = null;
 }
 
 /* ──────────────────────────────────────────
-   TEMP GLOBAL SHIM – keeps any inline attrs working
-   Remove once all inline handlers are gone.
+   DRAG AND DROP REORDERING
    ────────────────────────────────────────── */
-Object.assign(window, {
-  handleDragOver,
-  handleDragLeave,
-  handleDrop,
-  selectMoments,
-  addMoment,
-  updateMomentsDisplay,
-  updateMomentsCount,
-  changeGridView,
-  updateMomentCaption,
-  editMomentCaption,
-  removeMoment,
-  handleMomentDragStart,
-  handleMomentDragOver,
-  handleMomentDrop,
-  handleMomentDragEnd,
-  getMomentsForSave // ADD THIS
-});
+let draggedIndex = null;
+
+window.handleMomentDragStart = function(e, index) {
+  draggedIndex = index;
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.classList.add('dragging');
+};
+
+window.handleMomentDragOver = function(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+};
+
+window.handleMomentDrop = function(e, dropIndex) {
+  e.preventDefault();
+  
+  if (draggedIndex === null || draggedIndex === dropIndex) return;
+  
+  // Reorder moments array
+  const draggedMoment = moments[draggedIndex];
+  moments.splice(draggedIndex, 1);
+  
+  if (draggedIndex < dropIndex) {
+    moments.splice(dropIndex - 1, 0, draggedMoment);
+  } else {
+    moments.splice(dropIndex, 0, draggedMoment);
+  }
+  
+  updateMomentsDisplay();
+  draggedIndex = null;
+};
+
+window.handleMomentDragEnd = function(e) {
+  e.currentTarget.classList.remove('dragging');
+  draggedIndex = null;
+};
+
+/* ──────────────────────────────────────────
+   GLOBAL FUNCTIONS (for inline handlers)
+   ────────────────────────────────────────── */
+window.updateMomentCaption = updateMomentCaption;
+window.updateMomentDate = updateMomentDate;
+window.removeMoment = removeMoment;
