@@ -63,6 +63,8 @@ let previousPage = null;
    PUBLIC API
    ────────────────────────────────────────── */
 export function initRouter() {
+  console.log('Initializing router...');
+  
   // Handle hash changes
   window.addEventListener('hashchange', handleRouteChange);
   
@@ -71,9 +73,36 @@ export function initRouter() {
   
   // Handle browser back/forward buttons
   window.addEventListener('popstate', handleRouteChange);
+  
+  // Add click handler for navigation links
+  document.addEventListener('click', handleNavigationClick);
+}
+
+/* ──────────────────────────────────────────
+   NAVIGATION CLICK HANDLER
+   ────────────────────────────────────────── */
+function handleNavigationClick(e) {
+  // Check if clicked element or its parent is a navigation link
+  const link = e.target.closest('a[href^="#"]');
+  
+  if (link) {
+    const href = link.getAttribute('href');
+    const page = href.slice(1); // Remove #
+    
+    // List of routes that should be handled by the router
+    const routerPages = Object.keys(routes);
+    
+    // Check if this is a router page
+    if (routerPages.includes(page) || page === '' || page === 'home') {
+      // Let the hashchange event handle it - no need to prevent default
+      console.log('Navigation click to:', page || 'home');
+    }
+  }
 }
 
 export function showPage(page) {
+  console.log('showPage called with:', page);
+  
   // Store previous page for potential redirects
   previousPage = currentPage;
   
@@ -141,6 +170,8 @@ export function showPage(page) {
     
     // Track page view (analytics)
     trackPageView(page);
+    
+    console.log('Page shown:', page);
   } else {
     console.error(`Section not found: ${page}`);
     showPage('home');
@@ -170,13 +201,12 @@ function showMemorialPage(page) {
   hideAllSections();
   
   // Show memorial view section
-  const memorialSection = document.getElementById('memorialView');
+  let memorialSection = document.getElementById('memorialView');
   if (!memorialSection) {
     // Create memorial section if it doesn't exist
-    createMemorialSection();
-  } else {
-    memorialSection.style.display = 'block';
+    memorialSection = createMemorialSection();
   }
+  memorialSection.style.display = 'block';
   
   currentPage = page;
   
@@ -224,6 +254,8 @@ function handleRouteChange() {
   const hash = window.location.hash.slice(1); // Remove #
   const page = hash || 'home';
   
+  console.log('Route change detected:', page);
+  
   // Handle query parameters if any
   const [pageName, ...params] = page.split('?');
   
@@ -252,7 +284,7 @@ function hideAllSections() {
 
 function updateActiveNavItems(activePage) {
   // Update desktop nav
-  document.querySelectorAll('.nav-menu a').forEach((link) => {
+  document.querySelectorAll('.nav-links a').forEach((link) => {
     const linkPage = link.getAttribute('href')?.slice(1) || '';
     if (linkPage === activePage) {
       link.classList.add('active');
@@ -291,61 +323,56 @@ function createMemorialSection() {
   section.style.display = 'none';
   section.innerHTML = `
     <div class="memorial-header">
-      <div class="memorial-background">
-        <img id="memorialBackgroundPhoto" src="/assets/default-memorial-bg.jpg" alt="">
+      <div class="memorial-nav">
+        <button onclick="goBack()" class="btn-back">
+          <i class="fas fa-arrow-left"></i> Back
+        </button>
       </div>
-      <div class="memorial-profile">
-        <img id="memorialProfilePhoto" src="/assets/default-avatar.jpg" alt="">
-        <h1 id="memorialName"></h1>
-        <p id="memorialDates" class="memorial-dates"></p>
+      <div class="memorial-cover-photo" id="memorialCoverPhoto">
+        <div class="memorial-overlay"></div>
       </div>
     </div>
-
-    <div class="memorial-content container">
-      <!-- Memorial Info -->
-      <section class="memorial-info">
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="info-label">Born</span>
-            <span id="memorialBirthDate" class="info-value">-</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Passed</span>
-            <span id="memorialDeathDate" class="info-value">-</span>
+    
+    <div class="memorial-content">
+      <div class="memorial-profile-section">
+        <img src="" alt="" class="memorial-profile-photo" id="memorialProfilePhoto">
+        <h1 class="memorial-name" id="memorialName">Loading...</h1>
+        <p class="memorial-dates" id="memorialDates"></p>
+        <p class="memorial-tagline" id="memorialTagline"></p>
+      </div>
+      
+      <div class="memorial-tabs">
+        <button class="tab-button active" data-tab="about">About</button>
+        <button class="tab-button" data-tab="gallery">Photos & Videos</button>
+        <button class="tab-button" data-tab="tributes">Tributes</button>
+        <button class="tab-button" data-tab="service">Service Info</button>
+      </div>
+      
+      <div class="memorial-tab-content">
+        <div class="tab-pane active" id="about-tab">
+          <div class="memorial-section">
+            <h2>Life Story</h2>
+            <div id="memorialLifeStory" class="memorial-text"></div>
           </div>
         </div>
-      </section>
-
-      <!-- Obituary -->
-      <section class="memorial-section obituary-section">
-        <h2>Obituary</h2>
-        <div id="memorialObituary" class="obituary-content"></div>
-      </section>
-
-      <!-- Life Story -->
-      <section class="memorial-section life-story-section">
-        <h2>Life Story</h2>
-        <div id="memorialLifeStory" class="life-story-content"></div>
-      </section>
-
-      <!-- Services -->
-      <section class="memorial-section services-section">
-        <h2>Service Information</h2>
-        <div id="memorialServices"></div>
-      </section>
-
-      <!-- Moments Gallery -->
-      <section class="memorial-section moments-section">
-        <h2>Memories</h2>
-        <div id="memorialMomentsGrid" class="moments-grid"></div>
-      </section>
-
-      <!-- Guestbook -->
-      <section class="memorial-section guestbook-section">
-        <h2>Messages of Love</h2>
-        <div class="guestbook-header">
-          <p>Share your memories and messages</p>
-          <button class="btn-primary" data-action="open-guestbook">
+        
+        <div class="tab-pane" id="gallery-tab">
+          <div class="memorial-gallery" id="memorialGallery"></div>
+        </div>
+        
+        <div class="tab-pane" id="tributes-tab">
+          <div class="memorial-tributes" id="memorialTributes"></div>
+        </div>
+        
+        <div class="tab-pane" id="service-tab">
+          <div class="memorial-service-info" id="memorialServiceInfo"></div>
+        </div>
+      </div>
+      
+      <section class="guestbook-section">
+        <h2>Guestbook</h2>
+        <div class="guestbook-actions">
+          <button class="btn-primary" onclick="openGuestbookModal()">
             <i class="fas fa-pen"></i> Leave a Message
           </button>
         </div>
@@ -357,6 +384,8 @@ function createMemorialSection() {
   // Add to main content area
   const main = document.querySelector('main') || document.body;
   main.appendChild(section);
+  
+  return section;
 }
 
 function trackPageView(page) {
@@ -418,3 +447,4 @@ document.addEventListener('auth:state', (event) => {
    ────────────────────────────────────────── */
 window.showPage = showPage;
 window.navigateTo = navigateTo;
+window.goBack = goBack;
