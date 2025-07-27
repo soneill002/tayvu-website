@@ -1,4 +1,4 @@
-/* src/js/router.js */
+/* src/js/router.js - Fixed version */
 import { initBlog } from '@/features/blog/blog.js';
 import { initFAQ } from '@/features/faq/faq.js';
 import { initMemorialView, cleanupMemorialView } from '@/features/memorials/memorialView.js';
@@ -151,7 +151,15 @@ export function showPage(page) {
   // Show the requested section
   const section = document.getElementById(page);
   if (section) {
+    // Remove any 'active' classes first
+    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+    
+    // Add active class to show the section (this overrides the CSS !important)
+    section.classList.add('active');
+    
+    // Also set display to block for good measure
     section.style.display = 'block';
+    
     currentPage = page;
     
     // Scroll to top
@@ -206,6 +214,9 @@ function showMemorialPage(page) {
     // Create memorial section if it doesn't exist
     memorialSection = createMemorialSection();
   }
+  
+  // Add active class to show the section
+  memorialSection.classList.add('active');
   memorialSection.style.display = 'block';
   
   currentPage = page;
@@ -231,10 +242,11 @@ function showBlogPost(page) {
     return;
   }
   
-  // Show blog section
+  // Hide all sections
   hideAllSections();
   const blogSection = document.getElementById('blog');
   if (blogSection) {
+    blogSection.classList.add('active');
     blogSection.style.display = 'block';
     currentPage = page;
     
@@ -279,11 +291,12 @@ function handleRouteChange() {
 function hideAllSections() {
   document.querySelectorAll('.page-section').forEach((section) => {
     section.style.display = 'none';
+    section.classList.remove('active'); // Also remove active class
   });
 }
 
 function updateActiveNavItems(activePage) {
-  // Update desktop nav
+  // Update desktop nav - Fixed selector
   document.querySelectorAll('.nav-links a').forEach((link) => {
     const linkPage = link.getAttribute('href')?.slice(1) || '';
     if (linkPage === activePage) {
