@@ -581,9 +581,21 @@ function skipStep() {
 /* ---------- validation ---------- */
 function validateCurrentStep() {
   if (currentStep === 1) {
-    const name = qs('#deceasedName')?.value.trim();
-    if (!name) {
-      showNotification('Please enter a name', 'error');
+    // Check for both first and last name fields
+    const firstName = qs('#firstName')?.value.trim();
+    const lastName = qs('#lastName')?.value.trim();
+    
+    if (!firstName || !lastName) {
+      showNotification('Please enter both first and last name', 'error');
+      return false;
+    }
+    
+    // Also validate dates
+    const birthDate = qs('#birthDate')?.value;
+    const deathDate = qs('#deathDate')?.value;
+    
+    if (!birthDate || !deathDate) {
+      showNotification('Please enter both birth and death dates', 'error');
       return false;
     }
   }
@@ -594,8 +606,21 @@ function validateCurrentStep() {
 function saveStepData() {
   switch (currentStep) {
     case 1:
+      // Combine first, middle, and last names
+      const firstName = qs('#firstName')?.value.trim();
+      const middleName = qs('#middleName')?.value.trim();
+      const lastName = qs('#lastName')?.value.trim();
+      
+      // Create full name with proper spacing
+      let fullName = firstName;
+      if (middleName) fullName += ` ${middleName}`;
+      fullName += ` ${lastName}`;
+      
       memorialData.basic = {
-        name: qs('#deceasedName')?.value.trim(),
+        name: fullName,
+        firstName: firstName,
+        middleName: middleName,
+        lastName: lastName,
         birthDate: qs('#birthDate')?.value,
         deathDate: qs('#deathDate')?.value
       };
