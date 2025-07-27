@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="240" height="85" viewBox="0 0 240 85" xmlns="http://www.w3.org/2000/svg">
+<svg width="320" height="85" viewBox="0 0 320 85" xmlns="http://www.w3.org/2000/svg">
     <defs>
         <!-- Tree foliage gradient - vibrant earthy greens -->
         <linearGradient id="navFoliageGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -50,13 +50,8 @@
         </g>
     </g>
     
-    <!-- Text -->
-    <text x="78" y="43" font-family="'Segoe UI', -apple-system, sans-serif" font-size="32" font-weight="300" fill="#3A3633">
-        Gather
-    </text>
-    
-    <!-- Tagline -->
-    <text x="78" y="58" font-family="'Segoe UI', -apple-system, sans-serif" font-size="11" font-weight="400" fill="#8B8680" letter-spacing="1">
-        MEMORIALS
+    <!-- Text - Updated to "Gather Memorials" -->
+    <text x="78" y="46" font-family="'Segoe UI', -apple-system, sans-serif" font-size="32" font-weight="300" fill="#3A3633">
+        Gather Memorials
     </text>
 </svg>
