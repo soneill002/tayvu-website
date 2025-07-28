@@ -452,6 +452,14 @@
   z-index: 10;
 }
 
+/* Temporarily hide floating hearts */
+.floating-elements {
+  display: none !important;
+}
+
+
+
+
 /* Floating Hearts */
 .floating-heart {
   position: absolute;
