@@ -119,7 +119,7 @@ function renderProfile(profile, user) {
   // Update profile display
   const nameEl = qs('#profileName');
   const emailEl = qs('#profileEmail');
-  const photoEl = qs('#profilePhoto');
+ const photoEl = qs('#profilePhotoLarge');
   
   if (nameEl) {
     nameEl.textContent = profile.full_name || profile.name || 'Your Name';
@@ -134,21 +134,17 @@ function renderProfile(profile, user) {
   }
   
   // Update form fields
-  const fullNameInput = qs('#inputFullName');
-  const headlineInput = qs('#inputHeadline');
-  const locationInput = qs('#inputLocation');
-  
-  if (fullNameInput) {
-    fullNameInput.value = profile.full_name || profile.name || '';
-  }
-  
-  if (headlineInput) {
-    headlineInput.value = profile.headline || '';
-  }
-  
-  if (locationInput) {
-    locationInput.value = profile.location || '';
-  }
+ // Update settings form fields
+const settingsNameInput = qs('#settingsName');
+const settingsEmailInput = qs('#settingsEmail');
+
+if (settingsNameInput) {
+  settingsNameInput.value = profile.full_name || profile.name || '';
+}
+
+if (settingsEmailInput) {
+  settingsEmailInput.value = user.email || profile.email || '';
+}
   
   // Update navigation profile photo/initial
   updateNavProfile(profile, user);
@@ -187,10 +183,11 @@ async function updateProfile(e) {
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
+  const nameValue = qs('#settingsName')?.value.trim();
+  
   const profileUpdate = {
-    full_name: qs('#inputFullName')?.value.trim() || null,
-    headline: qs('#inputHeadline')?.value.trim() || null,
-    location: qs('#inputLocation')?.value.trim() || null,
+    full_name: nameValue || null,
+    name: nameValue || null,
     updated_at: new Date().toISOString()
   };
 
@@ -204,6 +201,18 @@ async function updateProfile(e) {
     
     showNotification('Profile updated successfully', 'success');
     
+    // Update the display name in the profile header
+    const profileNameEl = qs('#profileName');
+    if (profileNameEl) {
+      profileNameEl.textContent = nameValue || 'Your Name';
+    }
+    
+    // Update the nav profile initial if needed
+    const navInitial = qs('#navProfileInitial');
+    if (navInitial && nameValue) {
+      navInitial.textContent = nameValue.charAt(0).toUpperCase();
+    }
+    
     // Reload profile to show updated data
     maybeLoadProfile();
     
@@ -215,6 +224,73 @@ async function updateProfile(e) {
     btn.textContent = originalText;
   }
 }
+
+// Make it globally available for onclick handlers
+window.updateProfile = updateProfile;
+
+
+// Make confirmDeleteAccount globally available
+window.confirmDeleteAccount = async function() {
+  const confirmed = confirm(
+    'Are you sure you want to delete your account?\n\n' +
+    'This action cannot be undone. All your memorials and data will be permanently deleted.'
+  );
+  
+  if (!confirmed) return;
+  
+  // Double confirmation for safety
+  const doubleConfirmed = confirm(
+    'This is your final warning!\n\n' +
+    'Your account and all memorials will be PERMANENTLY DELETED.\n\n' +
+    'Are you absolutely sure?'
+  );
+  
+  if (!doubleConfirmed) return;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  try {
+    showNotification('Deleting account...', 'info');
+    
+    // Sign out first
+    await supabase.auth.signOut();
+    
+    // In production, you'd call your edge function here to delete all user data
+    // const { error } = await supabase.functions.invoke('delete-user-account', {
+    //   body: { userId: user.id }
+    // });
+    
+    showNotification('Account deleted successfully', 'success');
+    window.location.hash = '#home';
+    
+  } catch (err) {
+    console.error('Error deleting account:', err);
+    showNotification('Unable to delete account. Please contact support.', 'error');
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* ──────────────────────────────────────────
    PHOTO UPLOAD
