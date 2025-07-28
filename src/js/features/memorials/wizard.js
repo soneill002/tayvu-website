@@ -661,10 +661,11 @@ function generatePreview() {
   iframe.srcdoc = previewHTML;
 }
 
-// New function to generate the preview HTML
+
+// New function to generate the preview HTML matching the Example Memorial page
 function generatePreviewHTML() {
   // Get the current memorial data
-  const profilePhoto = qs('#profilePhotoPreview')?.src || 'https://via.placeholder.com/150';
+  const profilePhoto = qs('#profilePhotoPreview')?.src || 'https://via.placeholder.com/200';
   const backgroundPhoto = qs('#backgroundPhotoPreview')?.src || 'https://images.unsplash.com/photo-1516475429286-465d815a0df7?w=1200';
   
   const fullName = memorialData.basic?.name || 'Preview Name';
@@ -673,6 +674,9 @@ function generatePreviewHTML() {
   
   const obituary = memorialData.story?.obituary || '<p>Memorial preview will appear here...</p>';
   const lifeStory = memorialData.story?.lifeStory || '';
+  
+  // Get moments data if available
+  const moments = window.collectedMoments || [];
   
   // Format dates
   const formatDate = (dateStr) => {
@@ -685,6 +689,10 @@ function generatePreviewHTML() {
     });
   };
   
+  // Format life span dates
+  const birthYear = birthDate ? new Date(birthDate).getFullYear() : '';
+  const deathYear = deathDate ? new Date(deathDate).getFullYear() : '';
+  
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -692,8 +700,10 @@ function generatePreviewHTML() {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>${fullName} - Memorial Preview</title>
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@300;400&display=swap">
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
       <style>
+        /* Reset and Base */
         * {
           margin: 0;
           padding: 0;
@@ -701,79 +711,124 @@ function generatePreviewHTML() {
         }
         
         body {
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-          color: #1e293b;
+          font-family: 'Inter', sans-serif;
+          color: #4a4238;
           background: #fefdfb;
           line-height: 1.6;
         }
         
-        .memorial-header {
+        /* Memorial Hero Section */
+        .memorial-hero {
           position: relative;
           height: 400px;
-          background-image: url('${backgroundPhoto}');
-          background-size: cover;
-          background-position: center;
+          background: url('${backgroundPhoto}') center/cover;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
         }
         
-        .memorial-header::after {
-          content: '';
+        .memorial-hero-overlay {
           position: absolute;
           inset: 0;
-          background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 100%);
+          background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.5));
         }
         
-        .memorial-info {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          padding: 3rem 2rem 2rem;
+        .memorial-hero-content {
+          position: relative;
           text-align: center;
-          z-index: 10;
+          color: white;
+          padding: 2rem;
+          z-index: 1;
         }
         
-        .profile-photo {
-          width: 150px;
-          height: 150px;
+        .memorial-main-photo {
+          width: 160px;
+          height: 160px;
           border-radius: 50%;
-          border: 5px solid white;
-          margin: 0 auto 1.5rem;
-          display: block;
+          border: 4px solid white;
+          margin-bottom: 1rem;
           object-fit: cover;
           box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
         
-        .memorial-name {
+        .memorial-main-name {
           font-size: 2.5rem;
-          font-weight: 700;
-          color: white;
+          font-weight: 600;
           margin-bottom: 0.5rem;
-          text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+          text-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
         
-        .memorial-dates {
-          font-size: 1.25rem;
-          color: rgba(255,255,255,0.9);
-          font-weight: 300;
+        .memorial-main-dates {
+          font-size: 1.125rem;
+          opacity: 0.95;
+          margin-bottom: 1.5rem;
         }
         
-        .memorial-content {
+        .memorial-hero-actions {
+          display: flex;
+          gap: 1rem;
+          justify-content: center;
+        }
+        
+        .memorial-hero-btn {
+          background: rgba(255,255,255,0.2);
+          border: 1px solid rgba(255,255,255,0.3);
+          color: white;
+          padding: 0.75rem 1.5rem;
+          border-radius: 25px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          backdrop-filter: blur(10px);
+          transition: all 0.3s ease;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        
+        .memorial-hero-btn:hover {
+          background: rgba(255,255,255,0.3);
+          transform: translateY(-2px);
+        }
+        
+        /* Memorial Body */
+        .memorial-body {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 3rem 1.5rem;
+        }
+        
+        /* Obituary Section */
+        .obituary-section {
+          margin-bottom: 4rem;
+        }
+        
+        .obituary-container {
           max-width: 800px;
           margin: 0 auto;
-          padding: 3rem 2rem;
         }
         
-        .section {
-          margin-bottom: 3rem;
-        }
-        
-        .section-title {
-          font-size: 1.75rem;
+        .obituary-title {
+          font-size: 2rem;
           font-weight: 600;
           color: #1e293b;
-          margin-bottom: 1.5rem;
-          padding-bottom: 0.75rem;
-          border-bottom: 2px solid #e8d5b7;
+          margin-bottom: 2rem;
+          text-align: center;
+          position: relative;
+          padding-bottom: 1rem;
+        }
+        
+        .obituary-title::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 80px;
+          height: 3px;
+          background: linear-gradient(to right, #e4b755, #e8d5b7);
+          border-radius: 2px;
         }
         
         .obituary-content {
@@ -781,40 +836,193 @@ function generatePreviewHTML() {
           line-height: 1.8;
         }
         
-        .obituary-content p {
-          margin-bottom: 1rem;
+        .obituary-lead {
+          font-family: 'Merriweather', serif;
+          font-size: 1.25rem;
+          color: #334155;
+          margin-bottom: 2rem;
+          font-weight: 300;
+          font-style: italic;
         }
         
+        .obituary-details p {
+          margin-bottom: 1.5rem;
+        }
+        
+        /* Life Story Section */
+        .life-story-section {
+          background: #faf8f3;
+          padding: 3rem 2rem;
+          border-radius: 12px;
+          margin-bottom: 4rem;
+        }
+        
+        .life-story-title {
+          font-size: 1.75rem;
+          font-weight: 600;
+          color: #1e293b;
+          margin-bottom: 1.5rem;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+        
+        .life-story-content {
+          color: #475569;
+          line-height: 1.8;
+        }
+        
+        /* Moments Gallery */
+        .moments-section {
+          margin-bottom: 4rem;
+        }
+        
+        .moments-header {
+          text-align: center;
+          margin-bottom: 3rem;
+        }
+        
+        .moments-title {
+          font-size: 2rem;
+          font-weight: 600;
+          color: #1e293b;
+          margin-bottom: 0.5rem;
+        }
+        
+        .moments-subtitle {
+          color: #64748b;
+          font-size: 1.125rem;
+        }
+        
+        .moments-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+          gap: 1.5rem;
+          margin-bottom: 2rem;
+        }
+        
+        .moment-card {
+          background: white;
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+          transition: all 0.3s ease;
+          cursor: pointer;
+        }
+        
+        .moment-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+        
+        .moment-image {
+          width: 100%;
+          height: 200px;
+          object-fit: cover;
+        }
+        
+        .moment-details {
+          padding: 1rem;
+        }
+        
+        .moment-date {
+          font-size: 0.875rem;
+          color: #94a3b8;
+          margin-bottom: 0.5rem;
+        }
+        
+        .moment-caption {
+          color: #334155;
+          font-size: 0.9375rem;
+        }
+        
+        /* Guestbook Section */
+        .guestbook-section {
+          background: white;
+          border-radius: 16px;
+          padding: 3rem;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        }
+        
+        .guestbook-header {
+          text-align: center;
+          margin-bottom: 3rem;
+        }
+        
+        .guestbook-title {
+          font-size: 2rem;
+          font-weight: 600;
+          color: #1e293b;
+          margin-bottom: 0.5rem;
+        }
+        
+        .guestbook-subtitle {
+          color: #64748b;
+        }
+        
+        .guestbook-empty {
+          text-align: center;
+          padding: 3rem;
+          color: #94a3b8;
+        }
+        
+        .guestbook-empty i {
+          font-size: 3rem;
+          margin-bottom: 1rem;
+          opacity: 0.5;
+        }
+        
+        /* Preview Badge */
         .preview-badge {
           position: fixed;
           top: 20px;
           right: 20px;
-          background: #e4b755;
+          background: linear-gradient(135deg, #e4b755, #d4a29c);
           color: white;
-          padding: 0.5rem 1rem;
-          border-radius: 25px;
+          padding: 0.75rem 1.5rem;
+          border-radius: 30px;
           font-size: 0.875rem;
           font-weight: 600;
-          box-shadow: 0 4px 12px rgba(228, 183, 85, 0.3);
-          z-index: 100;
+          box-shadow: 0 4px 20px rgba(228, 183, 85, 0.4);
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
         }
         
+        /* Responsive Design */
         @media (max-width: 768px) {
-          .memorial-header {
-            height: 300px;
+          .memorial-hero {
+            height: 350px;
           }
           
-          .profile-photo {
+          .memorial-main-photo {
             width: 120px;
             height: 120px;
           }
           
-          .memorial-name {
-            font-size: 2rem;
+          .memorial-main-name {
+            font-size: 1.875rem;
           }
           
-          .memorial-content {
+          .memorial-body {
             padding: 2rem 1rem;
+          }
+          
+          .obituary-title {
+            font-size: 1.5rem;
+          }
+          
+          .obituary-lead {
+            font-size: 1.125rem;
+          }
+          
+          .moments-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .guestbook-section {
+            padding: 2rem 1.5rem;
           }
         }
       </style>
@@ -824,41 +1032,94 @@ function generatePreviewHTML() {
         <i class="fas fa-eye"></i> Preview Mode
       </div>
       
-      <div class="memorial-header">
-        <div class="memorial-info">
-          <img src="${profilePhoto}" alt="${fullName}" class="profile-photo">
-          <h1 class="memorial-name">${fullName}</h1>
-          <p class="memorial-dates">
-            ${formatDate(birthDate)} - ${formatDate(deathDate)}
-          </p>
+      <!-- Memorial Hero -->
+      <div class="memorial-hero">
+        <div class="memorial-hero-overlay"></div>
+        <div class="memorial-hero-content">
+          <img src="${profilePhoto}" alt="${fullName}" class="memorial-main-photo">
+          <h1 class="memorial-main-name">${fullName}</h1>
+          <p class="memorial-main-dates">${formatDate(birthDate)} - ${formatDate(deathDate)}</p>
+          
+          <div class="memorial-hero-actions">
+            <button class="memorial-hero-btn">
+              <i class="fas fa-share"></i>
+              Share Memorial
+            </button>
+          </div>
         </div>
       </div>
       
-      <div class="memorial-content">
-        <section class="section">
-          <h2 class="section-title">
-            <i class="fas fa-book-open"></i> Obituary
-          </h2>
-          <div class="obituary-content">
-            ${obituary}
+      <!-- Memorial Body -->
+      <div class="memorial-body">
+        <!-- Obituary Section -->
+        <section class="obituary-section">
+          <div class="obituary-container">
+            <h2 class="obituary-title">Celebrating a Life Well Lived</h2>
+            <div class="obituary-content">
+              ${obituary.includes('class="obituary-lead"') ? obituary : `
+                <p class="obituary-lead serif-text">
+                  ${obituary.replace(/<[^>]*>/g, '').substring(0, 200)}${obituary.length > 200 ? '...' : ''}
+                </p>
+                <div class="obituary-details">
+                  ${obituary}
+                </div>
+              `}
+            </div>
           </div>
         </section>
         
         ${lifeStory ? `
-          <section class="section">
-            <h2 class="section-title">
+          <section class="life-story-section">
+            <h2 class="life-story-title">
               <i class="fas fa-heart"></i> Life Story
             </h2>
-            <div class="obituary-content">
+            <div class="life-story-content">
               ${lifeStory}
             </div>
           </section>
         ` : ''}
+        
+        ${moments.length > 0 ? `
+          <section class="moments-section">
+            <div class="moments-header">
+              <h2 class="moments-title">Cherished Moments</h2>
+              <p class="moments-subtitle">A collection of memories shared with love</p>
+            </div>
+            <div class="moments-grid">
+              ${moments.slice(0, 6).map(moment => `
+                <div class="moment-card">
+                  <img src="${moment.photo_url}" alt="${moment.caption}" class="moment-image">
+                  <div class="moment-details">
+                    <p class="moment-date">${moment.date || 'Date not specified'}</p>
+                    <p class="moment-caption">${moment.caption || 'A cherished memory'}</p>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </section>
+        ` : ''}
+        
+        <!-- Guestbook Section -->
+        <section class="guestbook-section">
+          <div class="guestbook-header">
+            <h2 class="guestbook-title">Guestbook</h2>
+            <p class="guestbook-subtitle">Share your memories and condolences</p>
+          </div>
+          <div class="guestbook-empty">
+            <i class="fas fa-book-open"></i>
+            <p>No messages yet. Be the first to sign the guestbook.</p>
+          </div>
+        </section>
       </div>
     </body>
     </html>
   `;
 }
+
+
+
+
+
 
 // Device preview function
 window.previewDevice = function(device) {
