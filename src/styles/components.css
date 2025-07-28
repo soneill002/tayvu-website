@@ -2095,11 +2095,11 @@ footer {
   background: white;
   border-radius: 0 0 50px 50px;
   box-shadow: 0 10px 30px rgba(74, 66, 56, 0.1);
-  margin-bottom: 3rem;
+  margin-bottom: 6rem; /* ← CHANGED THIS LINE */
   position: relative;
   overflow: hidden;
-  margin-top: -80px; /* Offset the padding */
-  padding-top: 80px; /* Add back for content */
+  margin-top: -80px;
+  padding-top: 80px;
 }
 
 .profile-cover-photo {
@@ -2200,12 +2200,12 @@ footer {
   display: flex;
   gap: 2rem;
   flex-wrap: wrap;
-  justify-content: center; /* ADD THIS LINE */
-  max-width: 1200px; /* ADD THIS LINE */
-  margin: 0 auto -3rem; /* ADD THIS LINE */
-  padding: 0 2rem; /* ADD THIS LINE */
-  position: relative; /* ADD THIS LINE */
-  z-index: 10; /* ADD THIS LINE */
+  justify-content: center; /* Centers the stat boxes horizontally */
+  max-width: 1200px; /* Constrains width to match content below */
+  margin: -3rem auto 3rem; /* -3rem top (overlaps header), auto left/right (centers), 3rem bottom */
+  padding: 0 2rem; /* Adds padding on sides for mobile */
+  position: relative; /* Allows z-index to work */
+  z-index: 10; /* Ensures stats appear above header */
 }
 
 .profile-stat {
@@ -2222,6 +2222,7 @@ footer {
   flex-direction: column; /* ADD THIS LINE */
   align-items: center; /* ADD THIS LINE */
   justify-content: center; /* ADD THIS LINE */
+  
 }
 
 .profile-stat:hover {
