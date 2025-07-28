@@ -2200,6 +2200,12 @@ footer {
   display: flex;
   gap: 2rem;
   flex-wrap: wrap;
+  justify-content: center; /* ADD THIS LINE */
+  max-width: 1200px; /* ADD THIS LINE */
+  margin: 0 auto -3rem; /* ADD THIS LINE */
+  padding: 0 2rem; /* ADD THIS LINE */
+  position: relative; /* ADD THIS LINE */
+  z-index: 10; /* ADD THIS LINE */
 }
 
 .profile-stat {
@@ -2212,6 +2218,10 @@ footer {
   min-width: 150px;
   transition: all 0.3s ease;
   border: 1px solid rgba(232, 213, 183, 0.3);
+  display: flex; /* ADD THIS LINE */
+  flex-direction: column; /* ADD THIS LINE */
+  align-items: center; /* ADD THIS LINE */
+  justify-content: center; /* ADD THIS LINE */
 }
 
 .profile-stat:hover {
@@ -2227,8 +2237,10 @@ footer {
   background: var(--gradient-earth);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text; /* ADD THIS LINE */
   line-height: 1;
   margin-bottom: 0.5rem;
+  text-align: center; /* ADD THIS LINE */
 }
 
 .stat-label {
@@ -2237,6 +2249,8 @@ footer {
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 1px;
+  text-align: center; /* ADD THIS LINE */
+  display: block; /* ADD THIS LINE */
 }
 
 /* Profile Content */
@@ -5817,5 +5831,19 @@ footer {
     height: 200%;
     top: -50%;
     left: -50%;
+  }
+}
+
+/* For very small screens, stack stats vertically */
+@media (max-width: 480px) {
+  .profile-stats {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .profile-stat {
+    width: 100%;
+    max-width: 250px;
   }
 }
