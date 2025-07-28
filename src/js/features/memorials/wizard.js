@@ -645,22 +645,255 @@ function saveStepData() {
   }
 }
 
-/* ---------- preview generation ---------- */
+/* ──────────────────────────────────────────
+   PREVIEW FUNCTIONALITY
+   ────────────────────────────────────────── */
+
+// Replace the existing generatePreview function with this improved version
 function generatePreview() {
-  // Update preview elements
-  qs('#previewName').textContent = memorialData.basic.name || 'Name';
-  qs('#previewDates').textContent = `${memorialData.basic.birthDate || 'Birth'} - ${memorialData.basic.deathDate || 'Death'}`;
+  const iframe = document.getElementById('memorialPreview');
+  if (!iframe) return;
   
-  // Preview photos
-  const profileSrc = qs('#profilePhotoPreview')?.src;
-  if (profileSrc) qs('#previewProfilePhoto').src = profileSrc;
+  // Instead of loading an external URL, we'll generate the preview content inline
+  const previewHTML = generatePreviewHTML();
   
-  const bgSrc = qs('#backgroundPhotoPreview')?.src;
-  if (bgSrc) qs('#previewBackgroundPhoto').src = bgSrc;
+  // Write the preview content to the iframe
+  iframe.srcdoc = previewHTML;
+}
+
+// New function to generate the preview HTML
+function generatePreviewHTML() {
+  // Get the current memorial data
+  const profilePhoto = qs('#profilePhotoPreview')?.src || 'https://via.placeholder.com/150';
+  const backgroundPhoto = qs('#backgroundPhotoPreview')?.src || 'https://images.unsplash.com/photo-1516475429286-465d815a0df7?w=1200';
   
-  // Preview story content
-  qs('#previewObituary').innerHTML = memorialData.story.obituary || '<p>No obituary added</p>';
-  qs('#previewLifeStory').innerHTML = memorialData.story.lifeStory || '<p>No life story added</p>';
+  const fullName = memorialData.basic?.name || 'Preview Name';
+  const birthDate = memorialData.basic?.birthDate || '1950-01-01';
+  const deathDate = memorialData.basic?.deathDate || '2024-01-01';
+  
+  const obituary = memorialData.story?.obituary || '<p>Memorial preview will appear here...</p>';
+  const lifeStory = memorialData.story?.lifeStory || '';
+  
+  // Format dates
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+  
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${fullName} - Memorial Preview</title>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          color: #1e293b;
+          background: #fefdfb;
+          line-height: 1.6;
+        }
+        
+        .memorial-header {
+          position: relative;
+          height: 400px;
+          background-image: url('${backgroundPhoto}');
+          background-size: cover;
+          background-position: center;
+        }
+        
+        .memorial-header::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 100%);
+        }
+        
+        .memorial-info {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          padding: 3rem 2rem 2rem;
+          text-align: center;
+          z-index: 10;
+        }
+        
+        .profile-photo {
+          width: 150px;
+          height: 150px;
+          border-radius: 50%;
+          border: 5px solid white;
+          margin: 0 auto 1.5rem;
+          display: block;
+          object-fit: cover;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .memorial-name {
+          font-size: 2.5rem;
+          font-weight: 700;
+          color: white;
+          margin-bottom: 0.5rem;
+          text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        
+        .memorial-dates {
+          font-size: 1.25rem;
+          color: rgba(255,255,255,0.9);
+          font-weight: 300;
+        }
+        
+        .memorial-content {
+          max-width: 800px;
+          margin: 0 auto;
+          padding: 3rem 2rem;
+        }
+        
+        .section {
+          margin-bottom: 3rem;
+        }
+        
+        .section-title {
+          font-size: 1.75rem;
+          font-weight: 600;
+          color: #1e293b;
+          margin-bottom: 1.5rem;
+          padding-bottom: 0.75rem;
+          border-bottom: 2px solid #e8d5b7;
+        }
+        
+        .obituary-content {
+          color: #475569;
+          line-height: 1.8;
+        }
+        
+        .obituary-content p {
+          margin-bottom: 1rem;
+        }
+        
+        .preview-badge {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #e4b755;
+          color: white;
+          padding: 0.5rem 1rem;
+          border-radius: 25px;
+          font-size: 0.875rem;
+          font-weight: 600;
+          box-shadow: 0 4px 12px rgba(228, 183, 85, 0.3);
+          z-index: 100;
+        }
+        
+        @media (max-width: 768px) {
+          .memorial-header {
+            height: 300px;
+          }
+          
+          .profile-photo {
+            width: 120px;
+            height: 120px;
+          }
+          
+          .memorial-name {
+            font-size: 2rem;
+          }
+          
+          .memorial-content {
+            padding: 2rem 1rem;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="preview-badge">
+        <i class="fas fa-eye"></i> Preview Mode
+      </div>
+      
+      <div class="memorial-header">
+        <div class="memorial-info">
+          <img src="${profilePhoto}" alt="${fullName}" class="profile-photo">
+          <h1 class="memorial-name">${fullName}</h1>
+          <p class="memorial-dates">
+            ${formatDate(birthDate)} - ${formatDate(deathDate)}
+          </p>
+        </div>
+      </div>
+      
+      <div class="memorial-content">
+        <section class="section">
+          <h2 class="section-title">
+            <i class="fas fa-book-open"></i> Obituary
+          </h2>
+          <div class="obituary-content">
+            ${obituary}
+          </div>
+        </section>
+        
+        ${lifeStory ? `
+          <section class="section">
+            <h2 class="section-title">
+              <i class="fas fa-heart"></i> Life Story
+            </h2>
+            <div class="obituary-content">
+              ${lifeStory}
+            </div>
+          </section>
+        ` : ''}
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+// Device preview function
+window.previewDevice = function(device) {
+  const frame = document.querySelector('.device-frame');
+  const iframe = document.getElementById('memorialPreview');
+  
+  if (!frame) return;
+  
+  // Remove all device classes
+  frame.classList.remove('desktop-view', 'tablet-view', 'mobile-view');
+  
+  // Add the selected device class and update iframe dimensions
+  switch(device) {
+    case 'desktop':
+      frame.classList.add('desktop-view');
+      iframe.style.width = '100%';
+      iframe.style.height = '600px';
+      break;
+    case 'tablet':
+      frame.classList.add('tablet-view');
+      iframe.style.width = '768px';
+      iframe.style.height = '1024px';
+      break;
+    case 'mobile':
+      frame.classList.add('mobile-view');
+      iframe.style.width = '375px';
+      iframe.style.height = '667px';
+      break;
+  }
+  
+  // Update button states
+  document.querySelectorAll('.preview-actions button').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  event.target.closest('button').classList.add('active');
 }
 
 /* ---------- rich text autosave ---------- */
