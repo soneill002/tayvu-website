@@ -353,6 +353,16 @@ function updateMomentsCount() {
     const publishedCount = moments.filter(m => !m.uploading).length;
     countEl.textContent = `${publishedCount} ${publishedCount === 1 ? 'moment' : 'moments'}`;
   }
+  
+  // Also update the photo and video counts in the wizard
+  const photoCount = qs('#photoCount');
+  const videoCount = qs('#videoCount');
+  if (photoCount && videoCount) {
+    const photos = moments.filter(m => !m.uploading && m.type === 'photo').length;
+    const videos = moments.filter(m => !m.uploading && m.type === 'video').length;
+    photoCount.textContent = photos;
+    videoCount.textContent = videos;
+  }
 }
 
 /* ──────────────────────────────────────────
@@ -397,6 +407,20 @@ function toggleViewMode() {
       ? '<i class="fas fa-list"></i>' 
       : '<i class="fas fa-th"></i>';
   }
+}
+
+/* ──────────────────────────────────────────
+   GRID VIEW TOGGLE (for wizard)
+   ────────────────────────────────────────── */
+function changeGridView(view) {
+  momentsViewMode = view;
+  updateMomentsDisplay();
+  
+  // Update active button state
+  document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  document.querySelector(`.view-btn[onclick*="${view}"]`)?.classList.add('active');
 }
 
 /* ──────────────────────────────────────────
@@ -445,3 +469,14 @@ window.handleMomentDragEnd = function(e) {
 window.updateMomentCaption = updateMomentCaption;
 window.updateMomentDate = updateMomentDate;
 window.removeMoment = removeMoment;
+
+// Expose selectMoments globally for the wizard
+window.selectMoments = selectMoments;
+
+// Expose drag and drop functions globally for the wizard
+window.handleDrop = handleDrop;
+window.handleDragOver = handleDragOver;
+window.handleDragLeave = handleDragLeave;
+
+// Expose changeGridView for the wizard
+window.changeGridView = changeGridView;
