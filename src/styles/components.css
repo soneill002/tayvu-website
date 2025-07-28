@@ -305,7 +305,7 @@
 
 .btn-primary {
   padding: 1.25rem 2.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--primary-sage) 0%, var(--primary-moss) 100%);
   color: white;
   border: none;
   border-radius: 12px;
@@ -317,7 +317,7 @@
   gap: 0.75rem;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 5px 20px rgba(107, 145, 116, 0.3);
   position: relative;
   overflow: hidden;
 }
@@ -335,8 +335,8 @@
 }
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(118, 75, 162, 0.4);
-  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+  box-shadow: 0 10px 30px rgba(107, 145, 116, 0.4);
+  background: linear-gradient(135deg, #7ca185 0%, #5a8360 100%);
 }
 
 .btn-primary:hover::before {
@@ -351,12 +351,8 @@
 
 .btn-secondary {
   padding: 1.25rem 2.5rem;
-  background: linear-gradient(
-    135deg,
-    #667eea 0%,
-    #764ba2 100%
-  ); /* Same purple gradient as btn-primary */
-  color: white; /* White text like btn-primary */
+  background: linear-gradient(135deg, var(--warm-sand) 0%, var(--accent-gold) 100%);
+  color:  var(--deep-earth);
   border: none; /* Remove border */
   border-radius: 12px;
   font-size: 1.125rem;
@@ -368,7 +364,7 @@
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
   position: relative;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3); /* Purple shadow */
+  box-shadow: 0 5px 20px rgba(228, 183, 85, 0.3);
   overflow: hidden; /* For the hover effect */
 }
 
@@ -386,8 +382,8 @@
 
 .btn-secondary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(118, 75, 162, 0.4); /* Purple shadow */
-  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%); /* Darker purple on hover */
+  box-shadow: 0 10px 30px rgba(228, 183, 85, 0.4);
+  background: linear-gradient(135deg, #edd9bc 0%, #e8c05a 100%);
 }
 
 .btn-secondary:hover::before {
@@ -613,12 +609,8 @@
 
 .memorial-card-button {
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(
-    135deg,
-    #667eea 0%,
-    #764ba2 100%
-  ); /* Purple gradient like Create Memorial */
-  color: white;
+  background: linear-gradient(135deg, var(--warm-sand) 0%, var(--accent-gold) 100%);
+  color: var(--deep-earth);
   border: none;
   border-radius: 8px;
   font-size: 0.95rem;
@@ -634,8 +626,8 @@
 
 .memorial-card-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(118, 75, 162, 0.4); /* Purple shadow */
-  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%); /* Darker purple on hover */
+  box-shadow: 0 10px 30px rgba(228, 183, 85, 0.4);
+  background: linear-gradient(135deg, #edd9bc 0%, #e8c05a 100%);
 }
 
 .floating-elements {
