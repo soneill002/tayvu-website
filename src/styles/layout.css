@@ -74,3 +74,45 @@ nav.scrolled {
   display: none !important;
 }
 /* ========== END FIX ========== */
+
+/* ========== FOOTER VISIBILITY FIX ========== */
+/* Ensure footer is always visible regardless of page section state */
+footer {
+  display: block !important;
+  visibility: visible !important;
+  position: relative;
+  z-index: 100;
+  margin-top: 4rem; /* Space between content and footer */
+}
+
+/* Prevent page sections from hiding or overlapping the footer */
+.page-section {
+  position: relative;
+  z-index: 1;
+}
+
+/* Ensure active page sections don't take full viewport when footer exists */
+.page-section.active {
+  min-height: auto; /* Remove the full viewport height */
+  padding-bottom: 2rem; /* Add padding at bottom */
+}
+
+/* Make sure the body allows scrolling to see footer */
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Make main content area flexible but not overlap footer */
+main {
+  flex: 1 0 auto; /* Grow to fill space but don't shrink */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Footer should shrink to fit content */
+footer {
+  flex-shrink: 0;
+}
+/* ========== END FOOTER VISIBILITY FIX ========== */
