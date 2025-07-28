@@ -552,6 +552,15 @@ function updateProgress() {
       loadDraftLifeStory();
     }, 100);
   }
+  
+  // Initialize moments board when reaching step 4
+  if (currentStep === 4) {
+    setTimeout(() => {
+      import('@/features/memorials/moments.js').then(({ initMomentsBoard }) => {
+        initMomentsBoard();
+      });
+    }, 100);
+  }
 }
 
 function nextStep() {
@@ -647,34 +656,113 @@ function saveStepData() {
 
 /* ---------- preview generation ---------- */
 function generatePreview() {
-  // Update preview elements
-  qs('#previewName').textContent = memorialData.basic.name || 'Name';
-  qs('#previewDates').textContent = `${memorialData.basic.birthDate || 'Birth'} - ${memorialData.basic.deathDate || 'Death'}`;
+  // Get the preview container
+  const previewContainer = qs('.device-frame');
+  if (!previewContainer) return;
   
-  // Preview photos
-  const profileSrc = qs('#profilePhotoPreview')?.src;
-  if (profileSrc) qs('#previewProfilePhoto').src = profileSrc;
+  // Create preview HTML
+  const previewHTML = `
+    <div class="memorial-preview-content">
+      <!-- Memorial Header -->
+      <div class="memorial-preview-header">
+        <div class="memorial-preview-bg" style="background-image: url('${qs('#backgroundPhotoPreview')?.src || 'https://images.unsplash.com/photo-1516589091380-5d8e87df6999?w=1600&h=600&fit=crop'}')"></div>
+        <div class="memorial-preview-overlay"></div>
+        <div class="memorial-preview-info">
+          <img class="memorial-preview-photo" src="${qs('#profilePhotoPreview')?.src || '/assets/default-avatar.jpg'}" alt="${memorialData.basic.name}" />
+          <h1 class="memorial-preview-name">${memorialData.basic.name || 'Memorial Name'}</h1>
+          <p class="memorial-preview-dates">${formatDates(memorialData.basic.birthDate, memorialData.basic.deathDate)}</p>
+        </div>
+      </div>
+      
+      <!-- Memorial Content -->
+      <div class="memorial-preview-body">
+        ${memorialData.story.obituary ? `
+          <div class="memorial-preview-section">
+            <h2>Obituary</h2>
+            <div class="memorial-preview-text">${memorialData.story.obituary}</div>
+          </div>
+        ` : ''}
+        
+        ${memorialData.story.lifeStory ? `
+          <div class="memorial-preview-section">
+            <h2>Life Story</h2>
+            <div class="memorial-preview-text">${memorialData.story.lifeStory}</div>
+          </div>
+        ` : ''}
+        
+        <!-- Moments Preview -->
+        ${window.getMomentsForSave && window.getMomentsForSave().length > 0 ? `
+          <div class="memorial-preview-section">
+            <h2>Cherished Moments</h2>
+            <div class="memorial-preview-moments">
+              ${window.getMomentsForSave().slice(0, 6).map(moment => `
+                <div class="memorial-preview-moment">
+                  <img src="${moment.thumbnailUrl || moment.url}" alt="${moment.caption || 'Moment'}" />
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
   
-  const bgSrc = qs('#backgroundPhotoPreview')?.src;
-  if (bgSrc) qs('#previewBackgroundPhoto').src = bgSrc;
-  
-  // Preview story content
-  qs('#previewObituary').innerHTML = memorialData.story.obituary || '<p>No obituary added</p>';
-  qs('#previewLifeStory').innerHTML = memorialData.story.lifeStory || '<p>No life story added</p>';
+  // Replace iframe with the preview content
+  previewContainer.innerHTML = previewHTML;
 }
+
+// Helper function to format dates
+function formatDates(birthDate, deathDate) {
+  const formatDate = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+  
+  const birth = formatDate(birthDate);
+  const death = formatDate(deathDate);
+  
+  if (birth && death) {
+    return `${birth} - ${death}`;
+  } else if (birth) {
+    return `Born ${birth}`;
+  } else if (death) {
+    return `Passed ${death}`;
+  } else {
+    return 'Dates not provided';
+  }
+}
+
+// Update the preview device buttons
+window.previewDevice = function(device) {
+  const frame = qs('.device-frame');
+  if (!frame) return;
+  
+  // Remove all device classes
+  frame.classList.remove('desktop-view', 'tablet-view', 'mobile-view');
+  
+  // Add the selected device class
+  frame.classList.add(`${device}-view`);
+  
+  // Update active button state
+  document.querySelectorAll('.preview-actions button').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  event.target.closest('button')?.classList.add('active');
+};
 
 /* ---------- rich text autosave ---------- */
 function initializeRichTextAutoSave() {
-  const editor = document.querySelector('.rich-text-editor');
-  if (!editor) return;
-
-  let autoSaveTimer;
-  editor.addEventListener('input', () => {
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(() => {
-      saveStepData();
-      saveDraftToSupabase(); // Save to Supabase
-    }, 2000); // Auto-save after 2 seconds of inactivity
+  const editors = document.querySelectorAll('.rich-text-editor');
+  editors.forEach(editor => {
+    let autoSaveTimer;
+    editor.addEventListener('input', () => {
+      clearTimeout(autoSaveTimer);
+      autoSaveTimer = setTimeout(() => {
+        saveStepData();
+        saveDraftToSupabase(); // Save to Supabase
+      }, 2000); // Auto-save after 2 seconds of inactivity
+    });
   });
 }
 
@@ -688,3 +776,9 @@ function loadDraftLifeStory() {
     if (editor) editor.innerHTML = memorialData.story.obituary;
   }
 }
+
+// Global function for adding service items
+window.addServiceItem = function() {
+  // TODO: Implement service item addition
+  showNotification('Service addition coming soon', 'info');
+};
