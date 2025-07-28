@@ -55,10 +55,7 @@ function loadMyMemorials() {
                 </div>
                 <h3>No memorials yet</h3>
                 <p>Create your first memorial to honor a loved one</p>
-                <button class="btn-primary" onclick="goToCreateMemorial()">
-                    <i class="fas fa-plus"></i>
-                    Create Memorial
-                </button>
+               
             </div>
         `;
   } else {

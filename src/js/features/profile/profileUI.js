@@ -348,9 +348,7 @@ function displayUserMemorials(memorials) {
         <i class="fas fa-heart"></i>
         <h3>No memorials yet</h3>
         <p>Create your first memorial to honor a loved one.</p>
-        <button class="btn-primary" onclick="window.goToCreateMemorial()">
-          <i class="fas fa-plus"></i> Create Memorial
-        </button>
+        
       </div>
     `;
     return;
