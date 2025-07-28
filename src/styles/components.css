@@ -5848,3 +5848,89 @@ footer {
     max-width: 250px;
   }
 }
+
+/* ========== PROFILE SETTINGS ALIGNMENT FIX ========== */
+/* Added to fix settings tab alignment issue */
+
+/* Center the settings container properly */
+#settingsTab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+/* Wrapper for settings content */
+.settings-content-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Ensure tab header is centered */
+#settingsTab .tab-header {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto 2rem;
+  text-align: center;
+}
+
+/* Update settings container centering */
+#settingsTab .settings-container {
+  max-width: 700px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* Form group improvements */
+.settings-section .form-group {
+  margin-bottom: 1.5rem;
+}
+
+.settings-section .form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Fix button alignment */
+.settings-section .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  #settingsTab .settings-container {
+    padding: 0 1rem;
+  }
+  
+  .settings-section {
+    padding: 2rem 1.5rem;
+  }
+  
+  #settingsTab .tab-header {
+    padding: 0 1rem;
+  }
+}
+
+/* Ensure proper layout for all profile tab contents */
+.profile-tab-content {
+  display: none;
+  width: 100%;
+}
+
+.profile-tab-content.active {
+  display: block;
+}
+
+/* Fix any potential overflow issues */
+.profile-content {
+  overflow-x: hidden;
+}
+/* ========== END PROFILE SETTINGS FIX ========== */
