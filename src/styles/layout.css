@@ -116,3 +116,51 @@ footer {
   flex-shrink: 0;
 }
 /* ========== END FOOTER VISIBILITY FIX ========== */
+
+/* ========== FOOTER VISIBILITY FIX V2 ========== */
+/* Reset body and html to allow proper scrolling */
+html, body {
+  height: auto !important;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto !important;
+}
+
+/* Ensure body is a flex container */
+body {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+}
+
+/* Page sections should not have fixed heights */
+.page-section {
+  min-height: auto !important;
+  flex: 1 0 auto;
+}
+
+/* Remove the important from display none */
+.page-section {
+  display: none;
+}
+
+.page-section.active {
+  display: block !important;
+}
+
+/* Footer must be visible and at bottom */
+footer {
+  display: block !important;
+  visibility: visible !important;
+  position: relative !important;
+  z-index: 100 !important;
+  margin-top: auto !important; /* Push to bottom */
+  flex-shrink: 0;
+}
+
+/* Ensure main sections don't overflow */
+main.page-section {
+  overflow: visible !important;
+}
+/* ========== END FOOTER FIX V2 ========== */
