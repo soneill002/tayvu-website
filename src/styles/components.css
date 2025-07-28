@@ -178,63 +178,50 @@
   overflow: hidden;
 }
 
-/* Subtle animated gradient orbs */
-.hero::before {
-  content: '';
+
+/* Organic Flowing Shapes Pattern */
+.hero-organic-pattern {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: 
-    radial-gradient(circle at 20% 80%, rgba(107, 145, 116, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(228, 183, 85, 0.06) 0%, transparent 50%),
-    radial-gradient(circle at 40% 40%, rgba(207, 121, 57, 0.05) 0%, transparent 50%),
-    radial-gradient(circle at 70% 70%, rgba(212, 162, 156, 0.05) 0%, transparent 50%);
-  animation: gentleFloat 30s ease-in-out infinite;
-  pointer-events: none;
+  overflow: hidden;
   z-index: 1;
+  pointer-events: none;
 }
 
-@keyframes gentleFloat {
+.hero-organic-pattern svg {
+  position: absolute;
+  width: 120%;
+  height: 120%;
+  top: -10%;
+  left: -10%;
+  animation: organicFloat 25s ease-in-out infinite;
+}
+
+/* Gentle animation for the organic shapes */
+@keyframes organicFloat {
   0%, 100% {
     transform: translate(0, 0) scale(1);
   }
-  33% {
-    transform: translate(30px, -30px) scale(1.05);
+  25% {
+    transform: translate(-20px, 10px) scale(1.02);
   }
-  66% {
-    transform: translate(-20px, 20px) scale(0.98);
+  50% {
+    transform: translate(10px, -15px) scale(0.98);
+  }
+  75% {
+    transform: translate(-10px, 5px) scale(1.01);
   }
 }
 
-/* Subtle crosshatch texture overlay */
-.hero::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: 
-    repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 35px,
-      rgba(155, 139, 126, 0.03) 35px,
-      rgba(155, 139, 126, 0.03) 70px
-    ),
-    repeating-linear-gradient(
-      -45deg,
-      transparent,
-      transparent 35px,
-      rgba(107, 145, 116, 0.02) 35px,
-      rgba(107, 145, 116, 0.02) 70px
-    );
-  opacity: 0.5;
-  pointer-events: none;
-  z-index: 1;
-}
+
+
+
+
+
+
 
 /* Floating hearts background */
 .hero-hearts {
@@ -253,7 +240,7 @@
   gap: 4rem;
   align-items: center;
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .hero-content {
@@ -5811,5 +5798,24 @@ footer {
   }
   100% {
     background-position: 20px 20px;
+  }
+}
+
+/* Responsive adjustments for the organic pattern */
+@media (max-width: 768px) {
+  .hero-organic-pattern svg {
+    width: 150%;
+    height: 150%;
+    top: -25%;
+    left: -25%;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-organic-pattern svg {
+    width: 200%;
+    height: 200%;
+    top: -50%;
+    left: -50%;
   }
 }
