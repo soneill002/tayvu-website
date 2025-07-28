@@ -50,6 +50,10 @@ const routes = {
   terms: {
     title: 'Terms of Service - GatherMemorials',
     requiresAuth: false
+  },
+  exampleMemorial: {
+    title: 'Example Memorial - GatherMemorials',
+    requiresAuth: false
   }
 };
 
@@ -76,6 +80,9 @@ export function initRouter() {
   
   // Add click handler for navigation links
   document.addEventListener('click', handleNavigationClick);
+  
+  // ADD THIS: Handler for data-page buttons
+  document.addEventListener('click', handleDataPageClick);
 }
 
 /* ──────────────────────────────────────────
@@ -96,6 +103,28 @@ function handleNavigationClick(e) {
     if (routerPages.includes(page) || page === '' || page === 'home') {
       // Let the hashchange event handle it - no need to prevent default
       console.log('Navigation click to:', page || 'home');
+    }
+  }
+}
+
+/* ──────────────────────────────────────────
+   DATA-PAGE CLICK HANDLER (NEW)
+   ────────────────────────────────────────── */
+function handleDataPageClick(e) {
+  // Check if clicked element or its parent has data-page attribute
+  const element = e.target.closest('[data-page]');
+  
+  if (element) {
+    e.preventDefault();
+    const page = element.getAttribute('data-page');
+    
+    console.log('Data-page click detected:', page);
+    
+    // Navigate to the page
+    if (page) {
+      // Update the URL hash
+      window.location.hash = `#${page}`;
+      // The hashchange event will handle showing the page
     }
   }
 }
