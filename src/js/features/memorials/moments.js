@@ -38,7 +38,7 @@ export function initMomentsBoard() {
     }
   });
 
-  /* first render */
+  //   /* first render */
   updateMomentsDisplay();
   updateMomentsCount();
 }
@@ -200,9 +200,6 @@ async function processUploadQueue() {
   isUploading = false;
   showUploadProgress(false);
   showNotification('All uploads complete!', 'success');
-  
-  // Update stats when uploads complete
-  window.updateMomentsStats?.();
 }
 
 /* ──────────────────────────────────────────
@@ -302,9 +299,6 @@ function updateMomentsDisplay() {
     emptyState?.style.setProperty('display', 'block');
     grid.innerHTML = '';
     emptyState && grid.appendChild(emptyState);
-    
-    // Update stats
-    window.updateMomentsStats?.();
     return;
   }
   emptyState?.style.setProperty('display', 'none');
@@ -351,9 +345,6 @@ function updateMomentsDisplay() {
   `
     )
     .join('');
-    
-  // Update stats whenever display updates
-  window.updateMomentsStats?.();
 }
 
 function updateMomentsCount() {
@@ -454,35 +445,3 @@ window.handleMomentDragEnd = function(e) {
 window.updateMomentCaption = updateMomentCaption;
 window.updateMomentDate = updateMomentDate;
 window.removeMoment = removeMoment;
-
-/* ──────────────────────────────────────────
-   EXPOSE FUNCTIONS GLOBALLY FOR HTML HANDLERS
-   ────────────────────────────────────────── */
-
-// Make functions available globally for onclick handlers
-window.selectMoments = selectMoments;
-window.handleDrop = handleDrop;
-window.handleDragOver = handleDragOver;
-window.handleDragLeave = handleDragLeave;
-window.changeGridView = function(view) {
-  momentsViewMode = view;
-  updateMomentsDisplay();
-  
-  // Update active button state
-  document.querySelectorAll('.view-btn').forEach(btn => {
-    btn.classList.remove('active');
-  });
-  event.target.closest('.view-btn')?.classList.add('active');
-};
-
-// Photo/video count updater
-window.updateMomentsStats = function() {
-  const photos = moments.filter(m => m.type === 'photo' && !m.uploading).length;
-  const videos = moments.filter(m => m.type === 'video' && !m.uploading).length;
-  
-  const photoCountEl = qs('#photoCount');
-  const videoCountEl = qs('#videoCount');
-  
-  if (photoCountEl) photoCountEl.textContent = photos;
-  if (videoCountEl) videoCountEl.textContent = videos;
-};
