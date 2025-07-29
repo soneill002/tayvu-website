@@ -162,6 +162,140 @@ function selectDefaultBackground(bgUrl) {
 // Make it globally available
 window.selectDefaultBackground = selectDefaultBackground;
 
+Searched project for “wizard.js file structure exports functions”
+6 results
+
+
+
+
+
+
+
+
+
+Step-by-Step Guide to Fix the "Add Another Service" Button
+Step 1: Open Your Code Editor
+First, open your project in your code editor (VS Code, Sublime Text, etc.) and navigate to your project folder gather-memorials-website.
+
+Step 2: Locate the wizard.js File
+Find and open the file at this path:
+
+src/js/features/memorials/wizard.js
+Step 3: Find Where to Add the Functions
+In the wizard.js file, look for the section near the bottom where you see these functions being made globally available:
+
+javascript
+// Make uploadImage globally available for onclick handlers
+window.uploadImage = uploadImage;
+
+// Function to select default background
+function selectDefaultBackground(bgUrl) {
+  // ... existing code ...
+}
+
+// Make it globally available
+window.selectDefaultBackground = selectDefaultBackground;
+Step 4: Add the Service Management Functions
+Right AFTER the window.selectDefaultBackground = selectDefaultBackground; line, add these new functions:
+
+javascript
+// Function to add a new service item
+function addServiceItem() {
+  const serviceItemsContainer = document.getElementById('serviceItems');
+  if (!serviceItemsContainer) return;
+  
+  // Count existing service items
+  const existingServices = serviceItemsContainer.querySelectorAll('.service-item-form').length;
+  const serviceNumber = existingServices + 1;
+  
+  // Create new service item HTML
+  const newServiceHTML = `
+    <div class="service-item-form">
+      <div class="service-header">
+        <h3>Service ${serviceNumber}</h3>
+        <button type="button" class="btn-remove" onclick="removeServiceItem(this)">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Service Type</label>
+          <select name="serviceType">
+            <option value="">Select type...</option>
+            <option value="viewing">Viewing & Visitation</option>
+            <option value="funeral">Funeral Service</option>
+            <option value="memorial">Memorial Service</option>
+            <option value="celebration">Celebration of Life</option>
+            <option value="reception">Reception</option>
+            <option value="burial">Burial</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" name="serviceDate" />
+        </div>
+        <div class="form-group">
+          <label>Time</label>
+          <input type="time" name="serviceTime" />
+        </div>
+        <div class="form-group">
+          <label>Location Name</label>
+          <input type="text" name="locationName" placeholder="e.g., St. Mary's Church" />
+        </div>
+        <div class="form-group full-width">
+          <label>Address</label>
+          <input type="text" name="locationAddress" placeholder="Full address" />
+        </div>
+        <div class="form-group full-width">
+          <label>Additional Information (Optional)</label>
+          <textarea name="additionalInfo" rows="2" placeholder="Any special instructions or details..."></textarea>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Add the new service item to the container
+  serviceItemsContainer.insertAdjacentHTML('beforeend', newServiceHTML);
+  
+  // Scroll to the new service item
+  const newServiceItem = serviceItemsContainer.lastElementChild;
+  newServiceItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// Function to remove a service item
+function removeServiceItem(button) {
+  const serviceItem = button.closest('.service-item-form');
+  if (serviceItem) {
+    // Don't remove if it's the only service item
+    const allServiceItems = document.querySelectorAll('.service-item-form');
+    if (allServiceItems.length > 1) {
+      serviceItem.remove();
+      
+      // Renumber remaining services
+      renumberServices();
+    } else {
+      showNotification('At least one service must remain', 'info');
+    }
+  }
+}
+
+// Function to renumber services after adding/removing
+function renumberServices() {
+  const serviceItems = document.querySelectorAll('.service-item-form');
+  serviceItems.forEach((item, index) => {
+    const header = item.querySelector('h3');
+    if (header) {
+      header.textContent = `Service ${index + 1}`;
+    }
+  });
+}
+
+// Make functions globally available
+window.addServiceItem = addServiceItem;
+window.removeServiceItem = removeServiceItem;
+
+
+
 /* ──────────────────────────────────────────
    DRAFT MANAGEMENT WITH SUPABASE
    ────────────────────────────────────────── */

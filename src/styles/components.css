@@ -2816,6 +2816,71 @@ footer {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
+/* Service Item Styles */
+.service-item-form {
+  background: var(--light-cream);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.service-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.service-header h3 {
+  margin: 0;
+  color: var(--deep-earth);
+  font-size: 1.1rem;
+}
+
+.btn-remove {
+  background: none;
+  border: none;
+  color: var(--soft-clay);
+  cursor: pointer;
+  padding: 0.5rem;
+  font-size: 1.2rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-remove:hover {
+  background: rgba(212, 162, 156, 0.1);
+  color: #c44e48;
+}
+
+.btn-add {
+  background: white;
+  border: 2px dashed var(--primary-sage);
+  color: var(--primary-sage);
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  transition: all 0.2s ease;
+}
+
+.btn-add:hover {
+  background: var(--light-cream);
+  border-color: var(--primary-moss);
+  color: var(--primary-moss);
+}
+
+.btn-add i {
+  font-size: 0.9rem;
+}
+
+
+
 /* Remove top padding when not on first step */
 .form-step:not(#step1) {
   padding-top: 0;
