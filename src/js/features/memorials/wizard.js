@@ -162,43 +162,7 @@ function selectDefaultBackground(bgUrl) {
 // Make it globally available
 window.selectDefaultBackground = selectDefaultBackground;
 
-Searched project for “wizard.js file structure exports functions”
-6 results
 
-
-
-
-
-
-
-
-
-Step-by-Step Guide to Fix the "Add Another Service" Button
-Step 1: Open Your Code Editor
-First, open your project in your code editor (VS Code, Sublime Text, etc.) and navigate to your project folder gather-memorials-website.
-
-Step 2: Locate the wizard.js File
-Find and open the file at this path:
-
-src/js/features/memorials/wizard.js
-Step 3: Find Where to Add the Functions
-In the wizard.js file, look for the section near the bottom where you see these functions being made globally available:
-
-javascript
-// Make uploadImage globally available for onclick handlers
-window.uploadImage = uploadImage;
-
-// Function to select default background
-function selectDefaultBackground(bgUrl) {
-  // ... existing code ...
-}
-
-// Make it globally available
-window.selectDefaultBackground = selectDefaultBackground;
-Step 4: Add the Service Management Functions
-Right AFTER the window.selectDefaultBackground = selectDefaultBackground; line, add these new functions:
-
-javascript
 // Function to add a new service item
 function addServiceItem() {
   const serviceItemsContainer = document.getElementById('serviceItems');
