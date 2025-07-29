@@ -444,6 +444,25 @@ window.loadMorePosts = function() {
 };
 
 
+// Export function for router to call
+export function showBlogPost(slug) {
+  // First ensure we have posts loaded
+  if (allPosts.length === 0) {
+    // Load posts first, then show the specific post
+    loadBlogPosts().then(() => {
+      openBlogPost(slug);
+    });
+  } else {
+    openBlogPost(slug);
+  }
+}
+
+
+
+
+
+
+
 // Cleanup function to remove event listeners
 export function cleanupBlog() {
   const blogGrid = document.getElementById('blogGrid');
@@ -490,8 +509,11 @@ function openBlogPost(slug) {
     blogPostSection.style.display = 'block';
   }
   
-  // Update URL
-  window.location.hash = '#blogPost';
+  // Update URL with the blog post slug
+window.location.hash = `#blog/${slug}`;
+
+// Update page title
+document.title = `${post.title} - GatherMemorials Blog`;
   
   // Create post HTML
   const postHTML = `
@@ -523,6 +545,12 @@ function openBlogPost(slug) {
       
       <div class="single-post-content">
         ${post.content}
+      </div>
+      
+      <div class="single-post-footer">
+        <button class="btn btn-secondary" onclick="window.location.hash='#blog'">
+          <i class="fas fa-arrow-left"></i> Back to Blog
+        </button>
       </div>
     </div>
   `;

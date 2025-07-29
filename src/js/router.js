@@ -30,6 +30,10 @@ const routes = {
     requiresAuth: false,
     init: initBlog
   },
+blogPost: {
+  title: 'Blog Post - GatherMemorials',
+  requiresAuth: false
+},
   pricing: {
     title: 'Pricing - GatherMemorials',
     requiresAuth: false
@@ -273,20 +277,28 @@ function showBlogPost(page) {
   
   // Hide all sections
   hideAllSections();
-  const blogSection = document.getElementById('blog');
-  if (blogSection) {
-    blogSection.classList.add('active');
-    blogSection.style.display = 'block';
-    currentPage = page;
-    
-    // Let blog module handle the specific post
-    import('@/features/blog/blog.js').then(({ showBlogPost }) => {
-      showBlogPost(postSlug);
-    });
-    
-    updateActiveNavItems('blog');
+  
+  // Show the blogPost section (not blog section!)
+  const blogPostSection = document.getElementById('blogPost');  // ✅ CORRECT - This gets the blog post section!
+  if (blogPostSection) {
+    blogPostSection.classList.add('active');
+    blogPostSection.style.display = 'block';
   }
+  
+  currentPage = page;
+  
+  // Let blog module handle the specific post
+  import('@/features/blog/blog.js').then(({ showBlogPost }) => {
+    showBlogPost(postSlug);
+  });
+  
+  updateActiveNavItems('blog');
 }
+
+
+
+
+
 
 /* ──────────────────────────────────────────
    ROUTE CHANGE HANDLER
