@@ -20,11 +20,14 @@ import '@/dom/pageEnhancements.js'; // side-effect import
 
 window.goToCreateMemorial = function () {
   if (!window.currentUser) {
+    // Store where the user wanted to go
+    sessionStorage.setItem('redirectAfterLogin', 'createMemorial');
     openModal('signin');
     return;
   }
-  showPage('createMemorial'); // switch section
-  initWizard(); // reset wizard state
+  
+  // Use hash navigation instead of showPage
+  window.location.hash = '#createMemorial';
 };
 
 // Initialize Supabase first, then everything else
