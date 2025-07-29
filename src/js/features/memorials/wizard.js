@@ -752,7 +752,11 @@ function generatePreviewHTML() {
   // Format life span dates
   const birthYear = birthDate ? new Date(birthDate).getFullYear() : '';
   const deathYear = deathDate ? new Date(deathDate).getFullYear() : '';
-  
+  // Format full dates for display
+const formattedBirthDate = birthDate ? formatDate(birthDate) : '';
+const formattedDeathDate = deathDate ? formatDate(deathDate) : '';
+
+
   // Generate services HTML
   const servicesHTML = services.length > 0 ? services.map(service => `
     <div class="service-item">
@@ -1023,7 +1027,7 @@ function generatePreviewHTML() {
           <div class="memorial-hero-content">
             <img src="${profilePhoto}" alt="${fullName}" class="memorial-main-photo" />
             <h1 class="memorial-main-name">${fullName}</h1>
-            <p class="memorial-dates">${birthYear} - ${deathYear}</p>
+            <p class="memorial-dates">${formattedBirthDate} - ${formattedDeathDate}</p>
             ${headline ? `<p class="memorial-headline">"${headline}"</p>` : ''}
           </div>
         </section>
