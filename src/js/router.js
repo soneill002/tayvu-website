@@ -147,44 +147,33 @@ function handleDataPageClick(e) {
   }
 }
 
-export function showPage(page) {
+function showPage(page) {
   console.log('showPage called with:', page);
   
-  // Store previous page for potential redirects
+  // Update previous page
   previousPage = currentPage;
+  currentPage = page;
   
-  // Handle memorial pages with ID/slug
-  if (page.startsWith('memorial/')) {
-    showMemorialPage(page);
-    return;
-  }
-  
-  // Handle blog post pages
-  if (page.startsWith('blog/')) {
-    showBlogPost(page);
-    return;
-  }
-  
-  // Check if route exists
-  if (!routes[page]) {
-    console.warn(`Route not found: ${page}`);
+  // Check if page exists in routes
+  const route = routes[page];
+  if (!route) {
+    console.error(`Route not found: ${page}`);
     showPage('home');
     return;
   }
   
-  const route = routes[page];
-  
   // Check authentication
   if (route.requiresAuth && !window.currentUser) {
-    import('@/utils/ui.js').then(({ showNotification }) => {
-      showNotification(route.authMessage || 'Please sign in to continue');
-    });
-    
-    // Store intended destination for after login
+    console.log('Authentication required for:', page);
+    // Store intended destination
     sessionStorage.setItem('redirectAfterLogin', page);
-    
+    // Show auth modal
     import('@/utils/modal.js').then(({ openModal }) => {
       openModal('signin');
+    });
+    // Show notification
+    import('@/utils/ui.js').then(({ showNotification }) => {
+      showNotification(route.authMessage || 'Please sign in to continue', 'info');
     });
     return;
   }
@@ -192,29 +181,32 @@ export function showPage(page) {
   // Update page title
   document.title = route.title || 'GatherMemorials';
   
-  // Hide all sections
+  // Hide all sections first
   hideAllSections();
   
-  // Show the requested section
+  // Get the section element
   const section = document.getElementById(page);
   if (section) {
-    // Remove any 'active' classes first
-    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+    // Clear any previous state for createMemorial page
+    if (page === 'createMemorial') {
+      // Remove any existing draft indicators when navigating fresh
+      const draftIndicators = section.querySelectorAll('.draft-loaded-indicator');
+      draftIndicators.forEach(indicator => indicator.remove());
+    }
     
-    // Add active class to show the section (this overrides the CSS !important)
+    // Show the section
     section.classList.add('active');
-    
-    // Also set display to block for good measure
     section.style.display = 'block';
-    
-    currentPage = page;
     
     // Scroll to top
     window.scrollTo(0, 0);
     
-    // Run page-specific initialization if defined
+    // Call init function if available
     if (route.init) {
-      route.init();
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        route.init();
+      }, 100);
     }
     
     // Update active nav items
@@ -232,6 +224,12 @@ export function showPage(page) {
     showPage('home');
   }
 }
+
+
+
+
+
+
 
 /* ──────────────────────────────────────────
    MEMORIAL ROUTING

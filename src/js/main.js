@@ -27,6 +27,11 @@ window.goToCreateMemorial = function () {
     return;
   }
   
+  // Clear any existing draft from localStorage to prevent auto-loading
+  // This prevents the "draft loaded" message from appearing
+  localStorage.removeItem('memorialDraft');
+  localStorage.removeItem('currentDraftId');
+  
   // Force navigation by updating the hash
   const currentHash = window.location.hash;
   console.log('Current hash:', currentHash);

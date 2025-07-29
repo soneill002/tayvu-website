@@ -26,31 +26,54 @@ const memorialData = {
 /* ──────────────────────────────────────────
      PUBLIC API
      ────────────────────────────────────────── */
-export function initWizard() {
-  currentStep = 1;
-  // Re-calculate on init in case you add/remove steps or mis-number your circles
-  totalSteps = document.querySelectorAll('.form-step').length;
+export async function initWizard() {
+  console.log('initWizard() called from features/memorials/wizard.js');
   
-  // Try to load draft from Supabase first
-  loadDraftFromSupabase().then(hasDraft => {
-    if (hasDraft) {
-      showNotification('Draft loaded', 'info');
-    } else {
-      // Fall back to localStorage draft
-      const savedDraft = localStorage.getItem('memorialDraft');
-      if (savedDraft) {
-        Object.assign(memorialData, JSON.parse(savedDraft));
-      }
-    }
-    
-    updateProgress();
-  });
-  
-  // Only bind once
-  if (!clickHandlerBound) {
-    wireDelegatedClicks();
-    clickHandlerBound = true;
+  // Check if we're on the correct page
+  const createMemorialSection = document.getElementById('createMemorial');
+  if (!createMemorialSection || !createMemorialSection.classList.contains('active')) {
+    console.log('Create memorial section not active, skipping initialization');
+    return;
   }
+  
+  // Wire up delegated event handlers
+  wireDelegatedClicks();
+  
+  // Set up photo upload handlers
+  wirePhotoUploadHandlers();
+  
+  // Initialize moments board
+  wireMoments();
+  
+  // IMPORTANT: Check if we should load a draft
+  // Only load draft if there's a currentDraftId in localStorage
+  // This prevents auto-loading drafts when user clicks "Create Memorial"
+  const currentDraftId = localStorage.getItem('currentDraftId');
+  const memorialDraft = localStorage.getItem('memorialDraft');
+  
+  // Load from Supabase if we have a draft ID
+  if (currentDraftId && window.currentUser) {
+    console.log('Loading draft from Supabase...');
+    const loaded = await loadDraftFromSupabase();
+    if (loaded) {
+      showNotification('Draft loaded', 'success');
+    }
+  } 
+  // Load from localStorage if we have a local draft but no Supabase draft
+  else if (memorialDraft && !currentDraftId) {
+    console.log('Loading draft from localStorage...');
+    loadDraft();
+    showNotification('Draft loaded from local storage', 'success');
+  }
+  // Otherwise, start fresh
+  else {
+    console.log('Starting new memorial...');
+    resetWizard();
+  }
+  
+  // Always update progress to show current step
+  updateProgress();
+  updatePreview();
 }
 
 export { nextStep, previousStep }; // consumed elsewhere if needed
