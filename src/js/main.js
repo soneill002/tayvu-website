@@ -19,35 +19,42 @@ import { openModal } from '@/utils/modal.js';
 import '@/dom/pageEnhancements.js'; // side-effect import
 
 window.goToCreateMemorial = function () {
-  console.log('goToCreateMemorial called, currentUser:', window.currentUser);
+  console.log('goToCreateMemorial called');
+  console.log('Current user:', window.currentUser);
+  console.log('Current hash:', window.location.hash);
   
-  if (!window.currentUser) {
-    sessionStorage.setItem('redirectAfterLogin', 'createMemorial');
-    openModal('signin');
-    return;
-  }
-  
-  // Clear any existing draft from localStorage to prevent auto-loading
-  // This prevents the "draft loaded" message from appearing
-  localStorage.removeItem('memorialDraft');
-  localStorage.removeItem('currentDraftId');
-  
-  // Force navigation by updating the hash
-  const currentHash = window.location.hash;
-  console.log('Current hash:', currentHash);
-  
-  // If we're already on createMemorial, force a refresh
-  if (currentHash === '#createMemorial') {
-    // Temporarily change hash to trigger navigation
-    window.location.hash = '#temp';
-    setTimeout(() => {
+  try {
+    if (!window.currentUser) {
+      console.log('User not authenticated, showing login modal');
+      sessionStorage.setItem('redirectAfterLogin', 'createMemorial');
+      openModal('signin');
+      return;
+    }
+    
+    // Clear any existing draft from localStorage to prevent auto-loading
+    console.log('Clearing draft data');
+    localStorage.removeItem('memorialDraft');
+    localStorage.removeItem('currentDraftId');
+    
+    // Method 1: Try using the global showPage if available
+    if (window.showPage && typeof window.showPage === 'function') {
+      console.log('Using window.showPage');
+      window.showPage('createMemorial');
+    } 
+    // Method 2: Use direct hash navigation as fallback
+    else {
+      console.log('Using hash navigation fallback');
       window.location.hash = '#createMemorial';
-    }, 10);
-  } else {
-    // Navigate to createMemorial
+    }
+    
+  } catch (error) {
+    console.error('Error in goToCreateMemorial:', error);
+    // Fallback to hash navigation
     window.location.hash = '#createMemorial';
   }
 };
+
+
 
 // Initialize Supabase first, then everything else
 async function initApp() {
