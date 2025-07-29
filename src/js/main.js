@@ -19,15 +19,29 @@ import { openModal } from '@/utils/modal.js';
 import '@/dom/pageEnhancements.js'; // side-effect import
 
 window.goToCreateMemorial = function () {
+  console.log('goToCreateMemorial called, currentUser:', window.currentUser);
+  
   if (!window.currentUser) {
-    // Store where the user wanted to go
     sessionStorage.setItem('redirectAfterLogin', 'createMemorial');
     openModal('signin');
     return;
   }
   
-  // Use hash navigation instead of showPage
-  window.location.hash = '#createMemorial';
+  // Force navigation by updating the hash
+  const currentHash = window.location.hash;
+  console.log('Current hash:', currentHash);
+  
+  // If we're already on createMemorial, force a refresh
+  if (currentHash === '#createMemorial') {
+    // Temporarily change hash to trigger navigation
+    window.location.hash = '#temp';
+    setTimeout(() => {
+      window.location.hash = '#createMemorial';
+    }, 10);
+  } else {
+    // Navigate to createMemorial
+    window.location.hash = '#createMemorial';
+  }
 };
 
 // Initialize Supabase first, then everything else

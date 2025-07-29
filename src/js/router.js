@@ -15,11 +15,25 @@ const routes = {
     title: 'About Us - GatherMemorials',
     requiresAuth: false
   },
-  createMemorial: {
-    title: 'Create Memorial - GatherMemorials',
-    requiresAuth: true,
-    authMessage: 'Please sign in to create a memorial'
-  },
+
+
+
+
+ createMemorial: {
+  title: 'Create Memorial - GatherMemorials',
+  requiresAuth: true,
+  authMessage: 'Please sign in to create a memorial',
+  init: () => {
+    // Import and initialize the wizard when the page is shown
+    import('@/features/memorials/wizard.js').then(({ initWizard }) => {
+      console.log('Initializing wizard from router');
+      initWizard();
+    });
+  }
+},
+
+
+
   profile: {
     title: 'My Profile - GatherMemorials',
     requiresAuth: true,
