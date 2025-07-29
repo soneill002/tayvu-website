@@ -179,6 +179,9 @@ async function saveDraftToSupabase() {
       deceased_name: memorialData.basic.name || 'Untitled Memorial',
       birth_date: memorialData.basic.birthDate || null,
       death_date: memorialData.basic.deathDate || null,
+      headline: memorialData.basic.headline || null,
+  opening_statement: memorialData.basic.openingStatement || null,
+  additional_info: memorialData.additionalInfo || null,
       profile_photo_url: qs('#profilePhotoPreview')?.src || null,
       profile_photo_public_id: qs('#profilePhotoPreview')?.dataset.publicId || null,
       background_photo_url: qs('#backgroundPhotoPreview')?.src || null,
@@ -622,21 +625,57 @@ function saveStepData() {
         middleName: middleName,
         lastName: lastName,
         birthDate: qs('#birthDate')?.value,
-        deathDate: qs('#deathDate')?.value
+        deathDate: qs('#deathDate')?.value,
+        // THESE TWO LINES ARE NEW - They save the headline and opening statement
+        headline: qs('#headline')?.value || '',
+        openingStatement: qs('#openingStatement')?.value || ''
       };
       break;
+      
     case 2:
       memorialData.story = {
         obituary: qs('#obituaryEditor')?.innerHTML || '',
         lifeStory: qs('#lifeStoryEditor')?.innerHTML || ''
       };
       break;
+      
     case 3:
-      // Services would be collected here
+      // THIS ENTIRE CASE 3 IS NEW - It saves all service information
+      // Collect all service information
+      const services = [];
+      const serviceItems = document.querySelectorAll('.service-item-form');
+      
+      serviceItems.forEach((item) => {
+        const serviceType = item.querySelector('select[name="serviceType"]')?.value;
+        const serviceDate = item.querySelector('input[name="serviceDate"]')?.value;
+        const serviceTime = item.querySelector('input[name="serviceTime"]')?.value;
+        const locationName = item.querySelector('input[name="locationName"]')?.value;
+        const locationAddress = item.querySelector('input[name="locationAddress"]')?.value;
+        const additionalInfo = item.querySelector('textarea[name="additionalInfo"]')?.value;
+        
+        // Only save if at least service type is selected
+        if (serviceType) {
+          services.push({
+            type: serviceType,
+            date: serviceDate,
+            time: serviceTime,
+            locationName: locationName,
+            address: locationAddress,
+            additionalInfo: additionalInfo
+          });
+        }
+      });
+      
+      memorialData.services = services;
+      
+      // Also save any additional information from step 3
+      memorialData.additionalInfo = qs('#serviceNote')?.value || '';
       break;
+      
     case 4:
       // Moments are handled by moments.js
       break;
+      
     case 5:
       memorialData.settings = {
         privacy: qs('input[name="privacy"]:checked')?.value || 'public'
@@ -644,6 +683,11 @@ function saveStepData() {
       break;
   }
 }
+
+
+
+
+
 
 /* ──────────────────────────────────────────
    PREVIEW FUNCTIONALITY
@@ -671,9 +715,15 @@ function generatePreviewHTML() {
   const fullName = memorialData.basic?.name || 'Preview Name';
   const birthDate = memorialData.basic?.birthDate || '1950-01-01';
   const deathDate = memorialData.basic?.deathDate || '2024-01-01';
+  const headline = memorialData.basic?.headline || '';
+  const openingStatement = memorialData.basic?.openingStatement || '';
   
   const obituary = memorialData.story?.obituary || '<p>Memorial preview will appear here...</p>';
   const lifeStory = memorialData.story?.lifeStory || '';
+  const additionalInfo = memorialData.additionalInfo || '';
+  
+  // Get services data
+  const services = memorialData.services || [];
   
   // Get moments data if available
   const moments = window.collectedMoments || [];
@@ -689,9 +739,47 @@ function generatePreviewHTML() {
     });
   };
   
+  // Format time
+  const formatTime = (timeStr) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+  
   // Format life span dates
   const birthYear = birthDate ? new Date(birthDate).getFullYear() : '';
   const deathYear = deathDate ? new Date(deathDate).getFullYear() : '';
+  
+  // Generate services HTML
+  const servicesHTML = services.length > 0 ? services.map(service => `
+    <div class="service-item">
+      <div class="service-icon">
+        <i class="fas ${getServiceIcon(service.type)}"></i>
+      </div>
+      <div class="service-details">
+        <h3>${getServiceTitle(service.type)}</h3>
+        ${service.date ? `<p class="service-date">${formatDate(service.date)}${service.time ? ` at ${formatTime(service.time)}` : ''}</p>` : ''}
+        ${service.locationName ? `<p class="service-location"><strong>${service.locationName}</strong></p>` : ''}
+        ${service.address ? `<p class="service-address">${service.address}</p>` : ''}
+        ${service.additionalInfo ? `<p class="service-info">${service.additionalInfo}</p>` : ''}
+      </div>
+    </div>
+  `).join('') : '<p class="no-services">No services scheduled at this time.</p>';
+  
+  // Generate moments gallery HTML
+  const momentsHTML = moments.length > 0 ? `
+    <div class="moments-gallery">
+      ${moments.slice(0, 6).map(moment => `
+        <div class="moment-item">
+          <img src="${moment.url}" alt="${moment.caption || 'Memorial moment'}" />
+          ${moment.caption ? `<p class="moment-caption">${moment.caption}</p>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  ` : '';
   
   return `
     <!DOCTYPE html>
@@ -756,364 +844,277 @@ function generatePreviewHTML() {
           font-size: 2.5rem;
           font-weight: 600;
           margin-bottom: 0.5rem;
-          text-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
         
-        .memorial-main-dates {
-          font-size: 1.125rem;
+        .memorial-dates {
+          font-size: 1.1rem;
+          opacity: 0.9;
+        }
+        
+        .memorial-headline {
+          font-size: 1.3rem;
+          font-style: italic;
+          margin-top: 1rem;
           opacity: 0.95;
-          margin-bottom: 1.5rem;
         }
         
-        .memorial-hero-actions {
-          display: flex;
-          gap: 1rem;
-          justify-content: center;
-        }
-        
-        .memorial-hero-btn {
-          background: rgba(255,255,255,0.2);
-          border: 1px solid rgba(255,255,255,0.3);
-          color: white;
-          padding: 0.75rem 1.5rem;
-          border-radius: 25px;
-          font-size: 0.875rem;
-          font-weight: 500;
-          cursor: pointer;
-          backdrop-filter: blur(10px);
-          transition: all 0.3s ease;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-        
-        .memorial-hero-btn:hover {
-          background: rgba(255,255,255,0.3);
-          transform: translateY(-2px);
-        }
-        
-        /* Memorial Body */
-        .memorial-body {
-          max-width: 1200px;
+        /* Content Container */
+        .memorial-content {
+          max-width: 800px;
           margin: 0 auto;
-          padding: 3rem 1.5rem;
+          padding: 3rem 2rem;
+        }
+        
+        /* Opening Statement */
+        .opening-statement {
+          text-align: center;
+          font-size: 1.2rem;
+          color: #6b9174;
+          font-style: italic;
+          margin-bottom: 3rem;
+          padding: 2rem;
+          background: rgba(107, 145, 116, 0.05);
+          border-radius: 10px;
+        }
+        
+        /* Section Headers */
+        h2 {
+          font-size: 2rem;
+          color: #4a4238;
+          margin: 3rem 0 1.5rem;
+          font-family: 'Merriweather', serif;
         }
         
         /* Obituary Section */
-        .obituary-section {
-          margin-bottom: 4rem;
-        }
-        
-        .obituary-container {
-          max-width: 800px;
-          margin: 0 auto;
-        }
-        
-        .obituary-title {
-          font-size: 2rem;
-          font-weight: 600;
-          color: #1e293b;
-          margin-bottom: 2rem;
-          text-align: center;
-          position: relative;
-          padding-bottom: 1rem;
-        }
-        
-        .obituary-title::after {
-          content: '';
-          position: absolute;
-          bottom: 0;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 80px;
-          height: 3px;
-          background: linear-gradient(to right, #e4b755, #e8d5b7);
-          border-radius: 2px;
-        }
-        
         .obituary-content {
-          color: #475569;
-          line-height: 1.8;
-        }
-        
-        .obituary-lead {
           font-family: 'Merriweather', serif;
-          font-size: 1.25rem;
-          color: #334155;
+          line-height: 1.8;
+          color: #4a4238;
           margin-bottom: 2rem;
-          font-weight: 300;
-          font-style: italic;
         }
         
-        .obituary-details p {
-          margin-bottom: 1.5rem;
+        .obituary-content p {
+          margin-bottom: 1rem;
         }
         
         /* Life Story Section */
-        .life-story-section {
-          background: #faf8f3;
-          padding: 3rem 2rem;
-          border-radius: 12px;
-          margin-bottom: 4rem;
+        .life-story {
+          background: #f9f9f9;
+          padding: 2rem;
+          border-radius: 10px;
+          margin: 2rem 0;
         }
         
-        .life-story-title {
-          font-size: 1.75rem;
-          font-weight: 600;
-          color: #1e293b;
-          margin-bottom: 1.5rem;
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-        
-        .life-story-content {
-          color: #475569;
+        .life-story p {
+          margin-bottom: 1rem;
           line-height: 1.8;
         }
         
-        /* Moments Gallery */
-        .moments-section {
-          margin-bottom: 4rem;
+        /* Service Section */
+        .service-section {
+          margin: 3rem 0;
         }
         
-        .moments-header {
-          text-align: center;
-          margin-bottom: 3rem;
+        .service-item {
+          display: flex;
+          gap: 1.5rem;
+          margin-bottom: 2rem;
+          padding: 1.5rem;
+          background: white;
+          border-radius: 10px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
         
-        .moments-title {
-          font-size: 2rem;
-          font-weight: 600;
-          color: #1e293b;
+        .service-icon {
+          flex-shrink: 0;
+          width: 50px;
+          height: 50px;
+          background: linear-gradient(135deg, #6b9174, #4f7354);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+        }
+        
+        .service-details h3 {
+          font-size: 1.2rem;
+          color: #4a4238;
           margin-bottom: 0.5rem;
         }
         
-        .moments-subtitle {
+        .service-details p {
           color: #64748b;
-          font-size: 1.125rem;
+          margin-bottom: 0.25rem;
         }
         
-        .moments-grid {
+        .service-location {
+          font-weight: 500;
+        }
+        
+        .no-services {
+          text-align: center;
+          color: #64748b;
+          font-style: italic;
+        }
+        
+        /* Additional Info */
+        .additional-info {
+          background: #faf8f3;
+          padding: 2rem;
+          border-radius: 10px;
+          margin: 2rem 0;
+          border-left: 4px solid #6b9174;
+        }
+        
+        /* Moments Gallery */
+        .moments-gallery {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-          gap: 1.5rem;
-          margin-bottom: 2rem;
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          gap: 1rem;
+          margin: 2rem 0;
         }
         
-        .moment-card {
-          background: white;
-          border-radius: 12px;
+        .moment-item {
+          position: relative;
+          border-radius: 10px;
           overflow: hidden;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-          transition: all 0.3s ease;
-          cursor: pointer;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         
-        .moment-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-        }
-        
-        .moment-image {
+        .moment-item img {
           width: 100%;
           height: 200px;
           object-fit: cover;
         }
         
-        .moment-details {
-          padding: 1rem;
-        }
-        
-        .moment-date {
-          font-size: 0.875rem;
-          color: #94a3b8;
-          margin-bottom: 0.5rem;
-        }
-        
         .moment-caption {
-          color: #334155;
-          font-size: 0.9375rem;
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: rgba(0,0,0,0.7);
+          color: white;
+          padding: 0.5rem;
+          font-size: 0.875rem;
         }
         
         /* Guestbook Section */
         .guestbook-section {
+          margin-top: 3rem;
+          padding: 2rem;
           background: white;
-          border-radius: 16px;
-          padding: 3rem;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.06);
-        }
-        
-        .guestbook-header {
+          border-radius: 10px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.05);
           text-align: center;
-          margin-bottom: 3rem;
         }
         
-        .guestbook-title {
-          font-size: 2rem;
-          font-weight: 600;
-          color: #1e293b;
-          margin-bottom: 0.5rem;
-        }
-        
-        .guestbook-subtitle {
+        .guestbook-section p {
           color: #64748b;
-        }
-        
-        .guestbook-empty {
-          text-align: center;
-          padding: 3rem;
-          color: #94a3b8;
-        }
-        
-        .guestbook-empty i {
-          font-size: 3rem;
-          margin-bottom: 1rem;
-          opacity: 0.5;
-        }
-        
-        /* Preview Badge */
-        .preview-badge {
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          background: linear-gradient(135deg, #e4b755, #d4a29c);
-          color: white;
-          padding: 0.75rem 1.5rem;
-          border-radius: 30px;
-          font-size: 0.875rem;
-          font-weight: 600;
-          box-shadow: 0 4px 20px rgba(228, 183, 85, 0.4);
-          z-index: 1000;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-        
-        /* Responsive Design */
-        @media (max-width: 768px) {
-          .memorial-hero {
-            height: 350px;
-          }
-          
-          .memorial-main-photo {
-            width: 120px;
-            height: 120px;
-          }
-          
-          .memorial-main-name {
-            font-size: 1.875rem;
-          }
-          
-          .memorial-body {
-            padding: 2rem 1rem;
-          }
-          
-          .obituary-title {
-            font-size: 1.5rem;
-          }
-          
-          .obituary-lead {
-            font-size: 1.125rem;
-          }
-          
-          .moments-grid {
-            grid-template-columns: 1fr;
-          }
-          
-          .guestbook-section {
-            padding: 2rem 1.5rem;
-          }
+          margin-top: 1rem;
         }
       </style>
     </head>
     <body>
-      <div class="preview-badge">
-        <i class="fas fa-eye"></i> Preview Mode
-      </div>
-      
-      <!-- Memorial Hero -->
-      <div class="memorial-hero">
-        <div class="memorial-hero-overlay"></div>
-        <div class="memorial-hero-content">
-          <img src="${profilePhoto}" alt="${fullName}" class="memorial-main-photo">
-          <h1 class="memorial-main-name">${fullName}</h1>
-          <p class="memorial-main-dates">${formatDate(birthDate)} - ${formatDate(deathDate)}</p>
+      <div class="memorial-page">
+        <!-- Hero Section -->
+        <section class="memorial-hero">
+          <div class="memorial-hero-overlay"></div>
+          <div class="memorial-hero-content">
+            <img src="${profilePhoto}" alt="${fullName}" class="memorial-main-photo" />
+            <h1 class="memorial-main-name">${fullName}</h1>
+            <p class="memorial-dates">${birthYear} - ${deathYear}</p>
+            ${headline ? `<p class="memorial-headline">"${headline}"</p>` : ''}
+          </div>
+        </section>
+        
+        <!-- Content -->
+        <div class="memorial-content">
+          ${openingStatement ? `
+            <div class="opening-statement">
+              ${openingStatement}
+            </div>
+          ` : ''}
           
-          <div class="memorial-hero-actions">
-            <button class="memorial-hero-btn">
-              <i class="fas fa-share"></i>
-              Share Memorial
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Memorial Body -->
-      <div class="memorial-body">
-        <!-- Obituary Section -->
-        <section class="obituary-section">
-          <div class="obituary-container">
-            <h2 class="obituary-title">Celebrating a Life Well Lived</h2>
+          <!-- Obituary -->
+          <section>
+            <h2>Celebrating a Life Well Lived</h2>
             <div class="obituary-content">
-              ${obituary.includes('class="obituary-lead"') ? obituary : `
-                <p class="obituary-lead serif-text">
-                  ${obituary.replace(/<[^>]*>/g, '').substring(0, 200)}${obituary.length > 200 ? '...' : ''}
-                </p>
-                <div class="obituary-details">
-                  ${obituary}
-                </div>
-              `}
-            </div>
-          </div>
-        </section>
-        
-        ${lifeStory ? `
-          <section class="life-story-section">
-            <h2 class="life-story-title">
-              <i class="fas fa-heart"></i> Life Story
-            </h2>
-            <div class="life-story-content">
-              ${lifeStory}
+              ${obituary}
             </div>
           </section>
-        ` : ''}
-        
-        ${moments.length > 0 ? `
-          <section class="moments-section">
-            <div class="moments-header">
-              <h2 class="moments-title">Cherished Moments</h2>
-              <p class="moments-subtitle">A collection of memories shared with love</p>
-            </div>
-            <div class="moments-grid">
-              ${moments.slice(0, 6).map(moment => `
-                <div class="moment-card">
-                  <img src="${moment.photo_url}" alt="${moment.caption}" class="moment-image">
-                  <div class="moment-details">
-                    <p class="moment-date">${moment.date || 'Date not specified'}</p>
-                    <p class="moment-caption">${moment.caption || 'A cherished memory'}</p>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
+          
+          <!-- Life Story -->
+          ${lifeStory ? `
+            <section>
+              <h2>Life Story</h2>
+              <div class="life-story">
+                ${lifeStory}
+              </div>
+            </section>
+          ` : ''}
+          
+          <!-- Service Information -->
+          ${services.length > 0 ? `
+            <section class="service-section">
+              <h2>Service Information</h2>
+              ${servicesHTML}
+            </section>
+          ` : ''}
+          
+          <!-- Additional Information -->
+          ${additionalInfo ? `
+            <section>
+              <h2>Additional Information</h2>
+              <div class="additional-info">
+                ${additionalInfo}
+              </div>
+            </section>
+          ` : ''}
+          
+          <!-- Moments Gallery -->
+          ${moments.length > 0 ? `
+            <section>
+              <h2>Cherished Moments</h2>
+              ${momentsHTML}
+            </section>
+          ` : ''}
+          
+          <!-- Guestbook -->
+          <section class="guestbook-section">
+            <h2>Guestbook</h2>
+            <p>Be the first to sign the guestbook.</p>
           </section>
-        ` : ''}
-        
-        <!-- Guestbook Section -->
-        <section class="guestbook-section">
-          <div class="guestbook-header">
-            <h2 class="guestbook-title">Guestbook</h2>
-            <p class="guestbook-subtitle">Share your memories and condolences</p>
-          </div>
-          <div class="guestbook-empty">
-            <i class="fas fa-book-open"></i>
-            <p>No messages yet. Be the first to sign the guestbook.</p>
-          </div>
-        </section>
+        </div>
       </div>
     </body>
     </html>
   `;
+}
+
+// Helper functions for service icons and titles
+function getServiceIcon(type) {
+  const icons = {
+    viewing: 'fa-pray',
+    funeral: 'fa-church',
+    memorial: 'fa-heart',
+    celebration: 'fa-dove',
+    reception: 'fa-users',
+    burial: 'fa-cross'
+  };
+  return icons[type] || 'fa-calendar';
+}
+
+function getServiceTitle(type) {
+  const titles = {
+    viewing: 'Viewing & Visitation',
+    funeral: 'Funeral Service',
+    memorial: 'Memorial Service',
+    celebration: 'Celebration of Life',
+    reception: 'Reception',
+    burial: 'Burial'
+  };
+  return titles[type] || 'Service';
 }
 
 
