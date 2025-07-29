@@ -2121,5 +2121,46 @@
     </script>
 
     <script type="module" src="/src/js/main.js"></script>
+
+
+<script>
+  // Fix for Create Memorial buttons
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, setting up Create Memorial button handlers');
+    
+    // Wait a bit for everything to initialize
+    setTimeout(function() {
+      // Find all elements with goToCreateMemorial onclick
+      const buttons = document.querySelectorAll('[onclick*="goToCreateMemorial"]');
+      console.log('Found', buttons.length, 'Create Memorial buttons');
+      
+      buttons.forEach((button, index) => {
+        console.log('Setting up button', index + 1, ':', button.textContent.trim());
+        
+        // Remove the inline onclick
+        button.removeAttribute('onclick');
+        
+        // Add a proper event listener
+        button.addEventListener('click', function(e) {
+          e.preventDefault();
+          console.log('Create Memorial button clicked');
+          
+          // Check if the function exists
+          if (typeof window.goToCreateMemorial === 'function') {
+            console.log('Calling goToCreateMemorial()');
+            window.goToCreateMemorial();
+          } else {
+            console.error('goToCreateMemorial function not found!');
+            // Fallback - just navigate directly
+            window.location.hash = '#createMemorial';
+          }
+        });
+      });
+    }, 1000); // Wait 1 second for everything to load
+  });
+</script>
+
+
+
   </body>
 </html>
