@@ -2160,7 +2160,60 @@
   });
 </script>
 
-
+<script>
+  // Fix for navigation links not working on certain pages
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('Setting up navigation fix...');
+    
+    // Function to handle navigation clicks
+    function handleNavClick(e) {
+      const link = e.target.closest('a[href^="#"], [data-page]');
+      if (!link) return;
+      
+      e.preventDefault();
+      
+      // Get the target page
+      let targetPage = link.getAttribute('data-page');
+      if (!targetPage && link.getAttribute('href')) {
+        targetPage = link.getAttribute('href').substring(1); // Remove #
+      }
+      
+      console.log('Navigation clicked to:', targetPage);
+      
+      // If we have a showPage function, use it
+      if (window.showPage && typeof window.showPage === 'function') {
+        window.showPage(targetPage || 'home');
+      } else {
+        // Fallback to hash navigation
+        window.location.hash = '#' + (targetPage || 'home');
+      }
+    }
+    
+    // Add click handlers to navigation elements
+    // Desktop nav
+    document.querySelectorAll('.nav-links a').forEach(link => {
+      link.addEventListener('click', handleNavClick);
+    });
+    
+    // Mobile nav
+    document.querySelectorAll('.mobile-menu a').forEach(link => {
+      link.addEventListener('click', handleNavClick);
+    });
+    
+    // Logo
+    const logo = document.querySelector('.logo');
+    if (logo) {
+      logo.addEventListener('click', handleNavClick);
+    }
+    
+    // Any other navigation elements with data-page
+    document.querySelectorAll('[data-page]').forEach(element => {
+      if (!element.closest('.nav-links') && !element.closest('.mobile-menu')) {
+        element.addEventListener('click', handleNavClick);
+      }
+    });
+  });
+</script>
 
   </body>
 </html>
