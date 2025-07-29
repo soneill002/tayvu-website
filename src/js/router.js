@@ -509,6 +509,13 @@ document.addEventListener('auth:state', (event) => {
 });
 
 /* ──────────────────────────────────────────
+   EXPORTS
+   ────────────────────────────────────────── */
+export { showPage, navigateTo, goBack, getCurrentPage };
+
+
+
+/* ──────────────────────────────────────────
    MAKE FUNCTIONS GLOBAL (for legacy support)
    ────────────────────────────────────────── */
 window.showPage = showPage;
