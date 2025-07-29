@@ -633,11 +633,11 @@ function saveStepData() {
       break;
       
     case 2:
-      memorialData.story = {
-        obituary: qs('#obituaryEditor')?.innerHTML || '',
-        lifeStory: qs('#lifeStoryEditor')?.innerHTML || ''
-      };
-      break;
+  memorialData.story = {
+    obituary: qs('#lifeStory')?.innerHTML || '',
+    lifeStory: ''  // Empty if you don't have a separate life story field
+  };
+  break;
       
     case 3:
       // THIS ENTIRE CASE 3 IS NEW - It saves all service information
@@ -1164,7 +1164,7 @@ window.previewDevice = function(device) {
 
 /* ---------- rich text autosave ---------- */
 function initializeRichTextAutoSave() {
-  const editor = document.querySelector('.rich-text-editor');
+  const editor = document.querySelector('#lifeStory');  // Changed from .rich-text-editor to #lifeStory
   if (!editor) return;
 
   let autoSaveTimer;
@@ -1183,7 +1183,7 @@ function loadDraftLifeStory() {
     if (editor) editor.innerHTML = memorialData.story.lifeStory;
   }
   if (memorialData.story?.obituary) {
-    const editor = qs('#obituaryEditor');
+    const editor = qs('#lifeStory');  // Changed from #obituaryEditor to #lifeStory
     if (editor) editor.innerHTML = memorialData.story.obituary;
   }
 }
