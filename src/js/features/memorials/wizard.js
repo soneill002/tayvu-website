@@ -673,8 +673,9 @@ function saveStepData() {
       break;
       
     case 4:
-      // Moments are handled by moments.js
-      break;
+  // Get moments from the moments module and save them
+  memorialData.moments = window.getMomentsForSave?.() || [];
+  break;
       
     case 5:
       memorialData.settings = {
@@ -725,8 +726,8 @@ function generatePreviewHTML() {
   // Get services data
   const services = memorialData.services || [];
   
-  // Get moments data if available
-  const moments = window.collectedMoments || [];
+  // Get moments data if available - first try saved data, then get fresh data
+const moments = memorialData.moments || window.getMomentsForSave?.() || [];
   
   // Format dates
   const formatDate = (dateStr) => {
