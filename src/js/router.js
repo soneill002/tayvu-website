@@ -469,11 +469,11 @@ function trackPageView(page) {
 /* ──────────────────────────────────────────
    NAVIGATION HELPERS
    ────────────────────────────────────────── */
-export function navigateTo(page) {
+function navigateTo(page) {
   window.location.hash = `#${page}`;
 }
 
-export function goBack() {
+function goBack() {
   if (previousPage) {
     showPage(previousPage);
   } else {
@@ -481,7 +481,7 @@ export function goBack() {
   }
 }
 
-export function getCurrentPage() {
+function getCurrentPage() {
   return currentPage;
 }
 
