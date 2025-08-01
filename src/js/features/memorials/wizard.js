@@ -313,6 +313,103 @@ function renumberServices() {
 window.addServiceItem = addServiceItem;
 window.removeServiceItem = removeServiceItem;
 
+// Date validation function for inline HTML handlers
+function validateDates() {
+  try {
+    const birthDateInput = document.getElementById('birthDate');
+    const deathDateInput = document.getElementById('deathDate');
+    const birthDateError = document.getElementById('birthDateError');
+    const deathDateError = document.getElementById('deathDateError');
+    
+    if (!birthDateInput || !deathDateInput) return;
+    
+    const birthDate = birthDateInput.value ? new Date(birthDateInput.value) : null;
+    const deathDate = deathDateInput.value ? new Date(deathDateInput.value) : null;
+    const today = new Date();
+    
+    // Clear previous errors
+    if (birthDateError) {
+      birthDateError.style.display = 'none';
+      birthDateError.textContent = '';
+    }
+    if (deathDateError) {
+      deathDateError.style.display = 'none';
+      deathDateError.textContent = '';
+    }
+    
+    // Remove error classes
+    birthDateInput.classList.remove('error');
+    deathDateInput.classList.remove('error');
+    
+    // Validate birth date
+    if (birthDate) {
+      if (birthDate > today) {
+        if (birthDateError) {
+          birthDateError.textContent = 'Birth date cannot be in the future';
+          birthDateError.style.display = 'block';
+        }
+        birthDateInput.classList.add('error');
+        return false;
+      }
+      
+      // If both dates exist, check if birth is before death
+      if (deathDate && birthDate > deathDate) {
+        if (birthDateError) {
+          birthDateError.textContent = 'Birth date must be before death date';
+          birthDateError.style.display = 'block';
+        }
+        birthDateInput.classList.add('error');
+        return false;
+      }
+    }
+    
+    // Validate death date
+    if (deathDate) {
+      if (deathDate > today) {
+        if (deathDateError) {
+          deathDateError.textContent = 'Death date cannot be in the future';
+          deathDateError.style.display = 'block';
+        }
+        deathDateInput.classList.add('error');
+        return false;
+      }
+      
+      // If both dates exist, check if death is after birth
+      if (birthDate && deathDate < birthDate) {
+        if (deathDateError) {
+          deathDateError.textContent = 'Death date must be after birth date';
+          deathDateError.style.display = 'block';
+        }
+        deathDateInput.classList.add('error');
+        return false;
+      }
+    }
+    
+    // Set max date for birth date (can't be after death date if death date is set)
+    if (deathDate) {
+      birthDateInput.max = deathDateInput.value;
+    } else {
+      birthDateInput.max = today.toISOString().split('T')[0];
+    }
+    
+    // Set min date for death date (can't be before birth date if birth date is set)
+    if (birthDate) {
+      deathDateInput.min = birthDateInput.value;
+    }
+    
+    // Set max date for death date (can't be in the future)
+    deathDateInput.max = today.toISOString().split('T')[0];
+    
+    return true;
+  } catch (error) {
+    console.error('Error in validateDates:', error);
+    // Don't show error to user, just log it
+    return true;
+  }
+}
+
+// Make validateDates globally available for the HTML onchange/oninput handlers
+window.validateDates = validateDates;
 
 
 /* ──────────────────────────────────────────
