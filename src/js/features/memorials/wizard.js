@@ -417,7 +417,15 @@ window.validateDates = validateDates;
    ────────────────────────────────────────── */
 const saveDraftToSupabase = withErrorHandling(async function() {
   const supabase = getClient();
-  if (!supabase || !window.currentUser) {
+  if (!supabase) {
+    console.log('Cannot save draft - Supabase not initialized');
+    return;
+  }
+
+  // CRITICAL FIX: Use supabase.auth.getUser() instead of window.currentUser
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  
+  if (authError || !user) {
     console.log('Cannot save draft - user not authenticated');
     return;
   }
@@ -425,7 +433,7 @@ const saveDraftToSupabase = withErrorHandling(async function() {
   try {
     // Prepare draft data
     const draftData = {
-      user_id: window.currentUser.id,
+      user_id: user.id,  // FIXED: Use user.id from supabase.auth.getUser()
       deceased_name: memorialData.basic.name || 'Untitled Memorial',
       birth_date: memorialData.basic.birthDate || null,
       death_date: memorialData.basic.deathDate || null,
@@ -439,7 +447,7 @@ const saveDraftToSupabase = withErrorHandling(async function() {
       obituary: memorialData.story.obituary || '',
       life_story: memorialData.story.lifeStory || '',
       privacy_setting: memorialData.settings.privacy || 'public',
-      access_password: memorialData.settings.password || null, // Use 'password' not 'access_password'
+      access_password: memorialData.settings.password || null,
       is_published: false,
       is_draft: true
     };
@@ -455,7 +463,7 @@ const saveDraftToSupabase = withErrorHandling(async function() {
           .from('memorials')
           .update(draftData)
           .eq('id', draftId)
-          .eq('user_id', window.currentUser.id);
+          .eq('user_id', user.id);  // FIXED: Use user.id here too
           
         if (error) throw error;
       } else {
@@ -493,14 +501,19 @@ const saveDraft = withErrorHandling(async function() {
 // Add function to load draft from Supabase
 const loadDraftFromSupabase = withErrorHandling(async function() {
   const supabase = getClient();
-  if (!supabase || !window.currentUser) return false;
+  if (!supabase) return false;
+
+  // CRITICAL FIX: Use supabase.auth.getUser() instead of window.currentUser
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  
+  if (authError || !user) return false;
 
   try {
     // Find user's most recent draft
     const { data: drafts, error } = await supabase
       .from('memorials')
       .select('*')
-      .eq('user_id', window.currentUser.id)
+      .eq('user_id', user.id)  // FIXED: Use user.id from supabase.auth.getUser()
       .eq('is_draft', true)
       .eq('is_published', false)
       .order('updated_at', { ascending: false })
@@ -531,7 +544,7 @@ const loadDraftFromSupabase = withErrorHandling(async function() {
       
       memorialData.settings = {
         privacy: draft.privacy_setting || 'public',
-        password: draft.access_password || null // Store as 'password' for consistency
+        password: draft.access_password || null
       };
       
       memorialData.additionalInfo = draft.additional_info || '';
@@ -676,7 +689,15 @@ function populateFormFromData() {
    ────────────────────────────────────────── */
 const publishMemorial = withErrorHandling(async function() {
   const supabase = getClient();
-  if (!supabase || !window.currentUser) {
+  if (!supabase) {
+    showToast('Application not initialized', 'error');
+    return;
+  }
+
+  // CRITICAL FIX: Use supabase.auth.getUser() instead of window.currentUser
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  
+  if (authError || !user) {
     showToast('Please sign in to publish', 'error');
     return;
   }
@@ -731,7 +752,7 @@ const publishMemorial = withErrorHandling(async function() {
     
     // Prepare memorial data
     const memorialToSave = {
-      user_id: window.currentUser.id,
+      user_id: user.id,  // FIXED: Use user.id from supabase.auth.getUser()
       deceased_name: memorialData.basic.name,
       birth_date: memorialData.basic.birthDate || null,
       death_date: memorialData.basic.deathDate || null,
@@ -745,7 +766,7 @@ const publishMemorial = withErrorHandling(async function() {
       obituary: memorialData.story.obituary || '',
       life_story: memorialData.story.lifeStory || '',
       privacy_setting: memorialData.settings.privacy || 'public',
-      access_password: memorialData.settings.password || null, // Use the password from settings
+      access_password: memorialData.settings.password || null,
       is_published: true,
       is_draft: false,
       published_at: new Date().toISOString()
@@ -762,7 +783,7 @@ const publishMemorial = withErrorHandling(async function() {
           .from('memorials')
           .update(memorialToSave)
           .eq('id', draftId)
-          .eq('user_id', window.currentUser.id)
+          .eq('user_id', user.id)  // FIXED: Use user.id here too
           .select()
           .single();
           
@@ -849,7 +870,9 @@ const publishMemorial = withErrorHandling(async function() {
     showToast('Memorial published successfully!', 'success');
     
     // Redirect to the memorial page
-    window.location.hash = `#memorial/${memorial.slug || memorial.id}`;
+    setTimeout(() => {
+      window.location.hash = `#memorial/${memorial.slug || memorial.id}`;
+    }, 1500);
     
   } catch (error) {
     console.error('Error publishing memorial:', error);
