@@ -903,17 +903,17 @@
         <div class="profile-header-section">
           <div class="profile-cover-photo"></div>
           <div class="profile-header-content">
-            <div class="profile-photo-container">
-              <img
-                src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop"
-                alt="Profile"
-                class="profile-photo-large"
-                id="profilePhotoLarge"
-              />
-              <button class="profile-photo-edit" onclick="uploadProfilePhoto()">
-                <i class="fas fa-camera"></i>
-              </button>
-            </div>
+           <div class="profile-photo-container">
+  <img
+    src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop"
+    alt="Profile"
+    class="profile-photo-large"
+    id="profilePhotoLarge"  
+  />
+  <button class="profile-photo-edit" onclick="uploadProfilePhoto()">
+    <i class="fas fa-camera"></i>
+  </button>
+</div>
             <div class="profile-info">
               <h1 class="profile-name" id="profileName">Loading...</h1>
               <p class="profile-email" id="profileEmail">Loading...</p>
@@ -997,44 +997,113 @@
 </div>
 
 
- <!-- Settings Tab -->
+<!-- Settings Tab -->
 <div class="profile-tab-content" id="settingsTab">
   <div class="settings-content-wrapper">
     <div class="tab-header">
       <h2 class="section-title">Account Settings</h2>
     </div>
     <div class="settings-container">
+      
+      <!-- Profile Photo Section (NEW) -->
+      <div class="settings-section">
+        <h3>Profile Photo</h3>
+        <div class="profile-avatar-section">
+          <div class="avatar-preview-container">
+            <img id="settingsProfilePhoto" 
+                 src="https://ui-avatars.com/api/?name=User&background=6b9174&color=fff&size=200" 
+                 alt="Profile photo" 
+                 class="settings-avatar">
+            <div class="avatar-upload-overlay">
+              <i class="fas fa-camera"></i>
+            </div>
+          </div>
+          
+          <div class="avatar-actions">
+            <label for="avatarUpload" class="btn btn-sm btn-secondary avatar-upload-btn">
+              <i class="fas fa-camera"></i> Change Photo
+            </label>
+            <input type="file" 
+                   id="avatarUpload" 
+                   accept="image/*" 
+                   style="display: none;">
+            
+            <button id="deletePhotoBtn" 
+                    class="btn btn-sm btn-outline-danger" 
+                    style="display: none;">
+              <i class="fas fa-trash"></i> Delete Photo
+            </button>
+          </div>
+          
+          <p class="help-text">
+            Upload a profile photo (JPG, PNG, max 5MB). 
+            Photos are automatically optimized for best display.
+          </p>
+        </div>
+      </div>
+
+      <!-- Profile Information Section (EXISTING - Modified) -->
       <div class="settings-section">
         <h3>Profile Information</h3>
         <form id="profileSettingsForm" onsubmit="updateProfile(event)">
           <div class="form-group">
             <label for="settingsName">Display Name</label>
-            <input type="text" id="settingsName" name="name" required />
+            <input type="text" 
+                   id="settingsName" 
+                   name="name" 
+                   class="form-control"
+                   placeholder="Enter your full name"
+                   required />
           </div>
+          
           <div class="form-group">
             <label for="settingsEmail">Email</label>
-            <input type="email" id="settingsEmail" name="email" disabled />
-            <small>Email cannot be changed</small>
+            <input type="email" 
+                   id="settingsEmail" 
+                   name="email" 
+                   class="form-control"
+                   disabled />
+            <small class="form-text text-muted">Email cannot be changed</small>
+          </div>
+          
+          <div class="form-group">
+            <label for="settingsLocation">Location</label>
+            <input type="text" 
+                   id="settingsLocation" 
+                   name="location" 
+                   class="form-control"
+                   placeholder="City, State" />
+          </div>
+          
+          <div class="form-group">
+            <label for="settingsBio">Bio</label>
+            <textarea id="settingsBio" 
+                      name="bio"
+                      class="form-control" 
+                      rows="4" 
+                      placeholder="Tell us about yourself..."></textarea>
           </div>
 
-          <button type="submit" class="btn-primary">
+          <button type="submit" class="btn btn-primary">
             <i class="fas fa-save"></i>
             Save Changes
           </button>
         </form>
       </div>
 
+      <!-- Danger Zone Section (EXISTING) -->
       <div class="settings-section danger-zone">
         <h3>Danger Zone</h3>
         <p>Once you delete your account, there is no going back. Please be certain.</p>
-        <button class="btn-danger" onclick="confirmDeleteAccount()">
-          <i class="fas fa-trash"></i>
+        <button class="btn btn-danger" onclick="confirmDeleteAccount()">
+          <i class="fas fa-exclamation-triangle"></i>
           Delete Account
         </button>
       </div>
-    </div> <!-- Close .settings-container -->
-  </div> <!-- Close settings-content-wrapper -->
-</div> <!-- Close #settingsTab -->
+      
+    </div>
+  </div>
+</div>
 
 
 
