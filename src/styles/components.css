@@ -6329,3 +6329,40 @@ footer {
     justify-content: center;
   }
 }
+
+/* Toast Notifications */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.toast-notification {
+  animation: slideInRight 0.3s ease;
+}
+
+/* Responsive toast */
+@media (max-width: 768px) {
+  .toast-notification {
+    bottom: 10px !important;
+    right: 10px !important;
+    left: 10px !important;
+    max-width: calc(100% - 20px) !important;
+  }
+}
