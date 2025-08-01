@@ -1,9 +1,8 @@
 // src/js/auth/authUI.js
-import { showNotification, showError, qs } from '@/utils/ui.js';
+import { showNotification, showError, qs, setButtonLoading } from '@/utils/ui.js';
 import { getClient } from '@/api/supabaseClient.js';
 import { openModal, closeModal } from '@/utils/modal.js';
 import { showPage } from '@/router.js';
-import { showNotification, showError, qs, setButtonLoading } from '@/utils/ui.js';
 
 
 /* ---------- UI toggle helper ---------- */
