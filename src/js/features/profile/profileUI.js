@@ -828,16 +828,40 @@ window.confirmDeleteAccount = async function() {
   try {
     showNotification('Deleting account...', 'info');
     
-    // Sign out first
+    // Get the current session token
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      showNotification('Session expired. Please sign in again.', 'error');
+      return;
+    }
+    
+    // Call your edge function to delete all user data
+    const { data, error } = await supabase.functions.invoke('delete-user-account', {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      }
+    });
+    
+    if (error) {
+      throw error;
+    }
+    
+    // The edge function will handle signing out, but we can do it locally too
     await supabase.auth.signOut();
     
-    // In production, you'd call your edge function here to delete all user data
-    // const { error } = await supabase.functions.invoke('delete-user-account', {
-    //   body: { userId: user.id }
-    // });
+    // Clear any local storage
+    localStorage.removeItem('currentUser');
+    window.currentUser = null;
     
     showNotification('Account deleted successfully', 'success');
+    
+    // Redirect to home page
     window.location.hash = '#home';
+    
+    // Force a page reload to ensure clean state
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
     
   } catch (err) {
     console.error('Error deleting account:', err);
