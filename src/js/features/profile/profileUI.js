@@ -1,6 +1,7 @@
 /*  src/js/features/profile/profileUI.js  */
 import { showNotification, qs } from '@/utils/ui.js';
 import { getClient } from '@/api/supabaseClient.js';
+import { showNotification, qs, setButtonLoading } from '@/utils/ui.js';
 
 let supabase;
 
@@ -65,6 +66,20 @@ window.switchProfileTab = switchProfileTab;
 async function maybeLoadProfile() {
   if (location.hash !== '#profile') return;
   
+// ADD LOADING STATE
+  const profileContent = qs('.profile-content');
+  if (profileContent) {
+    profileContent.innerHTML = `
+      <div class="loading-container">
+        <div class="loading-spinner">
+          <i class="fas fa-spinner fa-spin"></i>
+        </div>
+        <p>Loading profile<span class="loading-dots"></span></p>
+      </div>
+    `;
+  }
+  // END LOADING STATE
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     showNotification('Please sign in to view your profile', 'error');
@@ -220,8 +235,7 @@ async function updateProfile(e) {
     console.error('Error updating profile:', err);
     showNotification('Failed to update profile', 'error');
   } finally {
-    btn.disabled = false;
-    btn.textContent = originalText;
+    setButtonLoading(btn, false);  // 🔴 CHANGED THIS
   }
 }
 
@@ -568,10 +582,26 @@ async function confirmDeleteAccount() {
     // Sign out first
     await supabase.auth.signOut();
     
-    // In production, you'd call your edge function here to delete all user data
-    // const { error } = await supabase.functions.invoke('delete-user-account', {
-    //   body: { userId: user.id }
-    // });
+   // Get the current session
+const { data: { session } } = await supabase.auth.getSession();
+
+if (!session) {
+  throw new Error('No active session');
+}
+
+// Call the edge function
+const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user-account`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${session.access_token}`,
+    'Content-Type': 'application/json'
+  }
+});
+
+if (!response.ok) {
+  const error = await response.json();
+  throw new Error(error.error || 'Failed to delete account');
+}
     
     showNotification('Account deleted successfully', 'success');
     window.location.hash = '#home';

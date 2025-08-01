@@ -496,6 +496,40 @@ async function publishMemorial() {
     return;
   }
 
+// Validate required fields
+  const validationErrors = [];
+  
+  if (!memorialData.basic.name?.trim()) {
+    validationErrors.push('Please enter the name of your loved one');
+  }
+  
+  if (!memorialData.basic.birthDate && !memorialData.basic.deathDate) {
+    validationErrors.push('Please enter at least one date (birth or death)');
+  }
+  
+  // Check if dates are valid
+  if (memorialData.basic.birthDate && memorialData.basic.deathDate) {
+    const birthDate = new Date(memorialData.basic.birthDate);
+    const deathDate = new Date(memorialData.basic.deathDate);
+    
+    if (birthDate > deathDate) {
+      validationErrors.push('Birth date cannot be after death date');
+    }
+    
+    if (deathDate > new Date()) {
+      validationErrors.push('Death date cannot be in the future');
+    }
+  }
+  
+  // If there are validation errors, show them and stop
+  if (validationErrors.length > 0) {
+    showNotification(validationErrors[0], 'error'); // Show first error
+    return;
+  }
+  // END OF VALIDATION SECTION
+
+
+
   const btn = qs('[data-wizard-publish]');
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
@@ -522,32 +556,68 @@ async function publishMemorial() {
       published_at: new Date().toISOString()
     };
 
-    let memorial;
+    
+let memorial;
     const draftId = localStorage.getItem('currentDraftId');
     
-    if (draftId) {
-      // Update existing draft to published
-      const { data, error } = await supabase
-        .from('memorials')
-        .update(memorialToSave)
-        .eq('id', draftId)
-        .eq('user_id', window.currentUser.id)
-        .select()
-        .single();
+    // ADD RETRY LOGIC HERE
+    let retries = 3;
+    let lastError;
+    
+    while (retries > 0) {
+      try {
+        if (draftId) {
+          // Update existing draft to published
+          const { data, error } = await supabase
+            .from('memorials')
+            .update(memorialToSave)
+            .eq('id', draftId)
+            .eq('user_id', window.currentUser.id)
+            .select()
+            .single();
+            
+          if (error) throw error;
+          memorial = data;
+        } else {
+          // Create new memorial
+          const { data, error } = await supabase
+            .from('memorials')
+            .insert(memorialToSave)
+            .select()
+            .single();
+            
+          if (error) throw error;
+          memorial = data;
+        }
         
-      if (error) throw error;
-      memorial = data;
-    } else {
-      // Create new memorial
-      const { data, error } = await supabase
-        .from('memorials')
-        .insert(memorialToSave)
-        .select()
-        .single();
+        // If successful, break out of retry loop
+        break;
         
-      if (error) throw error;
-      memorial = data;
+      } catch (error) {
+        lastError = error;
+        retries--;
+        
+        if (retries > 0) {
+          console.log(`Retry attempt ${3 - retries} failed, retrying...`);
+          // Show a notification to user about retry
+          showNotification(`Connection issue, retrying... (${retries} attempts left)`, 'info');
+          // Wait 1 second before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
     }
+    
+    // If all retries failed, throw the last error
+    if (retries === 0 && lastError) {
+      throw lastError;
+    }
+    // END RETRY LOGIC
+
+
+
+
+
+
 
     // Generate and update slug
     const { data: slugData } = await supabase
@@ -619,13 +689,51 @@ async function publishMemorial() {
     // Redirect to the memorial page
     window.location.hash = `#memorial/${memorial.slug || memorial.id}`;
     
-  } catch (error) {
+ } catch (error) {
     console.error('Error publishing memorial:', error);
-    showNotification('Failed to publish memorial. Please try again.', 'error');
+    
+    // Provide specific error messages based on the error
+    let errorMessage = 'Failed to publish memorial. Please try again.';
+    
+    if (error.message?.includes('duplicate key')) {
+      errorMessage = 'A memorial with this name already exists. Please choose a different name.';
+    } else if (error.message?.includes('violates foreign key')) {
+      errorMessage = 'There was a problem with your account. Please sign out and sign back in.';
+    } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+      errorMessage = 'Network error. Please check your internet connection and try again.';
+    } else if (error.message?.includes('row-level security')) {
+      errorMessage = 'You do not have permission to create memorials. Please contact support.';
+    } else if (error.message?.includes('timeout')) {
+      errorMessage = 'The operation timed out. Please try again.';
+    } else if (error.message?.includes('Failed to fetch')) {
+      errorMessage = 'Cannot connect to server. Please check your internet connection.';
+    } else if (error.message?.includes('Too many requests')) {
+      errorMessage = 'Too many requests. Please wait a moment and try again.';
+    } else if (error.message?.includes('invalid input syntax for type uuid')) {
+      errorMessage = 'Invalid data format. Please refresh the page and try again.';
+    } else if (error.message?.includes('JWT')) {
+      errorMessage = 'Your session has expired. Please sign in again.';
+    } else if (error.message?.includes('unique constraint')) {
+      errorMessage = 'This memorial already exists. Please use a different name.';
+    } else if (error.message) {
+      // Use the actual error message if it's user-friendly
+      errorMessage = error.message;
+    }
+    
+    showNotification(errorMessage, 'error');
+    
   } finally {
     btn.disabled = false;
     btn.textContent = 'Publish Memorial';
+    btn.innerHTML = '<i class="fas fa-check"></i> Publish Memorial'; // Reset with icon
   }
+
+
+
+
+
+
+
 }
 
 /* ──────────────────────────────────────────

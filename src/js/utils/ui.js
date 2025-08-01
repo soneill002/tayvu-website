@@ -68,3 +68,21 @@ function formatDate(dateString) {
 const qs = (sel, parent = document) => parent.querySelector(sel);
 
 export { showNotification, toggleMobileMenu, showError, formatDate, qs };
+
+// Add loading state to button
+export function setButtonLoading(button, isLoading, loadingText) {
+  if (!button) return;
+  
+  if (isLoading) {
+    button.dataset.originalText = button.innerHTML;
+    button.disabled = true;
+    button.classList.add('btn-loading');
+    if (loadingText) {
+      button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${loadingText}`;
+    }
+  } else {
+    button.disabled = false;
+    button.classList.remove('btn-loading');
+    button.innerHTML = button.dataset.originalText || button.textContent;
+  }
+}

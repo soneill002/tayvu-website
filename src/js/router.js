@@ -521,3 +521,39 @@ export { showPage, navigateTo, goBack, getCurrentPage };
 window.showPage = showPage;
 window.navigateTo = navigateTo;
 window.goBack = goBack;
+
+function showPageLoading() {
+  // Create or show loading overlay
+  let overlay = qs('#pageLoadingOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'pageLoadingOverlay';
+    overlay.innerHTML = `
+      <div class="page-loading">
+        <div class="loading-spinner">
+          <i class="fas fa-spinner fa-spin"></i>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+}
+
+function hidePageLoading() {
+  const overlay = qs('#pageLoadingOverlay');
+  if (overlay) {
+    overlay.style.display = 'none';
+  }
+}
+
+// Update your showPage function
+export async function showPage(pageName) {
+  showPageLoading(); // Add this
+  
+  try {
+    // ... existing page logic
+  } finally {
+    hidePageLoading(); // Add this
+  }
+}

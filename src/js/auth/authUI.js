@@ -3,6 +3,8 @@ import { showNotification, showError, qs } from '@/utils/ui.js';
 import { getClient } from '@/api/supabaseClient.js';
 import { openModal, closeModal } from '@/utils/modal.js';
 import { showPage } from '@/router.js';
+import { showNotification, showError, qs, setButtonLoading } from '@/utils/ui.js';
+
 
 /* ---------- UI toggle helper ---------- */
 function updateAuthUI(isLoggedIn) {
@@ -52,9 +54,7 @@ export async function handleSignUp(event) {
   });
 
   // Disable form
-  const originalText = submitButton.textContent;
-  submitButton.disabled = true;
-  submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
+ setButtonLoading(submitButton, true, 'Creating account...');
 
   try {
     const name = document.getElementById('signupName').value.trim();
@@ -73,15 +73,32 @@ export async function handleSignUp(event) {
       }
     });
 
-    if (error) throw error;
+   
+if (error) throw error;
 
-    // Success!
-    showNotification('Account created! Please check your email to verify your account.', 'success');
-    form.reset();
-    closeModal('signup');
-    
-    // Show sign in modal after delay
-    setTimeout(() => openModal('signin'), 1000);
+// Check if email needs verification
+if (data.user && !data.user.email_confirmed_at) {
+  showNotification(
+    'Account created! Please check your email to verify your account before signing in.', 
+    'success'
+  );
+  form.reset();
+  closeModal('signup');
+  
+  // Don't automatically open sign in - they need to verify first
+  return;
+}
+
+// If somehow already verified (shouldn't happen), proceed normally
+showNotification('Account created successfully!', 'success');
+form.reset();
+closeModal('signup');
+
+
+
+
+
+
     
   } catch (error) {
     console.error('Sign-up error:', error);
@@ -92,8 +109,7 @@ export async function handleSignUp(event) {
       showNotification(error.message || 'Failed to create account', 'error');
     }
   } finally {
-    submitButton.disabled = false;
-    submitButton.textContent = originalText;
+ setButtonLoading(submitButton, false);
   }
 }
 
@@ -116,15 +132,14 @@ export async function handleSignIn(event) {
   });
 
   // Disable form
-  const originalText = submitButton.textContent;
-  submitButton.disabled = true;
-  submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
+setButtonLoading(submitButton, true, 'Signing in...');
 
   try {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
 
-    // Sign in with Supabase Auth
+   
+ // Sign in with Supabase Auth
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email,
       password: password
@@ -132,10 +147,52 @@ export async function handleSignIn(event) {
 
     if (error) throw error;
 
+    // ADD THIS EMAIL VERIFICATION CHECK
+    // Check if email is verified
+    if (data.user && !data.user.email_confirmed_at) {
+      // Sign them back out
+      await supabase.auth.signOut();
+      
+      showError('emailError', 'Please verify your email before signing in. Check your inbox for the verification link.');
+      
+      // Show resend verification option
+      const resendBtn = document.createElement('button');
+      resendBtn.className = 'btn-link';
+      resendBtn.style.marginTop = '10px';
+      resendBtn.textContent = 'Resend verification email';
+      resendBtn.onclick = async () => {
+        try {
+          const { error } = await supabase.auth.resend({
+            type: 'signup',
+            email: email
+          });
+          
+          if (error) throw error;
+          showNotification('Verification email sent! Please check your inbox.', 'success');
+        } catch (err) {
+          showNotification('Failed to resend email. Please try again later.', 'error');
+        }
+      };
+      
+      // Add the resend button after the error message
+      const errorElement = document.querySelector('#emailError');
+      if (errorElement && errorElement.parentNode) {
+        // Remove any existing resend button first
+        const existingBtn = errorElement.parentNode.querySelector('.btn-link');
+        if (existingBtn) existingBtn.remove();
+        
+        errorElement.parentNode.appendChild(resendBtn);
+      }
+      
+      return; // Don't proceed with sign in
+    }
+    // END EMAIL VERIFICATION CHECK
+
     // Success! Auth state listener will handle the rest
     showNotification('Welcome back!', 'success');
     form.reset();
     closeModal('signin');
+
     
   } catch (error) {
     console.error('Sign-in error:', error);
@@ -146,8 +203,7 @@ export async function handleSignIn(event) {
       showError('emailError', error.message || 'Failed to sign in');
     }
   } finally {
-    submitButton.disabled = false;
-    submitButton.textContent = originalText;
+   setButtonLoading(submitButton, false);
   }
 }
 
@@ -237,3 +293,31 @@ document.addEventListener('click', (e) => {
   // Initial UI state
   updateAuthUI(!!window.currentUser);
 }
+
+
+/* ── RESEND VERIFICATION EMAIL ── */
+export async function resendVerificationEmail(email) {
+  const supabase = getClient();
+  
+  if (!supabase) {
+    showNotification('Application not initialized', 'error');
+    return;
+  }
+  
+  try {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email
+    });
+    
+    if (error) throw error;
+    
+    showNotification('Verification email sent! Please check your inbox.', 'success');
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    showNotification('Failed to resend verification email. Please try again.', 'error');
+  }
+}
+
+// Make it globally available
+window.resendVerificationEmail = resendVerificationEmail;

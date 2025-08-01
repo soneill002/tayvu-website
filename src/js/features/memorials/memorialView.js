@@ -521,11 +521,42 @@ function showLoadingState() {
         <div class="loading-spinner">
           <i class="fas fa-spinner fa-spin"></i>
         </div>
-        <p>Loading memorial...</p>
+        <p>Loading memorial<span class="loading-dots"></span></p>
       </div>
     `;
   }
 }
+
+// Add skeleton loading function
+function showSkeletonLoading() {
+  const container = qs('#memorialView');
+  if (container) {
+    container.innerHTML = `
+      <div class="memorial-page">
+        <div class="memorial-header-section">
+          <div class="skeleton-loader">
+            <div class="skeleton-image"></div>
+            <div class="skeleton-header"></div>
+            <div class="skeleton-text short"></div>
+          </div>
+        </div>
+        <div class="memorial-content">
+          <div class="skeleton-loader">
+            <div class="skeleton-text"></div>
+            <div class="skeleton-text"></div>
+            <div class="skeleton-text short"></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+
+
+
+
+
 
 function hideLoadingState() {
   // This will be called after content is loaded
