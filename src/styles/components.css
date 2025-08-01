@@ -6389,3 +6389,169 @@ footer {
     max-width: calc(100% - 20px) !important;
   }
 }
+
+/* ──────────────────────────────────────────
+   PASSWORD FIELD STYLING
+   ────────────────────────────────────────── */
+
+/* Privacy Settings Container */
+.privacy-options {
+  margin-bottom: 1.5rem;
+}
+
+.radio-option {
+  display: block;
+  background: white;
+  border: 2px solid var(--border-color);
+  border-radius: 15px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.radio-option:hover {
+  border-color: var(--primary-sage);
+  box-shadow: 0 4px 12px rgba(107, 145, 116, 0.1);
+}
+
+.radio-option input[type="radio"]:checked + .radio-content {
+  font-weight: 600;
+}
+
+.radio-option input[type="radio"]:checked ~ .radio-content strong {
+  color: var(--primary-sage);
+}
+
+.radio-option input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--primary-sage);
+  margin-right: 1rem;
+  vertical-align: middle;
+}
+
+.radio-content {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.radio-content strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 1.125rem;
+  margin-bottom: 0.25rem;
+}
+
+.radio-content small {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+/* Selected privacy option */
+.radio-option:has(input:checked) {
+  border-color: var(--primary-sage);
+  background: linear-gradient(to right, rgba(107, 145, 116, 0.05), rgba(107, 145, 116, 0.02));
+}
+
+/* Password Field Container */
+#passwordSection {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: var(--light-cream);
+  border-radius: 12px;
+  border: 1px solid rgba(107, 145, 116, 0.2);
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#passwordSection .form-label {
+  display: block;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+}
+
+#passwordSection .required {
+  color: var(--accent-copper);
+  margin-left: 0.25rem;
+}
+
+#passwordSection .form-input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 1rem;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+#passwordSection .form-input:focus {
+  outline: none;
+  border-color: var(--primary-sage);
+  box-shadow: 0 0 0 3px rgba(107, 145, 116, 0.1);
+}
+
+#passwordSection .form-input::placeholder {
+  color: #94a3b8;
+}
+
+.password-requirements {
+  display: flex;
+  align-items: start;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-top: 0.75rem;
+}
+
+.password-requirements i {
+  color: var(--primary-sage);
+  font-size: 0.875rem;
+  margin-top: 0.125rem;
+  flex-shrink: 0;
+}
+
+.password-info {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(228, 183, 85, 0.08);
+  border-left: 3px solid var(--accent-gold);
+  border-radius: 0 8px 8px 0;
+}
+
+.password-info-text {
+  color: var(--deep-earth);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.password-error {
+  color: #e53e3e;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  display: none;
+}
+
+.password-error.show {
+  display: block;
+}
+
+#passwordSection .form-input.error {
+  border-color: #e53e3e;
+}

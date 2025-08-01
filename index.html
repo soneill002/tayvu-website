@@ -1654,20 +1654,30 @@
     </label>
   </div>
   
-  <!-- Password field for private memorials -->
-  <div id="passwordSection" style="display: none; margin-top: 1.5rem;">
-    <label class="form-label">
-      <span>Access Password</span>
-      <span class="required">*</span>
-    </label>
-    <input 
-      type="password" 
-      id="memorialPassword" 
-      class="form-input" 
-      placeholder="Enter a password for memorial access"
-      minlength="6"
-    />
-    <small class="form-hint">Minimum 6 characters. Share this password with people you want to grant access.</small>
+<!-- Password field for private memorials -->
+<div id="passwordSection" style="display: none;">
+  <label class="form-label">
+    <span>Access Password</span>
+    <span class="required">*</span>
+  </label>
+  <input 
+    type="password" 
+    id="memorialPassword" 
+    class="form-input" 
+    placeholder="Enter a password for memorial access"
+    minlength="6"
+  />
+  <div class="password-requirements">
+    <i class="fas fa-info-circle"></i>
+    <span>Minimum 6 characters. Share this password with people you want to grant access.</span>
+  </div>
+  <div class="password-info">
+    <p class="password-info-text">
+      <strong>Tip:</strong> Choose a password that's easy to share with family and friends. You can always change it later in your memorial settings.
+    </p>
+  </div>
+  <div class="password-error" id="passwordError">
+    Password must be at least 6 characters long
   </div>
 </div>
 

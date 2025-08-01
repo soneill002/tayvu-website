@@ -54,16 +54,8 @@ export const initWizard = withErrorHandling(async function() {
     // Initialize moments board
     wireMoments();
     
-// Wire up photo upload handlers
-wirePhotoUploadHandlers();
-
-// Initialize moments board
-wireMoments();
-
-// Set up privacy password handlers - ADD THIS LINE
-setupPrivacyHandlers();
-
-
+    // Set up privacy password handlers
+    setupPrivacyHandlers();
 
     // IMPORTANT: Check if we should load a draft
     // Only load draft if there's a currentDraftId in localStorage
@@ -350,6 +342,7 @@ const saveDraftToSupabase = withErrorHandling(async function() {
       obituary: memorialData.story.obituary || '',
       life_story: memorialData.story.lifeStory || '',
       privacy_setting: memorialData.settings.privacy || 'public',
+      access_password: memorialData.settings.access_password || null,
       is_published: false,
       is_draft: true
     };
@@ -440,7 +433,8 @@ const loadDraftFromSupabase = withErrorHandling(async function() {
       };
       
       memorialData.settings = {
-        privacy: draft.privacy_setting || 'public'
+        privacy: draft.privacy_setting || 'public',
+        access_password: draft.access_password || null
       };
       
       memorialData.additionalInfo = draft.additional_info || '';
@@ -561,6 +555,20 @@ function populateFormFromData() {
     
     // Additional info
     if (qs('#serviceNote')) qs('#serviceNote').value = memorialData.additionalInfo || '';
+    
+    // Privacy settings
+    if (memorialData.settings.privacy) {
+      const privacyRadio = document.querySelector(`input[name="privacy"][value="${memorialData.settings.privacy}"]`);
+      if (privacyRadio) {
+        privacyRadio.checked = true;
+        togglePasswordField(); // Update password field visibility
+      }
+    }
+    
+    // Password if private
+    if (memorialData.settings.access_password && qs('#memorialPassword')) {
+      qs('#memorialPassword').value = memorialData.settings.access_password;
+    }
   } catch (error) {
     console.error('Error populating form:', error);
   }
@@ -601,6 +609,15 @@ const publishMemorial = withErrorHandling(async function() {
     }
   }
   
+  // Validate password if private
+  const isPrivate = memorialData.settings?.privacy === 'private';
+  if (isPrivate) {
+    const password = memorialData.settings?.access_password;
+    if (!password || password.length < 6) {
+      validationErrors.push('Private memorials require a password of at least 6 characters');
+    }
+  }
+  
   // If there are validation errors, show them and stop
   if (validationErrors.length > 0) {
     showToast(validationErrors[0], 'error');
@@ -631,6 +648,7 @@ const publishMemorial = withErrorHandling(async function() {
       obituary: memorialData.story.obituary || '',
       life_story: memorialData.story.lifeStory || '',
       privacy_setting: memorialData.settings.privacy || 'public',
+      access_password: memorialData.settings.access_password || null,
       is_published: true,
       is_draft: false,
       published_at: new Date().toISOString()
@@ -938,6 +956,28 @@ function validateCurrentStep() {
         return false;
       }
     }
+    
+    // Add validation for step 5 (privacy settings)
+    if (currentStep === 5) {
+      const isPrivate = document.querySelector('input[name="privacy"]:checked')?.value === 'private';
+      const passwordInput = document.getElementById('memorialPassword');
+      
+      if (isPrivate && passwordInput) {
+        const password = passwordInput.value.trim();
+        
+        if (password.length < 6) {
+          passwordInput.classList.add('error');
+          const errorEl = document.getElementById('passwordError');
+          if (errorEl) {
+            errorEl.classList.add('show');
+          }
+          showToast('Password must be at least 6 characters long', 'error');
+          passwordInput.focus();
+          return false;
+        }
+      }
+    }
+    
     return true;
   } catch (error) {
     handleError(error, 'Validate Step');
@@ -1017,9 +1057,18 @@ function saveStepData() {
         break;
         
       case 5:
+        const privacySetting = qs('input[name="privacy"]:checked')?.value || 'public';
         memorialData.settings = {
-          privacy: qs('input[name="privacy"]:checked')?.value || 'public'
+          privacy: privacySetting
         };
+        
+        // Add password if private
+        if (privacySetting === 'private') {
+          const password = qs('#memorialPassword')?.value.trim();
+          if (password) {
+            memorialData.settings.access_password = password;
+          }
+        }
         break;
     }
   } catch (error) {
@@ -1038,6 +1087,20 @@ function setupPrivacyHandlers() {
   privacyRadios.forEach(radio => {
     radio.addEventListener('change', togglePasswordField);
   });
+  
+  // Add input listener to password field to clear errors
+  const passwordInput = document.getElementById('memorialPassword');
+  if (passwordInput) {
+    passwordInput.addEventListener('input', function() {
+      if (this.value.length >= 6) {
+        this.classList.remove('error');
+        const errorEl = document.getElementById('passwordError');
+        if (errorEl) {
+          errorEl.classList.remove('show');
+        }
+      }
+    });
+  }
 }
 
 function togglePasswordField() {
@@ -1054,6 +1117,12 @@ function togglePasswordField() {
     passwordSection.style.display = 'none';
     passwordInput.required = false;
     passwordInput.value = '';
+    // Clear any error states
+    passwordInput.classList.remove('error');
+    const errorEl = document.getElementById('passwordError');
+    if (errorEl) {
+      errorEl.classList.remove('show');
+    }
   }
 }
 
