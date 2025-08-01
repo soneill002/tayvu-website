@@ -2,8 +2,8 @@
 import { showNotification } from '@/utils/ui.js';
 
 // Contentful configuration
-const SPACE_ID = 'anitqnp5kmpd'; // Your actual space ID
-const ACCESS_TOKEN = 'WWotlcYyA2rF4ziPtWUUuNoqxbFIJURCAN7MbWeO_Es'; // Your actual token
+const SPACE_ID = import.meta.env.VITE_CONTENTFUL_SPACE_ID || 'anitqnp5kmpd';
+const ACCESS_TOKEN = import.meta.env.VITE_CONTENTFUL_ACCESS_TOKEN;
 const CONTENT_TYPE = 'tayvuBlog';
 
 // State management
@@ -68,6 +68,42 @@ async function loadBlogPosts() {
   if (isLoading) return;
   isLoading = true;
   
+  // ============ ADD NEW CODE STARTING HERE ============
+  // Check if ACCESS_TOKEN is available
+  if (!ACCESS_TOKEN) {
+    console.error('Contentful access token not configured');
+    
+    // Get the DOM elements we need
+    const gridEl = document.getElementById('blogGrid');
+    const loadingEl = document.getElementById('blogLoading');
+    
+    // Hide the loading spinner
+    if (loadingEl) {
+      loadingEl.style.display = 'none';
+    }
+    
+    // Show error message to user
+    if (gridEl) {
+      gridEl.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-exclamation-circle" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+          <p>Blog content is temporarily unavailable.</p>
+          <p style="margin-top: 0.5rem; font-size: 0.9rem;">Please check back later.</p>
+        </div>
+      `;
+      gridEl.style.display = 'grid';
+    }
+    
+    // Reset loading flag and exit early
+    isLoading = false;
+    return;
+  }
+
+
+
+
+
+
   const loadingEl = document.getElementById('blogLoading');
   const gridEl = document.getElementById('blogGrid');
   const loadMoreEl = document.getElementById('blogLoadMore');

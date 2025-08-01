@@ -1,6 +1,7 @@
 /*  src/js/features/guestbook.js  */
 import { showNotification, qs } from '@/utils/ui.js';
 import { getClient } from '@/api/supabaseClient.js';
+import { showNotification, qs, setButtonLoading } from '@/utils/ui.js';
 
 /* ──────────────────────────────────────────
    PUBLIC API
@@ -92,9 +93,8 @@ async function submitGuestbookEntry(e) {
     return;
   }
 
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-  submitBtn.disabled = true;
-  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
+const submitBtn = e.target.querySelector('button[type="submit"]');
+setButtonLoading(submitBtn, true, 'Posting...');
 
   try {
     // Get user profile for display name
@@ -133,8 +133,7 @@ async function submitGuestbookEntry(e) {
     console.error('Error posting message:', error);
     showNotification('Failed to post message', 'error');
   } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Post Message';
+   setButtonLoading(submitBtn, false);
   }
 }
 
