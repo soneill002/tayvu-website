@@ -3313,71 +3313,94 @@ footer {
 
 /* Preview action buttons */
 .preview-actions {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-}
-
-.preview-actions button {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: white;
-  border: 2px solid #e2e8f0;
-  border-radius: 10px;
-  color: #475569;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.preview-actions button:hover {
-  background: #f8f9fa;
-  border-color: #cbd5e1;
-  transform: translateY(-2px);
-}
-
-.preview-actions button.active {
-  background: var(--primary-sage);
-  border-color: var(--primary-sage);
-  color: white;
-}
-
-.preview-actions button i {
-  font-size: 1.25rem;
+  display: none;
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .preview-container {
+    padding: 1rem;
+  }
+  
   .preview-device {
     padding: 1rem;
-    min-height: 300px;
+    background: transparent;
+    min-height: auto;
   }
   
   .device-frame {
-    max-height: 500px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   }
   
-  .device-frame.tablet-view,
   .device-frame.mobile-view {
-    border-width: 10px;
-    border-radius: 20px;
+    max-width: 100%;
+    border: none;
+    border-radius: 15px;
   }
   
-  .preview-actions {
-    flex-wrap: wrap;
+  .device-frame.mobile-view::before,
+  .device-frame.mobile-view::after {
+    display: none;
   }
   
-  .preview-actions button {
+  .device-frame.mobile-view #memorialPreview,
+  .device-frame #memorialPreview {
+    width: 100%;
+    height: 500px;
+    max-height: 70vh;
+  }
+  
+  .form-step#step5 .step-title {
+    font-size: 1.5rem;
+  }
+  
+  .form-step#step5 .step-subtitle {
     font-size: 0.875rem;
-    padding: 0.5rem 1rem;
   }
   
-  #memorialPreview {
-    max-height: 400px !important;
+  .privacy-options {
+    gap: 0.75rem;
+  }
+  
+  .radio-option {
+    padding: 1rem;
   }
 }
+
+/* Tablet view - simplified without device chrome on actual tablets */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .device-frame.tablet-view {
+    max-width: 100%;
+    border: none;
+    border-radius: 15px;
+  }
+  
+  .device-frame.tablet-view::before,
+  .device-frame.tablet-view::after {
+    display: none;
+  }
+  
+  .device-frame.tablet-view #memorialPreview {
+    width: 100%;
+    height: 600px;
+  }
+}
+
+/* Preview iframe - ensure it's responsive */
+#memorialPreview {
+  border: none;
+  display: block;
+  background: white;
+  width: 100%;
+  min-height: 400px;
+}
+
+
+
+
+
+
+
 
 /* Memorial Preview Content */
 .memorial-preview-content {

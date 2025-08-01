@@ -848,15 +848,43 @@ function nextStep() {
     if (currentStep < totalSteps) {
       currentStep += 1;
       updateProgress();
-      if (currentStep === 5) generatePreview();
+      if (currentStep === 5) {
+        // Generate preview when reaching the preview step
+        generatePreview();
+        
+        // Add resize listener to update preview on window resize
+        window.addEventListener('resize', debounce(generatePreview, 500));
+      }
     }
   } catch (error) {
     handleError(error, 'Next Step');
   }
 }
 
+
+// Add debounce utility function if not already present
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+
+
+
 function previousStep() {
   try {
+    if (currentStep === 5) {
+      // Remove resize listener when leaving preview step
+      window.removeEventListener('resize', debounce(generatePreview, 500));
+    }
+    
     if (currentStep > 1) {
       currentStep -= 1;
       updateProgress();
@@ -996,13 +1024,52 @@ function saveStepData() {
 function generatePreview() {
   try {
     const iframe = document.getElementById('memorialPreview');
-    if (!iframe) return;
+    const deviceFrame = document.getElementById('deviceFrame');
+    if (!iframe || !deviceFrame) return;
     
-    // Instead of loading an external URL, we'll generate the preview content inline
+    // Auto-detect device type based on screen width
+    const screenWidth = window.innerWidth;
+    let deviceType = 'desktop';
+    
+    if (screenWidth <= 768) {
+      deviceType = 'mobile';
+    } else if (screenWidth <= 1024) {
+      deviceType = 'tablet';
+    }
+    
+    // Remove all device classes first
+    deviceFrame.classList.remove('desktop-view', 'tablet-view', 'mobile-view');
+    
+    // Apply appropriate device class and iframe dimensions
+    switch(deviceType) {
+      case 'mobile':
+        deviceFrame.classList.add('mobile-view');
+        // Keep the iframe responsive within mobile frame
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        break;
+      case 'tablet':
+        deviceFrame.classList.add('tablet-view');
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        break;
+      default: // desktop
+        deviceFrame.classList.add('desktop-view');
+        iframe.style.width = '100%';
+        iframe.style.height = '600px';
+    }
+    
+    // Generate the preview content
     const previewHTML = generatePreviewHTML();
     
+    // Add responsive viewport meta tag to preview
+    const responsivePreviewHTML = previewHTML.replace(
+      '<head>',
+      '<head><meta name="viewport" content="width=device-width, initial-scale=1">'
+    );
+    
     // Write the preview content to the iframe
-    iframe.srcdoc = previewHTML;
+    iframe.srcdoc = responsivePreviewHTML;
   } catch (error) {
     handleError(error, 'Generate Preview');
   }
@@ -1427,45 +1494,7 @@ function getServiceTitle(type) {
   return titles[type] || 'Service';
 }
 
-// Device preview function
-window.previewDevice = function(device) {
-  try {
-    const frame = document.querySelector('.device-frame');
-    const iframe = document.getElementById('memorialPreview');
-    
-    if (!frame) return;
-    
-    // Remove all device classes
-    frame.classList.remove('desktop-view', 'tablet-view', 'mobile-view');
-    
-    // Add the selected device class and update iframe dimensions
-    switch(device) {
-      case 'desktop':
-        frame.classList.add('desktop-view');
-        iframe.style.width = '100%';
-        iframe.style.height = '600px';
-        break;
-      case 'tablet':
-        frame.classList.add('tablet-view');
-        iframe.style.width = '768px';
-        iframe.style.height = '1024px';
-        break;
-      case 'mobile':
-        frame.classList.add('mobile-view');
-        iframe.style.width = '375px';
-        iframe.style.height = '667px';
-        break;
-    }
-    
-    // Update button states
-    document.querySelectorAll('.preview-actions button').forEach(btn => {
-      btn.classList.remove('active');
-    });
-    event.target.closest('button').classList.add('active');
-  } catch (error) {
-    handleError(error, 'Preview Device');
-  }
-}
+
 
 /* ---------- rich text autosave ---------- */
 function initializeRichTextAutoSave() {
