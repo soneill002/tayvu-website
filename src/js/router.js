@@ -16,25 +16,18 @@ const routes = {
     title: 'About Us - GatherMemorials',
     requiresAuth: false
   },
-
-
-
-
- createMemorial: {
-  title: 'Create Memorial - GatherMemorials',
-  requiresAuth: true,
-  authMessage: 'Please sign in to create a memorial',
-  init: () => {
-    // Import and initialize the wizard when the page is shown
-    import('@/features/memorials/wizard.js').then(({ initWizard }) => {
-      console.log('Initializing wizard from router');
-      initWizard();
-    });
-  }
-},
-
-
-
+  createMemorial: {
+    title: 'Create Memorial - GatherMemorials',
+    requiresAuth: true,
+    authMessage: 'Please sign in to create a memorial',
+    init: () => {
+      // Import and initialize the wizard when the page is shown
+      import('@/features/memorials/wizard.js').then(({ initWizard }) => {
+        console.log('Initializing wizard from router');
+        initWizard();
+      });
+    }
+  },
   profile: {
     title: 'My Profile - GatherMemorials',
     requiresAuth: true,
@@ -45,10 +38,10 @@ const routes = {
     requiresAuth: false,
     init: initBlog
   },
-blogPost: {
-  title: 'Blog Post - GatherMemorials',
-  requiresAuth: false
-},
+  blogPost: {
+    title: 'Blog Post - GatherMemorials',
+    requiresAuth: false
+  },
   pricing: {
     title: 'Pricing - GatherMemorials',
     requiresAuth: false
@@ -173,8 +166,6 @@ function hidePageLoading() {
   }
 }
 
-
-
 function showPage(page) {
   console.log('showPage called with:', page);
   
@@ -269,12 +260,6 @@ function showPage(page) {
   }, 50);  // ADD THIS - 50ms delay to show loading
 }
 
-
-
-
-
-
-
 /* ──────────────────────────────────────────
    MEMORIAL ROUTING
    ────────────────────────────────────────── */
@@ -351,19 +336,32 @@ function showBlogPost(page) {
   updateActiveNavItems('blog');
 }
 
-
-
-
-
-
 /* ──────────────────────────────────────────
-   ROUTE CHANGE HANDLER
+   ROUTE CHANGE HANDLER - UPDATED WITH AUTH CALLBACK
    ────────────────────────────────────────── */
 function handleRouteChange() {
   const hash = window.location.hash.slice(1); // Remove #
+  
+  // CHECK FOR AUTH CALLBACK TOKENS FIRST
+  if (hash.includes('access_token=')) {
+    handleAuthCallback();
+    return;
+  }
+  
   const page = hash || 'home';
   
   console.log('Route change detected:', page);
+  
+  // Handle special routes
+  if (page.startsWith('memorial/')) {
+    showMemorialPage(page);
+    return;
+  }
+  
+  if (page.startsWith('blog/')) {
+    showBlogPost(page);
+    return;
+  }
   
   // Handle query parameters if any
   const [pageName, ...params] = page.split('?');
@@ -379,6 +377,92 @@ function handleRouteChange() {
     setTimeout(() => {
       showPage(redirect);
     }, 100);
+  }
+}
+
+/* ──────────────────────────────────────────
+   AUTH CALLBACK HANDLER - NEW FUNCTION
+   ────────────────────────────────────────── */
+async function handleAuthCallback() {
+  console.log('Processing auth callback...');
+  
+  // Parse the URL hash to get tokens
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  const accessToken = hashParams.get('access_token');
+  const refreshToken = hashParams.get('refresh_token');
+  const type = hashParams.get('type'); // 'signup' or other auth types
+  
+  if (!accessToken) {
+    console.error('No access token found in callback');
+    window.location.hash = '#home';
+    return;
+  }
+  
+  try {
+    // Import what we need
+    const { getClient } = await import('@/api/supabaseClient.js');
+    const { showNotification } = await import('@/utils/ui.js');
+    const { closeModal } = await import('@/utils/modal.js');
+    
+    const supabase = getClient();
+    
+    // Set the session with the tokens from the URL
+    const { data: { session }, error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken
+    });
+    
+    if (error) throw error;
+    
+    // Get the user data
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      // Close any open modals
+      closeModal('emailVerification');
+      closeModal('signin');
+      closeModal('signup');
+      
+      // Show appropriate message
+      if (type === 'signup') {
+        showNotification('Email verified! Welcome to GatherMemorials!', 'success');
+        
+        // For new signups, redirect to profile to complete setup
+        setTimeout(() => {
+          window.location.hash = '#profile';
+        }, 1000);
+      } else if (type === 'recovery') {
+        showNotification('Password reset confirmed. Please set your new password.', 'success');
+        // Handle password reset flow
+        window.location.hash = '#reset-password';
+      } else {
+        showNotification('Welcome back!', 'success');
+        
+        // For returning users, go to home or their intended destination
+        const redirect = sessionStorage.getItem('redirectAfterLogin');
+        if (redirect) {
+          sessionStorage.removeItem('redirectAfterLogin');
+          window.location.hash = `#${redirect}`;
+        } else {
+          window.location.hash = '#home';
+        }
+      }
+    }
+    
+    // Clean up the URL - remove the tokens
+    window.history.replaceState(null, '', window.location.pathname);
+    
+  } catch (error) {
+    console.error('Error processing auth callback:', error);
+    
+    const { showNotification } = await import('@/utils/ui.js');
+    showNotification('Error verifying email. Please try signing in.', 'error');
+    
+    // Redirect to home
+    window.location.hash = '#home';
+    
+    // Clean up the URL anyway
+    window.history.replaceState(null, '', window.location.pathname);
   }
 }
 
@@ -557,14 +641,9 @@ document.addEventListener('auth:state', (event) => {
    ────────────────────────────────────────── */
 export { showPage, navigateTo, goBack, getCurrentPage };
 
-
-
 /* ──────────────────────────────────────────
    MAKE FUNCTIONS GLOBAL (for legacy support)
    ────────────────────────────────────────── */
 window.showPage = showPage;
 window.navigateTo = navigateTo;
 window.goBack = goBack;
-
-
-
