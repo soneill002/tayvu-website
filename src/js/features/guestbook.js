@@ -1,5 +1,4 @@
-/*  src/js/features/guestbook.js  */
-import { showNotification, qs } from '@/utils/ui.js';
+// src/js/features/guestbook.js
 import { getClient } from '@/api/supabaseClient.js';
 import { showNotification, qs, setButtonLoading } from '@/utils/ui.js';
 
