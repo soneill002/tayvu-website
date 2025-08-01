@@ -48,3 +48,16 @@ export const MemorialSanitizer = {
     });
   }
 };
+
+/* Export a simple sanitizeHtml function for other modules */
+export function sanitizeHtml(html) {
+  // If we have the MemorialSanitizer with rich text support, use it
+  if (MemorialSanitizer && MemorialSanitizer.sanitizeRichText) {
+    return MemorialSanitizer.sanitizeRichText(html);
+  }
+  
+  // Otherwise, just do basic HTML escaping
+  const div = document.createElement('div');
+  div.textContent = html || '';
+  return div.innerHTML;
+}
