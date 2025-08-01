@@ -175,7 +175,7 @@ function hidePageLoading() {
 
 
 
-ffunction showPage(page) {
+function showPage(page) {
   console.log('showPage called with:', page);
   
   // Show loading overlay
