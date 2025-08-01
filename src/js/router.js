@@ -2,6 +2,7 @@
 import { initBlog } from '@/features/blog/blog.js';
 import { initFAQ } from '@/features/faq/faq.js';
 import { initMemorialView, cleanupMemorialView } from '@/features/memorials/memorialView.js';
+import { qs } from '@/utils/ui.js';
 
 /* ──────────────────────────────────────────
    ROUTE CONFIGURATION
@@ -147,82 +148,125 @@ function handleDataPageClick(e) {
   }
 }
 
-function showPage(page) {
+function showPageLoading() {
+  // Create or show loading overlay
+  let overlay = qs('#pageLoadingOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'pageLoadingOverlay';
+    overlay.innerHTML = `
+      <div class="page-loading">
+        <div class="loading-spinner">
+          <i class="fas fa-spinner fa-spin"></i>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+}
+
+function hidePageLoading() {
+  const overlay = qs('#pageLoadingOverlay');
+  if (overlay) {
+    overlay.style.display = 'none';
+  }
+}
+
+
+
+ffunction showPage(page) {
   console.log('showPage called with:', page);
   
-  // Update previous page
-  previousPage = currentPage;
-  currentPage = page;
+  // Show loading overlay
+  showPageLoading();  // ADD THIS
   
-  // Check if page exists in routes
-  const route = routes[page];
-  if (!route) {
-    console.error(`Route not found: ${page}`);
-    showPage('home');
-    return;
-  }
-  
-  // Check authentication
-  if (route.requiresAuth && !window.currentUser) {
-    console.log('Authentication required for:', page);
-    // Store intended destination
-    sessionStorage.setItem('redirectAfterLogin', page);
-    // Show auth modal
-    import('@/utils/modal.js').then(({ openModal }) => {
-      openModal('signin');
-    });
-    // Show notification
-    import('@/utils/ui.js').then(({ showNotification }) => {
-      showNotification(route.authMessage || 'Please sign in to continue', 'info');
-    });
-    return;
-  }
-  
-  // Update page title
-  document.title = route.title || 'GatherMemorials';
-  
-  // Hide all sections first
-  hideAllSections();
-  
-  // Get the section element
-  const section = document.getElementById(page);
-  if (section) {
-    // Clear any previous state for createMemorial page
-    if (page === 'createMemorial') {
-      // Remove any existing draft indicators when navigating fresh
-      const draftIndicators = section.querySelectorAll('.draft-loaded-indicator');
-      draftIndicators.forEach(indicator => indicator.remove());
+  // Small delay to show loading state
+  setTimeout(() => {  // ADD THIS
+    try {  // ADD THIS
+      // Update previous page
+      previousPage = currentPage;
+      currentPage = page;
+      
+      // Check if page exists in routes
+      const route = routes[page];
+      if (!route) {
+        console.error(`Route not found: ${page}`);
+        showPage('home');
+        return;
+      }
+      
+      // Check authentication
+      if (route.requiresAuth && !window.currentUser) {
+        console.log('Authentication required for:', page);
+        // Store intended destination
+        sessionStorage.setItem('redirectAfterLogin', page);
+        // Show auth modal
+        import('@/utils/modal.js').then(({ openModal }) => {
+          openModal('signin');
+        });
+        // Show notification
+        import('@/utils/ui.js').then(({ showNotification }) => {
+          showNotification(route.authMessage || 'Please sign in to continue', 'info');
+        });
+        hidePageLoading();  // ADD THIS - Hide loading on auth redirect
+        return;
+      }
+      
+      // Update page title
+      document.title = route.title || 'GatherMemorials';
+      
+      // Hide all sections first
+      hideAllSections();
+      
+      // Get the section element
+      const section = document.getElementById(page);
+      if (section) {
+        // Clear any previous state for createMemorial page
+        if (page === 'createMemorial') {
+          // Remove any existing draft indicators when navigating fresh
+          const draftIndicators = section.querySelectorAll('.draft-loaded-indicator');
+          draftIndicators.forEach(indicator => indicator.remove());
+        }
+        
+        // Show the section
+        section.classList.add('active');
+        section.style.display = 'block';
+        
+        // Scroll to top
+        window.scrollTo(0, 0);
+        
+        // Call init function if available
+        if (route.init) {
+          // Small delay to ensure DOM is ready
+          setTimeout(() => {
+            route.init();
+            hidePageLoading();  // ADD THIS - Hide after init
+          }, 100);
+        } else {
+          hidePageLoading();  // ADD THIS - Hide if no init
+        }
+        
+        // Update active nav items
+        updateActiveNavItems(page);
+        
+        // Close mobile menu if open
+        closeMobileMenu();
+        
+        // Track page view (analytics)
+        trackPageView(page);
+        
+        console.log('Page shown:', page);
+      } else {
+        console.error(`Section not found: ${page}`);
+        hidePageLoading();  // ADD THIS
+        showPage('home');
+      }
+    } catch (error) {  // ADD THIS
+      console.error('Error showing page:', error);
+      hidePageLoading();
     }
-    
-    // Show the section
-    section.classList.add('active');
-    section.style.display = 'block';
-    
-    // Scroll to top
-    window.scrollTo(0, 0);
-    
-    // Call init function if available
-    if (route.init) {
-      // Small delay to ensure DOM is ready
-      setTimeout(() => {
-        route.init();
-      }, 100);
-    }
-    
-    // Update active nav items
-    updateActiveNavItems(page);
-    
-    // Close mobile menu if open
-    closeMobileMenu();
-    
-    // Track page view (analytics)
-    trackPageView(page);
-    
-    console.log('Page shown:', page);
-  } else {
-    console.error(`Section not found: ${page}`);
-    showPage('home');
-  }
+  }, 50);  // ADD THIS - 50ms delay to show loading
 }
 
 
@@ -522,38 +566,5 @@ window.showPage = showPage;
 window.navigateTo = navigateTo;
 window.goBack = goBack;
 
-function showPageLoading() {
-  // Create or show loading overlay
-  let overlay = qs('#pageLoadingOverlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.id = 'pageLoadingOverlay';
-    overlay.innerHTML = `
-      <div class="page-loading">
-        <div class="loading-spinner">
-          <i class="fas fa-spinner fa-spin"></i>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-  }
-  overlay.style.display = 'flex';
-}
 
-function hidePageLoading() {
-  const overlay = qs('#pageLoadingOverlay');
-  if (overlay) {
-    overlay.style.display = 'none';
-  }
-}
 
-// Update your showPage function
-export async function showPage(pageName) {
-  showPageLoading(); // Add this
-  
-  try {
-    // ... existing page logic
-  } finally {
-    hidePageLoading(); // Add this
-  }
-}
