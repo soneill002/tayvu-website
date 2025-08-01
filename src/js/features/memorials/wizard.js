@@ -342,7 +342,7 @@ const saveDraftToSupabase = withErrorHandling(async function() {
       obituary: memorialData.story.obituary || '',
       life_story: memorialData.story.lifeStory || '',
       privacy_setting: memorialData.settings.privacy || 'public',
-      access_password: memorialData.settings.access_password || null,
+      access_password: memorialData.settings.password || null, // Use 'password' not 'access_password'
       is_published: false,
       is_draft: true
     };
@@ -434,7 +434,7 @@ const loadDraftFromSupabase = withErrorHandling(async function() {
       
       memorialData.settings = {
         privacy: draft.privacy_setting || 'public',
-        access_password: draft.access_password || null
+        password: draft.access_password || null // Store as 'password' for consistency
       };
       
       memorialData.additionalInfo = draft.additional_info || '';
@@ -566,8 +566,8 @@ function populateFormFromData() {
     }
     
     // Password if private
-    if (memorialData.settings.access_password && qs('#memorialPassword')) {
-      qs('#memorialPassword').value = memorialData.settings.access_password;
+    if (memorialData.settings.password && qs('#memorialPassword')) {
+      qs('#memorialPassword').value = memorialData.settings.password;
     }
   } catch (error) {
     console.error('Error populating form:', error);
@@ -612,7 +612,7 @@ const publishMemorial = withErrorHandling(async function() {
   // Validate password if private
   const isPrivate = memorialData.settings?.privacy === 'private';
   if (isPrivate) {
-    const password = memorialData.settings?.access_password;
+    const password = memorialData.settings?.password;
     if (!password || password.length < 6) {
       validationErrors.push('Private memorials require a password of at least 6 characters');
     }
@@ -648,7 +648,7 @@ const publishMemorial = withErrorHandling(async function() {
       obituary: memorialData.story.obituary || '',
       life_story: memorialData.story.lifeStory || '',
       privacy_setting: memorialData.settings.privacy || 'public',
-      access_password: memorialData.settings.access_password || null,
+      access_password: memorialData.settings.password || null, // Use the password from settings
       is_published: true,
       is_draft: false,
       published_at: new Date().toISOString()
@@ -1062,12 +1062,15 @@ function saveStepData() {
           privacy: privacySetting
         };
         
-        // Add password if private
+        // Add password if private - FIXED to use consistent key
         if (privacySetting === 'private') {
           const password = qs('#memorialPassword')?.value.trim();
           if (password) {
-            memorialData.settings.access_password = password;
+            memorialData.settings.password = password; // Changed from 'access_password' to 'password'
           }
+        } else {
+          // Clear password if not private
+          memorialData.settings.password = null;
         }
         break;
     }
