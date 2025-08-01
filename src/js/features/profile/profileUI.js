@@ -1,10 +1,11 @@
 // src/js/features/profile/profileUI.js
-import { supabase } from '@/api/supabaseClient.js';
+import { getClient } from '@/api/supabaseClient.js';
 import { cloudinaryConfig } from '@/api/cloudinaryClient.js';
 import { showNotification } from '@/utils/ui.js';
-import { loadComponent } from '@/main.js';
 import { sanitizeHtml } from '@/utils/sanitizer.js';
 import { setButtonLoading } from '@/utils/ui.js';
+
+let supabase;
 
 const qs = selector => document.querySelector(selector);
 const qsa = selector => document.querySelectorAll(selector);
@@ -15,6 +16,13 @@ let currentUserProfile = null;
    MAIN PROFILE LOADING
    ────────────────────────────────────────── */
 export async function maybeLoadProfile() {
+  // Initialize supabase client
+  supabase = getClient();
+  if (!supabase) {
+    console.error('Supabase client not initialized');
+    return;
+  }
+  
   // Get auth user
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -24,18 +32,14 @@ export async function maybeLoadProfile() {
     return;
   }
 
-  const profileContent = qs('#profileContent');
-  if (!profileContent) return;
+  // Profile content is already in the DOM (index.html)
+  const profileSection = qs('#profile');
+  if (!profileSection) {
+    console.error('Profile section not found in DOM');
+    return;
+  }
 
   try {
-    // Show loading state
-    profileContent.innerHTML = `
-      <div class="loading-container">
-        <i class="fas fa-spinner fa-spin loading-spinner"></i>
-        <p>Loading profile...</p>
-      </div>
-    `;
-
     // Fetch user profile data
     const { data: profile, error } = await supabase
       .from('profiles')
@@ -43,15 +47,31 @@ export async function maybeLoadProfile() {
       .eq('id', user.id)
       .single();
 
-    if (error) throw error;
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      throw error;
+    }
 
-    currentUserProfile = profile;
+    // If no profile exists, create one
+    if (!profile) {
+      const { data: newProfile, error: createError } = await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || '',
+          name: user.user_metadata?.name || ''
+        })
+        .select()
+        .single();
 
-    // Load the profile template
-    await loadComponent('profileContent', '/src/components/profile.html');
+      if (createError) throw createError;
+      currentUserProfile = newProfile;
+    } else {
+      currentUserProfile = profile;
+    }
 
     // Initialize profile data
-    initializeProfile(profile, user.email);
+    initializeProfile(currentUserProfile, user.email);
 
     // Set up tab navigation
     setupTabNavigation();
@@ -61,14 +81,10 @@ export async function maybeLoadProfile() {
 
   } catch (err) {
     console.error('Error loading profile:', err);
-    profileContent.innerHTML = `
-      <div class="error-container">
-        <p>Error loading profile. Please try again.</p>
-        <button class="btn btn-primary" onclick="location.reload()">Reload</button>
-      </div>
-    `;
+    showNotification('Error loading profile. Please try again.', 'error');
   }
 }
+
 /* ──────────────────────────────────────────
    PROFILE INITIALIZATION - UPDATED VERSION
    ────────────────────────────────────────── */
@@ -133,7 +149,7 @@ function initializeProfile(profile, email) {
   }
 
   // Initialize settings form
-  const settingsForm = qs('#settingsForm');
+  const settingsForm = qs('#settingsForm') || qs('#profileSettingsForm');
   if (settingsForm) {
     // Populate form fields
     const nameInput = qs('#settingsName');
@@ -150,6 +166,7 @@ function initializeProfile(profile, email) {
     }
 
     // Add form submit handler
+    settingsForm.removeEventListener('submit', updateProfile); // Remove any existing
     settingsForm.addEventListener('submit', updateProfile);
   }
 
@@ -179,21 +196,25 @@ function initializeProfile(profile, email) {
    TAB NAVIGATION
    ────────────────────────────────────────── */
 function setupTabNavigation() {
-  const tabButtons = qsa('.profile-tab-btn');
+  const tabButtons = qsa('.profile-tab-btn') || qsa('.profile-tab');
   
   tabButtons.forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-      const tabName = btn.dataset.tab;
-      showTab(tabName);
+      const tabName = btn.dataset.tab || btn.getAttribute('onclick')?.match(/switchProfileTab\('(\w+)'\)/)?.[1];
+      if (tabName) {
+        showTab(tabName);
+      }
     });
   });
 }
 
 export function showTab(tabName) {
   // Update active tab button
-  qsa('.profile-tab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === tabName);
+  const tabButtons = qsa('.profile-tab-btn') || qsa('.profile-tab');
+  tabButtons.forEach(btn => {
+    const btnTabName = btn.dataset.tab || btn.getAttribute('onclick')?.match(/switchProfileTab\('(\w+)'\)/)?.[1];
+    btn.classList.toggle('active', btnTabName === tabName);
   });
 
   // Show corresponding content
@@ -215,11 +236,18 @@ export function showTab(tabName) {
   }
 }
 
+// Make it globally available for onclick handlers
+window.switchProfileTab = function(tab) {
+  showTab(tab);
+};
+
 /* ──────────────────────────────────────────
    MEMORIALS TAB
    ────────────────────────────────────────── */
 async function loadUserMemorials() {
-  const memorialsGrid = qs('#userMemorialsGrid');
+  if (!supabase) supabase = getClient();
+  
+  const memorialsGrid = qs('#userMemorialsGrid') || qs('#myMemorials');
   if (!memorialsGrid) return;
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -303,11 +331,12 @@ async function loadUserMemorials() {
   }
 }
 
-
 /* ──────────────────────────────────────────
    PHOTO UPLOAD - CLOUDINARY VERSION WITH SYNC
    ────────────────────────────────────────── */
 async function uploadProfilePhoto(e) {
+  if (!supabase) supabase = getClient();
+  
   // If called from button click, create file input
   if (!e || !e.target || !e.target.files) {
     const input = document.createElement('input');
@@ -365,9 +394,6 @@ async function uploadProfilePhoto(e) {
   }
 
   try {
-    // Import cloudinary config
-    const { cloudinaryConfig } = await import('@/api/cloudinaryClient.js');
-    
     // Create FormData for Cloudinary upload
     const formData = new FormData();
     formData.append('file', file);
@@ -495,14 +521,15 @@ async function uploadProfilePhoto(e) {
   }
 }
 
-
-
-
+// Make it globally available for onclick handlers
+window.uploadProfilePhoto = uploadProfilePhoto;
 
 /* ──────────────────────────────────────────
    DELETE PROFILE PHOTO - CLOUDINARY VERSION
    ────────────────────────────────────────── */
 async function deleteProfilePhoto() {
+  if (!supabase) supabase = getClient();
+  
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
@@ -605,7 +632,9 @@ window.deleteProfilePhoto = deleteProfilePhoto;
    CONTRIBUTIONS TAB
    ────────────────────────────────────────── */
 async function loadUserContributions() {
-  const contributionsList = qs('#userContributionsList');
+  if (!supabase) supabase = getClient();
+  
+  const contributionsList = qs('#userContributionsList') || qs('#myContributions');
   if (!contributionsList) return;
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -687,6 +716,8 @@ async function loadUserContributions() {
 async function updateProfile(e) {
   e.preventDefault();
   
+  if (!supabase) supabase = getClient();
+  
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
@@ -764,6 +795,8 @@ window.confirmDeleteAccount = async function() {
   
   if (!doubleConfirmed) return;
 
+  if (!supabase) supabase = getClient();
+  
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
@@ -796,5 +829,25 @@ function formatDate(dateString) {
     year: 'numeric', 
     month: 'short', 
     day: 'numeric' 
+  });
+}
+
+/* ──────────────────────────────────────────
+   INITIALIZATION
+   ────────────────────────────────────────── */
+export function initProfilePage() {
+  // Initialize supabase if not already done
+  if (!supabase) supabase = getClient();
+  
+  // Check if we're on the profile page
+  if (window.location.hash === '#profile') {
+    maybeLoadProfile();
+  }
+  
+  // Listen for hash changes
+  window.addEventListener('hashchange', () => {
+    if (window.location.hash === '#profile') {
+      maybeLoadProfile();
+    }
   });
 }
