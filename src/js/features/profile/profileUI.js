@@ -433,24 +433,35 @@ async function uploadProfilePhoto(e) {
       .eq('id', user.id)
       .single();
 
-    if (profile?.avatar_public_id) {
-      // Call your Netlify function to delete the old image
-      try {
-        await fetch('/.netlify/functions/delete-cloudinary-asset', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            publicId: profile.avatar_public_id,
-            resourceType: 'image'
-          })
-        });
-      } catch (err) {
-        console.error('Failed to delete old avatar:', err);
-        // Continue anyway - orphaned images can be cleaned up later
-      }
+
+
+ if (profile?.avatar_public_id) {
+  // Call your Netlify function to delete the old image
+  try {
+    // GET THE SESSION TOKEN - ADD THIS
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session) {
+      await fetch('/.netlify/functions/delete-cloudinary-asset', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}` // ADD THIS LINE
+        },
+        body: JSON.stringify({
+          publicId: profile.avatar_public_id,
+          resourceType: 'image'
+        })
+      });
     }
+  } catch (err) {
+    console.error('Failed to delete old avatar:', err);
+    // Continue anyway - orphaned images can be cleaned up later
+  }
+}
+
+
+
 
     // Update profile with new avatar URL and public ID
     const { error: updateError } = await supabase
@@ -567,6 +578,11 @@ async function deleteProfilePhoto() {
         console.error('Failed to delete from Cloudinary');
       }
     }
+
+
+
+
+
 
     // Update profile to remove avatar
     const { error } = await supabase

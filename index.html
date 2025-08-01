@@ -2127,6 +2127,95 @@
       </div>
     </div>
 
+<!-- Email Verification Modal -->
+<div id="emailVerificationModal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Email Verification Required</h2>
+      <button class="close-modal" onclick="closeModal('emailVerification')">&times;</button>
+    </div>
+    <div class="modal-body" style="text-align: center; padding: 2rem;">
+      <div style="font-size: 4rem; color: var(--primary-sage); margin-bottom: 1rem;">
+        <i class="fas fa-envelope-circle-check"></i>
+      </div>
+      <h3 style="margin-bottom: 1rem;">Please Verify Your Email</h3>
+      <p style="color: var(--text-muted); margin-bottom: 2rem;">
+        We've sent a verification link to <strong id="verificationEmail"></strong>. 
+        Please check your inbox and click the link to verify your account before signing in.
+      </p>
+      <div id="verificationTimer" style="margin-bottom: 2rem; display: none;">
+        <p style="color: var(--text-muted);">
+          Didn't receive the email? You can request a new one in <span id="timerCount">60</span> seconds.
+        </p>
+      </div>
+      <button id="resendVerificationBtn" class="btn-secondary" style="display: none;" onclick="resendVerification()">
+        <i class="fas fa-paper-plane"></i> Resend Verification Email
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+let verificationTimer;
+let verificationEmail = '';
+
+function showEmailVerificationModal(email) {
+  verificationEmail = email;
+  document.getElementById('verificationEmail').textContent = email;
+  openModal('emailVerification');
+  startVerificationTimer();
+}
+
+function startVerificationTimer() {
+  let seconds = 60;
+  const timerElement = document.getElementById('timerCount');
+  const timerContainer = document.getElementById('verificationTimer');
+  const resendBtn = document.getElementById('resendVerificationBtn');
+  
+  timerContainer.style.display = 'block';
+  resendBtn.style.display = 'none';
+  
+  verificationTimer = setInterval(() => {
+    seconds--;
+    timerElement.textContent = seconds;
+    
+    if (seconds <= 0) {
+      clearInterval(verificationTimer);
+      timerContainer.style.display = 'none';
+      resendBtn.style.display = 'inline-flex';
+    }
+  }, 1000);
+}
+
+async function resendVerification() {
+  const resendBtn = document.getElementById('resendVerificationBtn');
+  resendBtn.disabled = true;
+  resendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+  
+  try {
+    await window.resendVerificationEmail(verificationEmail);
+    resendBtn.innerHTML = '<i class="fas fa-check"></i> Email Sent!';
+    setTimeout(() => {
+      startVerificationTimer();
+    }, 2000);
+  } catch (error) {
+    resendBtn.disabled = false;
+    resendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Resend Verification Email';
+  }
+}
+
+// Make the function globally available
+window.showEmailVerificationModal = showEmailVerificationModal;
+</script>
+
+
+
+
+
+
+
+
+
 
     <!-- Footer -->
     <footer role="contentinfo">

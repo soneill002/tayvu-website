@@ -75,18 +75,20 @@ export async function handleSignUp(event) {
    
 if (error) throw error;
 
+
 // Check if email needs verification
 if (data.user && !data.user.email_confirmed_at) {
-  showNotification(
-    'Account created! Please check your email to verify your account before signing in.', 
-    'success'
-  );
   form.reset();
   closeModal('signup');
   
-  // Don't automatically open sign in - they need to verify first
+  // Show the verification modal
+  window.showEmailVerificationModal(email);
+  
   return;
 }
+
+
+
 
 // If somehow already verified (shouldn't happen), proceed normally
 showNotification('Account created successfully!', 'success');
@@ -146,47 +148,26 @@ setButtonLoading(submitButton, true, 'Signing in...');
 
     if (error) throw error;
 
-    // ADD THIS EMAIL VERIFICATION CHECK
-    // Check if email is verified
-    if (data.user && !data.user.email_confirmed_at) {
-      // Sign them back out
-      await supabase.auth.signOut();
-      
-      showError('emailError', 'Please verify your email before signing in. Check your inbox for the verification link.');
-      
-      // Show resend verification option
-      const resendBtn = document.createElement('button');
-      resendBtn.className = 'btn-link';
-      resendBtn.style.marginTop = '10px';
-      resendBtn.textContent = 'Resend verification email';
-      resendBtn.onclick = async () => {
-        try {
-          const { error } = await supabase.auth.resend({
-            type: 'signup',
-            email: email
-          });
-          
-          if (error) throw error;
-          showNotification('Verification email sent! Please check your inbox.', 'success');
-        } catch (err) {
-          showNotification('Failed to resend email. Please try again later.', 'error');
-        }
-      };
-      
-      // Add the resend button after the error message
-      const errorElement = document.querySelector('#emailError');
-      if (errorElement && errorElement.parentNode) {
-        // Remove any existing resend button first
-        const existingBtn = errorElement.parentNode.querySelector('.btn-link');
-        if (existingBtn) existingBtn.remove();
-        
-        errorElement.parentNode.appendChild(resendBtn);
-      }
-      
-      return; // Don't proceed with sign in
-    }
-    // END EMAIL VERIFICATION CHECK
+   
+   // Check if email is verified
+if (data.user && !data.user.email_confirmed_at) {
+  // Sign them back out
+  await supabase.auth.signOut();
+  
+  // Close the signin modal
+  closeModal('signin');
+  
+  // Show the verification modal
+  window.showEmailVerificationModal(email);
+  
+  return;
+}
 
+
+
+
+
+    
     // Success! Auth state listener will handle the rest
     showNotification('Welcome back!', 'success');
     form.reset();
