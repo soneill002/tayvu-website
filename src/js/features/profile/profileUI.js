@@ -1,7 +1,6 @@
 /*  src/js/features/profile/profileUI.js  */
-import { showNotification, qs } from '@/utils/ui.js';
-import { getClient } from '@/api/supabaseClient.js';
 import { showNotification, qs, setButtonLoading } from '@/utils/ui.js';
+import { getClient } from '@/api/supabaseClient.js';
 
 let supabase;
 
