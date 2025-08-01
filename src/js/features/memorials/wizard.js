@@ -54,6 +54,17 @@ export const initWizard = withErrorHandling(async function() {
     // Initialize moments board
     wireMoments();
     
+// Wire up photo upload handlers
+wirePhotoUploadHandlers();
+
+// Initialize moments board
+wireMoments();
+
+// Set up privacy password handlers - ADD THIS LINE
+setupPrivacyHandlers();
+
+
+
     // IMPORTANT: Check if we should load a draft
     // Only load draft if there's a currentDraftId in localStorage
     // This prevents auto-loading drafts when user clicks "Create Memorial"
@@ -1015,6 +1026,49 @@ function saveStepData() {
     handleError(error, 'Save Step Data');
   }
 }
+
+
+
+/* ──────────────────────────────────────────
+   PRIVACY PASSWORD TOGGLE
+   ────────────────────────────────────────── */
+function setupPrivacyHandlers() {
+  // Add change listener to privacy radio buttons
+  const privacyRadios = document.querySelectorAll('input[name="privacy"]');
+  privacyRadios.forEach(radio => {
+    radio.addEventListener('change', togglePasswordField);
+  });
+}
+
+function togglePasswordField() {
+  const isPrivate = document.querySelector('input[name="privacy"]:checked')?.value === 'private';
+  const passwordSection = document.getElementById('passwordSection');
+  const passwordInput = document.getElementById('memorialPassword');
+  
+  if (!passwordSection || !passwordInput) return;
+  
+  if (isPrivate) {
+    passwordSection.style.display = 'block';
+    passwordInput.required = true;
+  } else {
+    passwordSection.style.display = 'none';
+    passwordInput.required = false;
+    passwordInput.value = '';
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* ──────────────────────────────────────────
    PREVIEW FUNCTIONALITY

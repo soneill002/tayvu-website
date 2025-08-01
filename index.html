@@ -1635,32 +1635,41 @@
     <!-- REMOVED: preview-actions div with all device buttons -->
   </div>
 
-            <div class="form-section">
-              <h3>Privacy Settings</h3>
-              <div class="privacy-options">
-                <label class="radio-option">
-                  <input type="radio" name="privacy" value="public" checked />
-                  <div class="radio-content">
-                    <strong>Public</strong>
-                    <small>Anyone can find and view this memorial</small>
-                  </div>
-                </label>
-                <label class="radio-option">
-                  <input type="radio" name="privacy" value="unlisted" />
-                  <div class="radio-content">
-                    <strong>Unlisted</strong>
-                    <small>Only people with the link can view</small>
-                  </div>
-                </label>
-                <label class="radio-option">
-                  <input type="radio" name="privacy" value="private" />
-                  <div class="radio-content">
-                    <strong>Private</strong>
-                    <small>Password protected - invite only</small>
-                  </div>
-                </label>
-              </div>
-            </div>
+<div class="form-section">
+  <h3>Privacy Settings</h3>
+  <div class="privacy-options">
+    <label class="radio-option">
+      <input type="radio" name="privacy" value="public" checked />
+      <div class="radio-content">
+        <strong>Public</strong>
+        <small>Anyone can find and view this memorial</small>
+      </div>
+    </label>
+    <label class="radio-option">
+      <input type="radio" name="privacy" value="private" />
+      <div class="radio-content">
+        <strong>Private</strong>
+        <small>Password protected - invite only</small>
+      </div>
+    </label>
+  </div>
+  
+  <!-- Password field for private memorials -->
+  <div id="passwordSection" style="display: none; margin-top: 1.5rem;">
+    <label class="form-label">
+      <span>Access Password</span>
+      <span class="required">*</span>
+    </label>
+    <input 
+      type="password" 
+      id="memorialPassword" 
+      class="form-input" 
+      placeholder="Enter a password for memorial access"
+      minlength="6"
+    />
+    <small class="form-hint">Minimum 6 characters. Share this password with people you want to grant access.</small>
+  </div>
+</div>
 
             <div class="form-actions">
               <button type="button" class="btn-secondary" data-wizard-prev>

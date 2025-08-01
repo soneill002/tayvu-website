@@ -2,6 +2,7 @@
 import { getClient } from '@/api/supabaseClient.js';
 import { showNotification, qs, formatDate } from '@/utils/ui.js';
 import { loadGuestbookEntries, subscribeToGuestbookUpdates, unsubscribeFromGuestbook } from '../guestbook.js';
+import { showPasswordPrompt, showPasswordError, showAccessGranted } from '@/utils/passwordModal.js';
 
 // Store subscription for cleanup
 let guestbookSubscription = null;
@@ -40,6 +41,71 @@ export async function initMemorialView(memorialId) {
       window.location.hash = '#home';
       return;
     }
+    
+    // PASSWORD PROTECTION CHECK
+    // Check if memorial is private and user is not the owner
+    if (memorial.privacy_setting === 'private' && memorial.user_id !== window.currentUser?.id) {
+      // Check if we have a valid password in session storage
+      const sessionKey = `memorial_access_${memorial.id}`;
+      const hasAccess = sessionStorage.getItem(sessionKey);
+      
+      if (!hasAccess) {
+        // Hide loading state while showing password prompt
+        hideLoadingState();
+        
+        let attempts = 0;
+        const maxAttempts = 3;
+        let accessGranted = false;
+        
+        while (attempts < maxAttempts && !accessGranted) {
+          // Prompt for password
+          const enteredPassword = await showPasswordPrompt(memorial.deceased_name);
+          
+          if (!enteredPassword) {
+            // User cancelled
+            showNotification('Access denied', 'error');
+            window.location.hash = '#home';
+            return;
+          }
+          
+          // Verify password (simple comparison - in production, use hashing)
+          if (enteredPassword === memorial.access_password) {
+            // Password correct!
+            accessGranted = true;
+            sessionStorage.setItem(sessionKey, 'granted');
+            showAccessGranted(memorial.deceased_name);
+            
+            // Show loading state again before continuing
+            showLoadingState();
+          } else {
+            // Password incorrect
+            attempts++;
+            
+            if (attempts < maxAttempts) {
+              const tryAgain = await showPasswordError();
+              if (!tryAgain) {
+                // User chose not to try again
+                showNotification('Access denied', 'error');
+                window.location.hash = '#home';
+                return;
+              }
+            } else {
+              // Max attempts reached
+              showNotification('Maximum password attempts exceeded', 'error');
+              window.location.hash = '#home';
+              return;
+            }
+          }
+        }
+        
+        if (!accessGranted) {
+          // Shouldn't reach here, but just in case
+          window.location.hash = '#home';
+          return;
+        }
+      }
+    }
+    // END PASSWORD PROTECTION CHECK
     
     // Store memorial ID and ownership globally for other components
     window.currentMemorialId = memorial.id;
@@ -551,12 +617,6 @@ function showSkeletonLoading() {
     `;
   }
 }
-
-
-
-
-
-
 
 function hideLoadingState() {
   // This will be called after content is loaded
