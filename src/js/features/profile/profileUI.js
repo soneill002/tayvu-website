@@ -562,22 +562,31 @@ async function deleteProfilePhoto() {
       .single();
 
     // Delete from Cloudinary if exists
-    if (profile?.avatar_public_id) {
-      const deleteResponse = await fetch('/.netlify/functions/delete-cloudinary-asset', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          publicId: profile.avatar_public_id,
-          resourceType: 'image'
-        })
-      });
+  // Delete from Cloudinary if exists
+if (profile?.avatar_public_id) {
+  // Get session for authentication - ADD THIS
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (session) {  // ADD THIS CHECK
+    const deleteResponse = await fetch('/.netlify/functions/delete-cloudinary-asset', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}` // ADD THIS LINE!
+      },
+      body: JSON.stringify({
+        publicId: profile.avatar_public_id,
+        resourceType: 'image'
+      })
+    });
 
-      if (!deleteResponse.ok) {
-        console.error('Failed to delete from Cloudinary');
-      }
+    if (!deleteResponse.ok) {
+      console.error('Failed to delete from Cloudinary');
     }
+  } else {
+    console.error('No session found for deletion');
+  }
+}
 
 
 

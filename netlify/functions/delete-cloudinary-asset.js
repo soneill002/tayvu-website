@@ -1,13 +1,14 @@
 const cloudinary = require('cloudinary').v2;
 const { createClient } = require('@supabase/supabase-js');
 
+// FIXED: Use the correct environment variables
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
+  'https://virtdzxnedksjsmeshyt.supabase.co', // Hardcode this - it's public
   process.env.SUPABASE_SERVICE_KEY // Service key for backend use
 );
 
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  cloud_name: 'dfmzvp5bt', // Hardcode this - it's public
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
@@ -74,13 +75,14 @@ exports.handler = async (event) => {
       if (memorialIdMatch) {
         const memorialId = memorialIdMatch[1];
         
+        // FIXED: The column is 'user_id' not 'created_by'
         const { data: memorial } = await supabase
           .from('memorials')
-          .select('created_by')
+          .select('user_id')
           .eq('id', memorialId)
           .single();
 
-        if (!memorial || memorial.created_by !== user.id) {
+        if (!memorial || memorial.user_id !== user.id) {
           // Check if user is a collaborator with admin rights
           const { data: collaborator } = await supabase
             .from('memorial_collaborators')
