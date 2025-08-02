@@ -261,7 +261,7 @@ function showPage(page) {
 }
 
 /* ──────────────────────────────────────────
-   MEMORIAL ROUTING
+   MEMORIAL ROUTING - UPDATED WITH FALLBACK
    ────────────────────────────────────────── */
 function showMemorialPage(page) {
   const memorialId = page.split('/')[1];
@@ -273,7 +273,10 @@ function showMemorialPage(page) {
   
   // Clean up previous memorial view if any
   if (currentPage && currentPage.startsWith('memorial/')) {
-    cleanupMemorialView();
+    // Try to cleanup if function exists
+    if (typeof cleanupMemorialView === 'function') {
+      cleanupMemorialView();
+    }
   }
   
   // Update page title (will be updated again once memorial loads)
@@ -295,14 +298,389 @@ function showMemorialPage(page) {
   
   currentPage = page;
   
-  // Initialize memorial view
-  initMemorialView(memorialId);
+  // Try to use the imported initMemorialView first
+  if (typeof initMemorialView === 'function') {
+    initMemorialView(memorialId);
+  } else {
+    // Try to load memorial view with dynamic import
+    import('@/features/memorials/memorialView.js')
+      .then(({ initMemorialView }) => {
+        // Successfully loaded the module
+        console.log('Memorial view module loaded');
+        initMemorialView(memorialId);
+      })
+      .catch(error => {
+        console.error('Failed to load memorial view module:', error);
+        // Fallback: Load memorial directly
+        loadMemorialFallback(memorialId);
+      });
+  }
   
   // Update nav (no nav item for individual memorials)
   updateActiveNavItems('');
   
   // Track memorial view
   trackPageView(`memorial/${memorialId}`);
+}
+
+/* ──────────────────────────────────────────
+   MEMORIAL FALLBACK LOADER
+   ────────────────────────────────────────── */
+async function loadMemorialFallback(memorialId) {
+  console.log('Using fallback memorial loader for:', memorialId);
+  
+  const container = document.getElementById('memorialView');
+  if (!container) return;
+  
+  // Show loading state
+  container.innerHTML = `
+    <div class="loading-container" style="text-align: center; padding: 4rem;">
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #6b9174;"></i>
+      </div>
+      <p style="color: #4a4238; margin-top: 1rem;">Loading memorial...</p>
+    </div>
+  `;
+  
+  try {
+    // Get Supabase client using the global method
+    const { getClient } = await import('@/api/supabaseClient.js').catch(() => {
+      // If import fails, try to get from window
+      return { getClient: window.getClient };
+    });
+    
+    const supabase = getClient ? getClient() : window.supabase;
+    
+    if (!supabase) {
+      throw new Error('Unable to initialize Supabase client');
+    }
+    
+    // Load memorial data
+    const { data: memorials, error } = await supabase
+      .rpc('get_memorial', { identifier: memorialId });
+    
+    if (error) throw error;
+    
+    if (!memorials || memorials.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 4rem;">
+          <i class="fas fa-search" style="font-size: 3rem; color: #9b8b7e; margin-bottom: 1rem; display: block;"></i>
+          <h2 style="color: #4a4238; margin-bottom: 1rem;">Memorial Not Found</h2>
+          <p style="color: #9b8b7e; margin-bottom: 2rem;">We couldn't find the memorial you're looking for.</p>
+          <a href="#home" class="btn-primary" style="display: inline-block; padding: 0.75rem 2rem; background: #6b9174; color: white; text-decoration: none; border-radius: 4px;">Return Home</a>
+        </div>
+      `;
+      return;
+    }
+    
+    const memorial = memorials[0];
+    
+    // Check if published
+    const { data: { user } } = await supabase.auth.getUser();
+    const currentUserId = user?.id;
+    
+    if (!memorial.is_published && memorial.user_id !== currentUserId) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 4rem;">
+          <i class="fas fa-lock" style="font-size: 3rem; color: #9b8b7e; margin-bottom: 1rem; display: block;"></i>
+          <h2 style="color: #4a4238; margin-bottom: 1rem;">Memorial Not Published</h2>
+          <p style="color: #9b8b7e; margin-bottom: 2rem;">This memorial is not yet available for viewing.</p>
+          <a href="#home" class="btn-primary" style="display: inline-block; padding: 0.75rem 2rem; background: #6b9174; color: white; text-decoration: none; border-radius: 4px;">Return Home</a>
+        </div>
+      `;
+      return;
+    }
+    
+    // Display the memorial
+    displayMemorialFallback(memorial, currentUserId, container);
+    
+  } catch (error) {
+    console.error('Error loading memorial:', error);
+    container.innerHTML = `
+      <div style="text-align: center; padding: 4rem;">
+        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #d2755a; margin-bottom: 1rem; display: block;"></i>
+        <h2 style="color: #4a4238; margin-bottom: 1rem;">Something Went Wrong</h2>
+        <p style="color: #9b8b7e; margin-bottom: 2rem;">Error: ${error.message}</p>
+        <a href="#home" class="btn-primary" style="display: inline-block; padding: 0.75rem 2rem; background: #6b9174; color: white; text-decoration: none; border-radius: 4px;">Return Home</a>
+      </div>
+    `;
+  }
+}
+
+/* ──────────────────────────────────────────
+   MEMORIAL DISPLAY FALLBACK
+   ────────────────────────────────────────── */
+function displayMemorialFallback(memorial, currentUserId, container) {
+  // Format dates
+  const birthYear = memorial.birth_date ? new Date(memorial.birth_date).getFullYear() : '';
+  const deathYear = memorial.death_date ? new Date(memorial.death_date).getFullYear() : '';
+  const dates = (birthYear || deathYear) ? `${birthYear} - ${deathYear}` : '';
+  
+  // Update page title
+  document.title = `${memorial.deceased_name} - Memorial | GatherMemorials`;
+  
+  // Build the memorial HTML
+  container.innerHTML = `
+    <div class="memorial-page">
+      <div class="memorial-header-section">
+        <div class="memorial-cover-photo" style="
+          height: 300px;
+          background-image: url('${memorial.background_photo_url || 'https://images.unsplash.com/photo-1516475429286-465d815a0df7?w=1200'}');
+          background-size: cover;
+          background-position: center;
+          position: relative;
+        ">
+          <div class="memorial-overlay" style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.6));
+          "></div>
+        </div>
+      </div>
+      
+      <div class="memorial-content" style="max-width: 1200px; margin: 0 auto; padding: 0 2rem;">
+        <div class="memorial-profile-section" style="text-align: center; margin-top: -80px; position: relative; z-index: 10;">
+          <img src="${memorial.profile_photo_url || '/assets/default-avatar.jpg'}" 
+               alt="${memorial.deceased_name}" 
+               class="memorial-profile-photo" 
+               style="width: 160px; height: 160px; border-radius: 50%; border: 4px solid white; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <h1 class="memorial-name" style="color: #4a4238; font-size: 2.5rem; margin-bottom: 0.5rem;">${memorial.deceased_name}</h1>
+          ${dates ? `<p class="memorial-dates" style="color: #9b8b7e; font-size: 1.25rem; margin-bottom: 0.5rem;">${dates}</p>` : ''}
+          ${memorial.headline ? `<p class="memorial-tagline" style="color: #6b9174; font-style: italic; font-size: 1.1rem;">${memorial.headline}</p>` : ''}
+        </div>
+        
+        <div class="memorial-tabs" style="display: flex; justify-content: center; gap: 2rem; margin: 3rem 0 2rem; border-bottom: 2px solid #e8d5b7; padding-bottom: 0;">
+          <button class="tab-button active" data-tab="about" style="
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #6b9174;
+            font-weight: 500;
+            border-bottom: 3px solid #6b9174;
+            margin-bottom: -2px;
+            transition: all 0.3s ease;
+          ">About</button>
+          <button class="tab-button" data-tab="gallery" style="
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #9b8b7e;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.3s ease;
+          ">Photos & Videos</button>
+          <button class="tab-button" data-tab="tributes" style="
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #9b8b7e;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.3s ease;
+          ">Tributes</button>
+          <button class="tab-button" data-tab="service" style="
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #9b8b7e;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.3s ease;
+          ">Service Info</button>
+        </div>
+        
+        <div class="memorial-tab-content">
+          <div class="tab-pane active" id="about-tab">
+            ${memorial.opening_statement ? `
+              <div class="memorial-section" style="margin-bottom: 2rem;">
+                <p class="opening-statement" style="font-size: 1.2rem; color: #4a4238; line-height: 1.8; font-style: italic; text-align: center; padding: 1.5rem; background: #faf8f3; border-radius: 8px;">${memorial.opening_statement}</p>
+              </div>
+            ` : ''}
+            
+            ${memorial.obituary ? `
+              <div class="memorial-section obituary-section" style="margin-bottom: 2rem;">
+                <h2 style="color: #4a4238; font-size: 1.75rem; margin-bottom: 1rem;">Obituary</h2>
+                <div class="memorial-text" style="color: #4a4238; line-height: 1.8; font-size: 1.1rem;">${memorial.obituary}</div>
+              </div>
+            ` : ''}
+            
+            ${memorial.life_story ? `
+              <div class="memorial-section" style="margin-bottom: 2rem;">
+                <h2 style="color: #4a4238; font-size: 1.75rem; margin-bottom: 1rem;">Life Story</h2>
+                <div class="memorial-text" style="color: #4a4238; line-height: 1.8; font-size: 1.1rem;">${memorial.life_story}</div>
+              </div>
+            ` : ''}
+            
+            ${memorial.additional_info ? `
+              <div class="memorial-section" style="margin-bottom: 2rem;">
+                <h2 style="color: #4a4238; font-size: 1.75rem; margin-bottom: 1rem;">Additional Information</h2>
+                <div class="memorial-text" style="color: #4a4238; line-height: 1.8; font-size: 1.1rem;">${memorial.additional_info}</div>
+              </div>
+            ` : ''}
+          </div>
+          
+          <div class="tab-pane" id="gallery-tab" style="display: none;">
+            <div class="memorial-gallery" style="padding: 2rem 0;">
+              <p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">No photos or videos have been added yet.</p>
+            </div>
+          </div>
+          
+          <div class="tab-pane" id="tributes-tab" style="display: none;">
+            <div class="memorial-tributes" style="padding: 2rem 0;">
+              <p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">No tributes have been shared yet.</p>
+            </div>
+          </div>
+          
+          <div class="tab-pane" id="service-tab" style="display: none;">
+            <div class="memorial-service-info" style="padding: 2rem 0;">
+              <p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">No service information is available at this time.</p>
+            </div>
+          </div>
+        </div>
+        
+        ${memorial.user_id === currentUserId ? `
+          <div class="owner-controls" style="margin: 3rem 0; text-align: center;">
+            <button onclick="
+              localStorage.setItem('currentDraftId', '${memorial.id}');
+              window.location.hash='#createMemorial';
+            " class="btn-primary" style="
+              display: inline-block;
+              padding: 0.75rem 2rem;
+              background: #6b9174;
+              color: white;
+              text-decoration: none;
+              border: none;
+              border-radius: 4px;
+              font-size: 1rem;
+              cursor: pointer;
+              transition: background 0.3s ease;
+            ">
+              <i class="fas fa-edit"></i> Edit Memorial
+            </button>
+          </div>
+        ` : ''}
+        
+        <section class="guestbook-section" style="margin-top: 3rem; padding: 3rem 0; border-top: 2px solid #e8d5b7;">
+          <h2 style="color: #4a4238; font-size: 2rem; margin-bottom: 1.5rem; text-align: center;">Guestbook</h2>
+          <div class="guestbook-actions" style="text-align: center; margin-bottom: 2rem;">
+            <button class="btn-primary" onclick="
+              import('@/utils/modal.js').then(({ openModal }) => {
+                openModal('guestbook');
+              }).catch(() => {
+                alert('Guestbook feature coming soon!');
+              });
+            " style="
+              display: inline-block;
+              padding: 0.75rem 2rem;
+              background: #6b9174;
+              color: white;
+              text-decoration: none;
+              border: none;
+              border-radius: 4px;
+              font-size: 1rem;
+              cursor: pointer;
+              transition: background 0.3s ease;
+            ">
+              <i class="fas fa-pen"></i> Leave a Message
+            </button>
+          </div>
+          <div class="guestbook-entries" id="guestbookEntries">
+            <p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">Loading messages...</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  `;
+  
+  // Set up tab functionality
+  setupMemorialTabs(container);
+  
+  // Try to load guestbook entries
+  loadGuestbookFallback(memorial.id);
+}
+
+/* ──────────────────────────────────────────
+   MEMORIAL TAB SETUP
+   ────────────────────────────────────────── */
+function setupMemorialTabs(container) {
+  const tabButtons = container.querySelectorAll('.tab-button');
+  const tabPanes = container.querySelectorAll('.tab-pane');
+  
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const targetTab = button.getAttribute('data-tab');
+      
+      // Update active button
+      tabButtons.forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.color = '#9b8b7e';
+        btn.style.borderBottomColor = 'transparent';
+      });
+      button.classList.add('active');
+      button.style.color = '#6b9174';
+      button.style.borderBottomColor = '#6b9174';
+      
+      // Update active pane
+      tabPanes.forEach(pane => {
+        pane.style.display = 'none';
+        pane.classList.remove('active');
+      });
+      
+      const targetPane = container.querySelector(`#${targetTab}-tab`);
+      if (targetPane) {
+        targetPane.style.display = 'block';
+        targetPane.classList.add('active');
+      }
+    });
+  });
+}
+
+/* ──────────────────────────────────────────
+   GUESTBOOK FALLBACK LOADER
+   ────────────────────────────────────────── */
+async function loadGuestbookFallback(memorialId) {
+  try {
+    const { getClient } = await import('@/api/supabaseClient.js').catch(() => ({ getClient: window.getClient }));
+    const supabase = getClient ? getClient() : window.supabase;
+    
+    const { data: entries, error } = await supabase
+      .from('guestbook_entries')
+      .select('*')
+      .eq('memorial_id', memorialId)
+      .eq('is_approved', true)
+      .order('created_at', { ascending: false });
+    
+    const container = document.getElementById('guestbookEntries');
+    if (!container) return;
+    
+    if (error) throw error;
+    
+    if (entries && entries.length > 0) {
+      container.innerHTML = entries.map(entry => `
+        <div class="guestbook-entry" style="background: #faf8f3; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
+          <p style="color: #4a4238; line-height: 1.6; margin-bottom: 0.5rem;">${entry.message}</p>
+          <p style="color: #9b8b7e; font-size: 0.9rem;">
+            <strong>${entry.author_name}</strong> - 
+            ${new Date(entry.created_at).toLocaleDateString()}
+          </p>
+        </div>
+      `).join('');
+    } else {
+      container.innerHTML = '<p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">No messages yet. Be the first to leave a tribute.</p>';
+    }
+  } catch (error) {
+    console.error('Error loading guestbook:', error);
+  }
 }
 
 /* ──────────────────────────────────────────
