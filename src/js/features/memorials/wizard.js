@@ -1263,7 +1263,7 @@ function togglePasswordField() {
 
 
 /* ──────────────────────────────────────────
-   PREVIEW FUNCTIONALITY
+   PREVIEW FUNCTIONALITY - UPDATED TO MATCH EXAMPLE MEMORIAL
    ────────────────────────────────────────── */
 
 // Replace the existing generatePreview function with this improved version
@@ -1321,7 +1321,7 @@ function generatePreview() {
   }
 }
 
-// New function to generate the preview HTML matching the Example Memorial page
+// UPDATED generatePreviewHTML to match Example Memorial layout exactly
 function generatePreviewHTML() {
   try {
     // Get the current memorial data
@@ -1341,7 +1341,7 @@ function generatePreviewHTML() {
     // Get services data
     const services = memorialData.services || [];
     
-    // Get moments data if available - first try saved data, then get fresh data
+    // Get moments data
     const moments = memorialData.moments || window.getMomentsForSave?.() || [];
     
     // Format dates
@@ -1365,41 +1365,10 @@ function generatePreviewHTML() {
       return `${displayHour}:${minutes} ${ampm}`;
     };
     
-    // Format life span dates
+    // Get year only for hero display
     const birthYear = birthDate ? new Date(birthDate).getFullYear() : '';
     const deathYear = deathDate ? new Date(deathDate).getFullYear() : '';
-    // Format full dates for display
-    const formattedBirthDate = birthDate ? formatDate(birthDate) : '';
-    const formattedDeathDate = deathDate ? formatDate(deathDate) : '';
 
-    // Generate services HTML
-    const servicesHTML = services.length > 0 ? services.map(service => `
-      <div class="service-item">
-        <div class="service-icon">
-          <i class="fas ${getServiceIcon(service.type)}"></i>
-        </div>
-        <div class="service-details">
-          <h3>${getServiceTitle(service.type)}</h3>
-          ${service.date ? `<p class="service-date">${formatDate(service.date)}${service.time ? ` at ${formatTime(service.time)}` : ''}</p>` : ''}
-          ${service.locationName ? `<p class="service-location"><strong>${service.locationName}</strong></p>` : ''}
-          ${service.address ? `<p class="service-address">${service.address}</p>` : ''}
-          ${service.additionalInfo ? `<p class="service-info">${service.additionalInfo}</p>` : ''}
-        </div>
-      </div>
-    `).join('') : '<p class="no-services">No services scheduled at this time.</p>';
-    
-    // Generate moments gallery HTML
-    const momentsHTML = moments.length > 0 ? `
-      <div class="moments-gallery">
-        ${moments.slice(0, 6).map(moment => `
-          <div class="moment-item">
-            <img src="${moment.url}" alt="${moment.caption || 'Memorial moment'}" />
-            ${moment.caption ? `<p class="moment-caption">${moment.caption}</p>` : ''}
-          </div>
-        `).join('')}
-      </div>
-    ` : '';
-    
     return `
       <!DOCTYPE html>
       <html lang="en">
@@ -1409,303 +1378,209 @@ function generatePreviewHTML() {
         <title>${fullName} - Memorial Preview</title>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@300;400&display=swap">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+        <link rel="stylesheet" href="/src/styles/base.css">
+        <link rel="stylesheet" href="/src/styles/layout.css">
+        <link rel="stylesheet" href="/src/styles/components.css">
         <style>
-          /* Reset and Base */
-          * {
+          /* Ensure the preview uses the same styles */
+          body {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-          }
-          
-          body {
             font-family: 'Inter', sans-serif;
             color: #4a4238;
             background: #fefdfb;
-            line-height: 1.6;
           }
           
-          /* Memorial Hero Section */
-          .memorial-hero {
+          /* Hide inactive tab content in preview */
+          .tab-pane {
+            display: none;
+          }
+          
+          .tab-pane.active {
+            display: block;
+          }
+          
+          /* Ensure proper section spacing */
+          .memorial-page section {
             position: relative;
-            height: 400px;
-            background: url('${backgroundPhoto}') center/cover;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-          }
-          
-          .memorial-hero-overlay {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.5));
-          }
-          
-          .memorial-hero-content {
-            position: relative;
-            text-align: center;
-            color: white;
-            padding: 2rem;
             z-index: 1;
-          }
-          
-          .memorial-main-photo {
-            width: 160px;
-            height: 160px;
-            border-radius: 50%;
-            border: 4px solid white;
-            margin-bottom: 1rem;
-            object-fit: cover;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-          }
-          
-          .memorial-main-name {
-            font-size: 2.5rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-          }
-          
-          .memorial-dates {
-            font-size: 1.1rem;
-            opacity: 0.9;
-          }
-          
-          .memorial-headline {
-            font-size: 1.3rem;
-            font-style: italic;
-            margin-top: 1rem;
-            opacity: 0.95;
-          }
-          
-          /* Content Container */
-          .memorial-content {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 3rem 2rem;
-          }
-          
-          /* Opening Statement */
-          .opening-statement {
-            text-align: center;
-            font-size: 1.2rem;
-            color: #6b9174;
-            font-style: italic;
-            margin-bottom: 3rem;
-            padding: 2rem;
-            background: rgba(107, 145, 116, 0.05);
-            border-radius: 10px;
-          }
-          
-          /* Section Headers */
-          h2 {
-            font-size: 2rem;
-            color: #4a4238;
-            margin: 3rem 0 1.5rem;
-            font-family: 'Merriweather', serif;
-          }
-          
-          /* Obituary Section */
-          .obituary-content {
-            font-family: 'Merriweather', serif;
-            line-height: 1.8;
-            color: #4a4238;
-            margin-bottom: 2rem;
-          }
-          
-          .obituary-content p {
-            margin-bottom: 1rem;
-          }
-          
-          /* Life Story Section */
-          .life-story {
-            background: #f9f9f9;
-            padding: 2rem;
-            border-radius: 10px;
-            margin: 2rem 0;
-          }
-          
-          .life-story p {
-            margin-bottom: 1rem;
-            line-height: 1.8;
-          }
-          
-          /* Service Section */
-          .service-section {
-            margin: 3rem 0;
-          }
-          
-          .service-item {
-            display: flex;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-            padding: 1.5rem;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-          }
-          
-          .service-icon {
-            flex-shrink: 0;
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, #6b9174, #4f7354);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-          }
-          
-          .service-details h3 {
-            font-size: 1.2rem;
-            color: #4a4238;
-            margin-bottom: 0.5rem;
-          }
-          
-          .service-details p {
-            color: #64748b;
-            margin-bottom: 0.25rem;
-          }
-          
-          .service-location {
-            font-weight: 500;
-          }
-          
-          .no-services {
-            text-align: center;
-            color: #64748b;
-            font-style: italic;
-          }
-          
-          /* Additional Info */
-          .additional-info {
-            background: #faf8f3;
-            padding: 2rem;
-            border-radius: 10px;
-            margin: 2rem 0;
-            border-left: 4px solid #6b9174;
-          }
-          
-          /* Moments Gallery */
-          .moments-gallery {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 1rem;
-            margin: 2rem 0;
-          }
-          
-          .moment-item {
-            position: relative;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-          }
-          
-          .moment-item img {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-          }
-          
-          .moment-caption {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 0.5rem;
-            font-size: 0.875rem;
-          }
-          
-          /* Guestbook Section */
-          .guestbook-section {
-            margin-top: 3rem;
-            padding: 2rem;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            text-align: center;
-          }
-          
-          .guestbook-section p {
-            color: #64748b;
-            margin-top: 1rem;
           }
         </style>
       </head>
       <body>
-        <div class="memorial-page">
+        <section class="memorial-page">
           <!-- Hero Section -->
-          <section class="memorial-hero">
+          <div class="memorial-hero" style="background-image: url('${backgroundPhoto}');">
             <div class="memorial-hero-overlay"></div>
             <div class="memorial-hero-content">
-              <img src="${profilePhoto}" alt="${fullName}" class="memorial-main-photo" />
+              <img src="${profilePhoto}" alt="${fullName}" class="memorial-main-photo">
               <h1 class="memorial-main-name">${fullName}</h1>
-              <p class="memorial-dates">${formattedBirthDate} - ${formattedDeathDate}</p>
+              <p class="memorial-main-dates">${birthYear} - ${deathYear}</p>
               ${headline ? `<p class="memorial-headline">"${headline}"</p>` : ''}
+              
+              <div class="memorial-hero-actions">
+                <button class="memorial-hero-btn">
+                  <i class="fas fa-share"></i>
+                  Share Memorial
+                </button>
+              </div>
             </div>
-          </section>
-          
-          <!-- Content -->
-          <div class="memorial-content">
-            ${openingStatement ? `
-              <div class="opening-statement">
-                ${openingStatement}
-              </div>
-            ` : ''}
-            
-            <!-- Obituary -->
-            <section>
-              <h2>Celebrating a Life Well Lived</h2>
-              <div class="obituary-content">
-                ${obituary}
-              </div>
-            </section>
-            
-            <!-- Life Story -->
-            ${lifeStory ? `
-              <section>
-                <h2>Life Story</h2>
-                <div class="life-story">
-                  ${lifeStory}
-                </div>
-              </section>
-            ` : ''}
-            
-            <!-- Service Information -->
-            ${services.length > 0 ? `
-              <section class="service-section">
-                <h2>Service Information</h2>
-                ${servicesHTML}
-              </section>
-            ` : ''}
-            
-            <!-- Additional Information -->
-            ${additionalInfo ? `
-              <section>
-                <h2>Additional Information</h2>
-                <div class="additional-info">
-                  ${additionalInfo}
-                </div>
-              </section>
-            ` : ''}
-            
-            <!-- Moments Gallery -->
-            ${moments.length > 0 ? `
-              <section>
-                <h2>Cherished Moments</h2>
-                ${momentsHTML}
-              </section>
-            ` : ''}
-            
-            <!-- Guestbook -->
-            <section class="guestbook-section">
-              <h2>Guestbook</h2>
-              <p>Be the first to sign the guestbook.</p>
-            </section>
           </div>
-        </div>
+          
+          <!-- Memorial Body -->
+          <div class="memorial-body">
+            <!-- Tab Navigation -->
+            <nav class="memorial-tabs">
+              <button class="memorial-tab active" data-tab="about">About</button>
+              <button class="memorial-tab" data-tab="gallery">Gallery</button>
+              <button class="memorial-tab" data-tab="tributes">Tributes</button>
+              <button class="memorial-tab" data-tab="service">Service Info</button>
+            </nav>
+            
+            <!-- Tab Content Wrapper -->
+            <div class="memorial-tabs-wrapper">
+              <div class="memorial-content">
+                <!-- About Tab (default active) -->
+                <div class="tab-pane active" id="aboutTab">
+                  ${openingStatement ? `
+                    <div class="opening-statement-section">
+                      <p class="opening-statement">${openingStatement}</p>
+                    </div>
+                  ` : ''}
+                  
+                  ${obituary ? `
+                    <section class="obituary-section">
+                      <div class="obituary-container">
+                        <h2 class="obituary-title">Celebrating a Life Well Lived</h2>
+                        <div class="obituary-details">
+                          ${obituary}
+                        </div>
+                      </div>
+                    </section>
+                  ` : ''}
+                  
+                  ${lifeStory ? `
+                    <section class="life-story-section">
+                      <h2 class="section-title">Life Story</h2>
+                      <div class="life-story-content">
+                        ${lifeStory}
+                      </div>
+                    </section>
+                  ` : ''}
+                  
+                  ${additionalInfo ? `
+                    <section class="additional-info-section">
+                      <h2>Additional Information</h2>
+                      <p>${additionalInfo}</p>
+                    </section>
+                  ` : ''}
+                </div>
+                
+                <!-- Gallery Tab -->
+                <div class="tab-pane" id="galleryTab">
+                  <h2 class="section-title">Photos & Videos</h2>
+                  <div class="moments-vsco">
+                    ${moments.length > 0 ? moments.map(moment => `
+                      <div class="moment-vsco">
+                        <img src="${moment.url}" alt="${moment.caption || 'Memorial moment'}">
+                        ${moment.caption ? `<p class="moment-caption-vsco">${moment.caption}</p>` : ''}
+                      </div>
+                    `).join('') : '<p class="no-moments-message">No photos or videos have been added yet.</p>'}
+                  </div>
+                </div>
+                
+                <!-- Tributes Tab -->
+                <div class="tab-pane" id="tributesTab">
+                  <section class="guestbook-section">
+                    <div class="guestbook-container">
+                      <h2 class="guestbook-title">Share a Memory</h2>
+                      <div class="guestbook-form-card">
+                        <form class="guestbook-form">
+                          <div class="form-group">
+                            <input type="text" placeholder="Your Name" disabled>
+                          </div>
+                          <div class="form-group">
+                            <input type="email" placeholder="Your Email (optional)" disabled>
+                          </div>
+                          <div class="form-group">
+                            <textarea placeholder="Share a memory or leave a message..." rows="4" disabled></textarea>
+                          </div>
+                          <button type="button" class="btn-primary" disabled>
+                            <i class="fas fa-paper-plane"></i>
+                            Share Memory
+                          </button>
+                        </form>
+                      </div>
+                      <div class="guestbook-entries">
+                        <p class="no-entries-message">Be the first to share a memory.</p>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                
+                <!-- Service Info Tab -->
+                <div class="tab-pane" id="serviceTab">
+                  <section class="service-section">
+                    <div class="service-container">
+                      <h2 class="service-title">Service Information</h2>
+                      <div class="services-grid">
+                        ${services.length > 0 ? services.map(service => {
+                          const serviceDate = new Date(service.date);
+                          const formattedDate = formatDate(service.date);
+                          
+                          return `
+                            <div class="service-card ${service.isVirtual ? 'virtual-service' : ''}">
+                              <div class="service-icon">
+                                <i class="fas ${service.isVirtual ? 'fa-video' : 'fa-location-dot'}"></i>
+                              </div>
+                              <h3>${service.type.replace('_', ' ').toUpperCase()}</h3>
+                              <p class="service-date">${formattedDate}</p>
+                              <p class="service-time">${formatTime(service.startTime)} - ${formatTime(service.endTime)}</p>
+                              ${service.location ? `<p class="service-location">${service.location}</p>` : ''}
+                              ${service.address ? `<p class="service-address">${service.address}</p>` : ''}
+                              ${service.virtualLink ? `
+                                <a href="${service.virtualLink}" class="virtual-link" target="_blank">
+                                  <i class="fas fa-video"></i> Join Virtual Service
+                                </a>
+                              ` : ''}
+                              ${service.additionalInfo ? `<p class="service-info">${service.additionalInfo}</p>` : ''}
+                            </div>
+                          `;
+                        }).join('') : '<p class="no-services-message">No service information is available at this time.</p>'}
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        
+        <script>
+          // Simple tab switching for preview
+          document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('.memorial-tab');
+            const panes = document.querySelectorAll('.tab-pane');
+            
+            tabs.forEach(tab => {
+              tab.addEventListener('click', () => {
+                // Remove active class from all
+                tabs.forEach(t => t.classList.remove('active'));
+                panes.forEach(p => p.classList.remove('active'));
+                
+                // Add active to clicked tab
+                tab.classList.add('active');
+                
+                // Show corresponding pane
+                const tabName = tab.getAttribute('data-tab');
+                const pane = document.getElementById(tabName + 'Tab');
+                if (pane) {
+                  pane.classList.add('active');
+                }
+              });
+            });
+          });
+        </script>
       </body>
       </html>
     `;

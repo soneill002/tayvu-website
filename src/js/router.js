@@ -539,7 +539,7 @@ window.checkMemorialPassword = function(memorialId, correctPassword) {
 };
 
 /* ──────────────────────────────────────────
-   DIRECT MEMORIAL DISPLAY - FIXED TO USE CSS CLASSES
+   DIRECT MEMORIAL DISPLAY - UPDATED TO MATCH EXAMPLE MEMORIAL LAYOUT
    ────────────────────────────────────────── */
 function displayMemorialDirect(memorial, container) {
   // Format dates
@@ -557,29 +557,25 @@ function displayMemorialDirect(memorial, container) {
   const birthYear = memorial.birth_date ? new Date(memorial.birth_date).getFullYear() : '';
   const deathYear = memorial.death_date ? new Date(memorial.death_date).getFullYear() : '';
   
-  // Get full dates for other displays if needed
-  const birthDate = memorial.birth_date ? formatDate(memorial.birth_date) : '';
-  const deathDate = memorial.death_date ? formatDate(memorial.death_date) : '';
-  
   // Update page title
   document.title = `${memorial.deceased_name} - Memorial | GatherMemorials`;
   
-  // Build the memorial HTML using proper CSS classes
+  // Build the memorial HTML using the EXACT same structure as Example Memorial
   container.innerHTML = `
-    <section class="memorial-page">
-      <!-- Hero Section -->
+    <section class="memorial-page" id="memorialView">
+      <!-- Hero Section - matching exampleMemorial -->
       <div class="memorial-hero" style="background-image: url('${memorial.background_photo_url || 'https://images.unsplash.com/photo-1516475429286-465d815a0df7?w=1200'}');">
         <div class="memorial-hero-overlay"></div>
         <div class="memorial-hero-content">
           <img src="${memorial.profile_photo_url || '/assets/default-avatar.jpg'}" 
                alt="${memorial.deceased_name}" 
-               class="memorial-main-photo" />
+               class="memorial-main-photo">
           <h1 class="memorial-main-name">${memorial.deceased_name}</h1>
           <p class="memorial-main-dates">${birthYear} - ${deathYear}</p>
           ${memorial.headline ? `<p class="memorial-headline">"${memorial.headline}"</p>` : ''}
           
           <div class="memorial-hero-actions">
-            <button class="memorial-hero-btn" onclick="shareMemorial('${memorial.id}')">
+            <button class="memorial-hero-btn" data-action="share-memorial">
               <i class="fas fa-share"></i>
               Share Memorial
             </button>
@@ -587,163 +583,293 @@ function displayMemorialDirect(memorial, container) {
         </div>
       </div>
       
+      <!-- Memorial Body -->
       <div class="memorial-body">
-        <!-- Opening Statement Section -->
-        ${memorial.opening_statement ? `
-          <div class="opening-statement-section">
-            <div class="memorial-content">
-              <p class="opening-statement">${memorial.opening_statement}</p>
-            </div>
-          </div>
-        ` : ''}
+        <!-- Tab Navigation -->
+        <nav class="memorial-tabs">
+          <button class="memorial-tab active" data-tab="about">About</button>
+          <button class="memorial-tab" data-tab="gallery">Gallery</button>
+          <button class="memorial-tab" data-tab="tributes">Tributes</button>
+          <button class="memorial-tab" data-tab="service">Service Info</button>
+        </nav>
         
-        <!-- Obituary Section -->
-        ${memorial.obituary ? `
-          <section class="obituary-section">
-            <div class="obituary-container">
-              <h2 class="obituary-title">Celebrating a Life Well Lived</h2>
-              <div class="obituary-details">
-                ${memorial.obituary}
-              </div>
-            </div>
-          </section>
-        ` : ''}
-        
-        <!-- Life Story Section -->
-        ${memorial.life_story ? `
-          <section class="life-story-section">
-            <div class="memorial-content">
-              <h2 class="section-title">Life Story</h2>
-              <div class="life-story-content">
-                ${memorial.life_story}
-              </div>
-            </div>
-          </section>
-        ` : ''}
-        
-        <!-- Additional Information Section -->
-        ${memorial.additional_info ? `
-          <section class="additional-info-section">
-            <div class="memorial-content">
-              <h2>Additional Information</h2>
-              <p>${memorial.additional_info}</p>
-            </div>
-          </section>
-        ` : ''}
-        
-        <!-- Service Information Section -->
-        <section class="service-section" id="serviceInfo">
-          <div class="service-container">
-            <h2 class="service-title">Service Information</h2>
-            <div id="servicesContent" class="services-content">
-              <p class="no-services-message">No service information is available at this time.</p>
-            </div>
-          </div>
-        </section>
-        
-        <!-- Photos & Videos Section -->
-        <section class="moments-section" id="momentsSection">
+        <!-- Tab Content Wrapper -->
+        <div class="memorial-tabs-wrapper">
           <div class="memorial-content">
-            <h2 class="section-title">Photos & Videos</h2>
-            <div id="momentsContent" class="moments-content">
-              <p class="no-moments-message">No photos or videos have been added yet.</p>
+            <!-- About Tab (default active) -->
+            <div class="tab-pane active" id="aboutTab">
+              <!-- Opening Statement -->
+              ${memorial.opening_statement ? `
+                <div class="opening-statement-section">
+                  <p class="opening-statement">${memorial.opening_statement}</p>
+                </div>
+              ` : ''}
+              
+              <!-- Obituary Section -->
+              ${memorial.obituary ? `
+                <section class="obituary-section">
+                  <div class="obituary-container">
+                    <h2 class="obituary-title">Celebrating a Life Well Lived</h2>
+                    <div class="obituary-details">
+                      ${memorial.obituary}
+                    </div>
+                  </div>
+                </section>
+              ` : ''}
+              
+              <!-- Life Story Section -->
+              ${memorial.life_story ? `
+                <section class="life-story-section">
+                  <h2 class="section-title">Life Story</h2>
+                  <div class="life-story-content">
+                    ${memorial.life_story}
+                  </div>
+                </section>
+              ` : ''}
+              
+              <!-- Additional Information -->
+              ${memorial.additional_info ? `
+                <section class="additional-info-section">
+                  <h2>Additional Information</h2>
+                  <p>${memorial.additional_info}</p>
+                </section>
+              ` : ''}
+            </div>
+            
+            <!-- Gallery Tab -->
+            <div class="tab-pane" id="galleryTab">
+              <h2 class="section-title">Photos & Videos</h2>
+              <div id="momentsContent" class="moments-vsco">
+                <p class="no-moments-message">No photos or videos have been added yet.</p>
+              </div>
+            </div>
+            
+            <!-- Tributes Tab (Guestbook) -->
+            <div class="tab-pane" id="tributesTab">
+              <section class="guestbook-section">
+                <div class="guestbook-container">
+                  <h2 class="guestbook-title">Share a Memory</h2>
+                  
+                  <!-- Leave a Message Form -->
+                  ${!window.isMemorialOwner ? `
+                    <div class="guestbook-form-card">
+                      <form id="guestbookForm" class="guestbook-form">
+                        <div class="form-group">
+                          <input type="text" id="guestName" placeholder="Your Name" required>
+                        </div>
+                        <div class="form-group">
+                          <input type="email" id="guestEmail" placeholder="Your Email (optional)">
+                        </div>
+                        <div class="form-group">
+                          <textarea id="guestMessage" placeholder="Share a memory or leave a message..." rows="4" required></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary">
+                          <i class="fas fa-paper-plane"></i>
+                          Share Memory
+                        </button>
+                      </form>
+                    </div>
+                  ` : ''}
+                  
+                  <!-- Messages Display -->
+                  <div id="guestbookEntries" class="guestbook-entries">
+                    <p class="no-entries-message">Be the first to share a memory.</p>
+                  </div>
+                </div>
+              </section>
+            </div>
+            
+            <!-- Service Info Tab -->
+            <div class="tab-pane" id="serviceTab">
+              <section class="service-section">
+                <div class="service-container">
+                  <h2 class="service-title">Service Information</h2>
+                  <div id="servicesContent" class="services-grid">
+                    <p class="no-services-message">No service information is available at this time.</p>
+                  </div>
+                </div>
+              </section>
             </div>
           </div>
-        </section>
-        
-        <!-- Guestbook Section -->
-        <section class="guestbook-section" id="guestbookSection">
-          <div class="guestbook-container">
-            <h2 class="guestbook-title">Share a Memory</h2>
-            <div class="guestbook-form-wrapper">
-              <form id="guestbookForm" class="guestbook-form">
-                <div class="form-group">
-                  <input type="text" id="guestName" placeholder="Your Name" required />
-                </div>
-                <div class="form-group">
-                  <input type="email" id="guestEmail" placeholder="Your Email (optional)" />
-                </div>
-                <div class="form-group">
-                  <textarea id="guestMessage" placeholder="Share a memory or leave a message..." rows="4" required></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary">
-                  <i class="fas fa-heart"></i>
-                  Share Memory
-                </button>
-              </form>
-            </div>
-            <div id="guestbookEntries" class="guestbook-entries">
-              <p class="no-entries-message">No tributes have been shared yet.</p>
-            </div>
-          </div>
-        </section>
-        
-        <!-- Edit Memorial Button (for owners) -->
-        <div id="ownerControls" class="owner-controls" style="display: none;">
-          <button onclick="editMemorial('${memorial.id}')" class="btn-edit-memorial">
+        </div>
+      </div>
+      
+      <!-- Edit Memorial Button (for owners) -->
+      ${window.isMemorialOwner ? `
+        <div class="memorial-edit-cta">
+          <button class="btn-edit-memorial" onclick="editMemorial('${memorial.id}')">
             <i class="fas fa-edit"></i>
             Edit Memorial
           </button>
         </div>
-      </div>
+      ` : ''}
     </section>
   `;
   
-  // Load additional content after rendering
-  setTimeout(() => {
-    if (window.currentMemorialId) {
-      loadGuestbookDirect(window.currentMemorialId);
-      loadServicesDirect(window.currentMemorialId);
-      loadMomentsDirect(window.currentMemorialId);
+  // Now set up tab functionality
+  setupMemorialTabs();
+  
+  // Load additional data
+  loadMemorialServices(memorial.id);
+  loadMemorialMoments(memorial.id);
+  loadGuestbookDirect(memorial.id);
+  
+  // Set up share functionality
+  setupShareFunctionality(memorial);
+  
+  // Set up guestbook form if user is not owner
+  if (!window.isMemorialOwner) {
+    setupGuestbookForm(memorial.id);
+  }
+}
+
+/* ──────────────────────────────────────────
+   MEMORIAL TAB FUNCTIONALITY
+   ────────────────────────────────────────── */
+function setupMemorialTabs() {
+  const tabs = document.querySelectorAll('.memorial-tab');
+  const panes = document.querySelectorAll('.tab-pane');
+  
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      // Remove active class from all tabs and panes
+      tabs.forEach(t => t.classList.remove('active'));
+      panes.forEach(p => p.classList.remove('active'));
       
-      // Show owner controls if user owns the memorial
-      if (window.isMemorialOwner) {
-        const ownerControls = document.getElementById('ownerControls');
-        if (ownerControls) {
-          ownerControls.style.display = 'block';
-        }
+      // Add active class to clicked tab
+      tab.classList.add('active');
+      
+      // Show corresponding pane
+      const tabName = tab.getAttribute('data-tab');
+      const pane = document.getElementById(tabName + 'Tab');
+      if (pane) {
+        pane.classList.add('active');
       }
+    });
+  });
+}
+
+/* ──────────────────────────────────────────
+   SHARE FUNCTIONALITY
+   ────────────────────────────────────────── */
+function setupShareFunctionality(memorial) {
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-action="share-memorial"]')) {
+      shareMemorial(memorial);
     }
-  }, 100);
+  });
+}
+
+function shareMemorial(memorial) {
+  const memorialUrl = `${window.location.origin}/#memorial/${memorial.slug || memorial.id}`;
+  
+  if (navigator.share) {
+    navigator.share({
+      title: `${memorial.deceased_name} - Memorial`,
+      text: `Visit the memorial page for ${memorial.deceased_name}`,
+      url: memorialUrl
+    });
+  } else {
+    // Fallback to copying to clipboard
+    navigator.clipboard.writeText(memorialUrl).then(() => {
+      import('@/utils/ui.js').then(({ showNotification }) => {
+        showNotification('Memorial link copied to clipboard!', 'success');
+      });
+    });
+  }
 }
 
 /* ──────────────────────────────────────────
-   FORMAT HELPER FUNCTIONS
+   MEMORIAL DATA LOADERS
    ────────────────────────────────────────── */
-// Format service type for display
-function formatServiceType(type) {
-  const types = {
-    'funeral': 'Funeral Service',
-    'memorial': 'Memorial Service',
-    'celebration_of_life': 'Celebration of Life',
-    'viewing': 'Viewing & Visitation',
-    'wake': 'Wake',
-    'burial': 'Burial',
-    'reception': 'Reception',
-    'other': 'Service'
-  };
-  return types[type] || type;
+async function loadMemorialServices(memorialId) {
+  try {
+    const supabase = getClient();
+    const { data: services, error } = await supabase
+      .from('memorial_services')
+      .select('*')
+      .eq('memorial_id', memorialId)
+      .order('service_date', { ascending: true });
+    
+    if (error) throw error;
+    
+    const container = document.getElementById('servicesContent');
+    if (!container) return;
+    
+    if (services && services.length > 0) {
+      container.innerHTML = services.map(service => {
+        const serviceDate = new Date(service.service_date);
+        const formattedDate = serviceDate.toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+        
+        return `
+          <div class="service-card ${service.is_virtual ? 'virtual-service' : ''}">
+            <div class="service-icon">
+              <i class="fas ${service.is_virtual ? 'fa-video' : 'fa-location-dot'}"></i>
+            </div>
+            <h3>${service.service_type.replace('_', ' ').toUpperCase()}</h3>
+            <p class="service-date">${formattedDate}</p>
+            <p class="service-time">${formatTime(service.start_time)} - ${formatTime(service.end_time)}</p>
+            ${service.location_name ? `<p class="service-location">${service.location_name}</p>` : ''}
+            ${service.address ? `<p class="service-address">${service.address}</p>` : ''}
+            ${service.virtual_meeting_link ? `
+              <a href="${service.virtual_meeting_link}" target="_blank" class="virtual-link">
+                <i class="fas fa-video"></i> Join Virtual Service
+              </a>
+            ` : ''}
+            ${service.additional_info ? `<p class="service-info">${service.additional_info}</p>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+  } catch (error) {
+    console.error('Error loading services:', error);
+  }
 }
 
-// Format time string
-function formatTime(timeStr) {
-  if (!timeStr) return '';
-  const [hours, minutes] = timeStr.split(':');
-  const hour = parseInt(hours);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-  return `${displayHour}:${minutes} ${ampm}`;
+async function loadMemorialMoments(memorialId) {
+  try {
+    const supabase = getClient();
+    const { data: moments, error } = await supabase
+      .from('memorial_moments')
+      .select('*')
+      .eq('memorial_id', memorialId)
+      .order('display_order', { ascending: true });
+    
+    if (error) throw error;
+    
+    const container = document.getElementById('momentsContent');
+    if (!container) return;
+    
+    if (moments && moments.length > 0) {
+      container.innerHTML = moments.map(moment => `
+        <div class="moment-vsco">
+          <img src="${moment.url}" alt="${moment.caption || 'Memorial moment'}">
+          ${moment.caption ? `<p class="moment-caption-vsco">${moment.caption}</p>` : ''}
+          ${moment.date_taken ? `<p class="moment-date-vsco">${formatDate(moment.date_taken)}</p>` : ''}
+        </div>
+      `).join('');
+      
+      // Add click handler for moment details
+      container.addEventListener('click', (e) => {
+        const card = e.target.closest('.moment-vsco');
+        if (card) {
+          viewMomentDetail(card);
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error loading moments:', error);
+  }
 }
 
-/* ──────────────────────────────────────────
-   MEMORIAL DATA LOADERS - USING CORRECT IMPORT
-   ────────────────────────────────────────── */
-// Load guestbook entries directly
 async function loadGuestbookDirect(memorialId) {
   try {
-    const { getClient } = await import('@/api/supabaseClient.js');
     const supabase = getClient();
-    
     const { data: entries, error } = await supabase
       .from('guestbook_entries')
       .select('*')
@@ -753,11 +879,11 @@ async function loadGuestbookDirect(memorialId) {
     
     if (error) throw error;
     
-    const entriesContainer = document.getElementById('guestbookEntries');
-    if (!entriesContainer) return;
+    const container = document.getElementById('guestbookEntries');
+    if (!container) return;
     
     if (entries && entries.length > 0) {
-      entriesContainer.innerHTML = entries.map(entry => `
+      container.innerHTML = entries.map(entry => `
         <div class="guestbook-entry">
           <div class="guestbook-entry-header">
             <h4 class="guestbook-entry-author">${entry.author_name}</h4>
@@ -772,124 +898,110 @@ async function loadGuestbookDirect(memorialId) {
   }
 }
 
-// Load services directly
-async function loadServicesDirect(memorialId) {
-  try {
-    const { getClient } = await import('@/api/supabaseClient.js');
-    const supabase = getClient();
+/* ──────────────────────────────────────────
+   GUESTBOOK FORM SETUP
+   ────────────────────────────────────────── */
+function setupGuestbookForm(memorialId) {
+  const form = document.getElementById('guestbookForm');
+  if (!form) return;
+  
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
     
-    const { data: services, error } = await supabase
-      .from('memorial_services')
-      .select('*')
-      .eq('memorial_id', memorialId)
-      .order('service_date', { ascending: true });
+    const name = document.getElementById('guestName').value;
+    const email = document.getElementById('guestEmail').value;
+    const message = document.getElementById('guestMessage').value;
     
-    if (error) throw error;
-    
-    const servicesContent = document.getElementById('servicesContent');
-    if (!servicesContent) return;
-    
-    if (services && services.length > 0) {
-      servicesContent.innerHTML = services.map(service => `
-        <div class="service-card">
-          <div class="service-card-header">
-            <i class="fas fa-calendar-alt service-icon"></i>
-            <h3 class="service-type">${formatServiceType(service.service_type)}</h3>
-          </div>
-          <div class="service-details">
-            <p class="service-date">
-              <i class="fas fa-calendar"></i>
-              ${new Date(service.service_date).toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </p>
-            ${service.service_time ? `
-              <p class="service-time">
-                <i class="fas fa-clock"></i>
-                ${formatTime(service.service_time)}
-              </p>
-            ` : ''}
-            ${service.location_name ? `
-              <p class="service-location">
-                <i class="fas fa-map-marker-alt"></i>
-                ${service.location_name}
-              </p>
-            ` : ''}
-            ${service.location_address ? `
-              <p class="service-address">${service.location_address}</p>
-            ` : ''}
-            ${service.additional_info ? `
-              <p class="service-info">${service.additional_info}</p>
-            ` : ''}
-          </div>
-        </div>
-      `).join('');
+    try {
+      const supabase = getClient();
+      const { error } = await supabase
+        .from('guestbook_entries')
+        .insert({
+          memorial_id: memorialId,
+          author_name: name,
+          author_email: email || null,
+          message: message,
+          is_approved: true // Auto-approve for now
+        });
+      
+      if (error) throw error;
+      
+      // Clear form
+      form.reset();
+      
+      // Show success message
+      import('@/utils/ui.js').then(({ showNotification }) => {
+        showNotification('Your memory has been shared. Thank you.', 'success');
+      });
+      
+      // Reload guestbook entries
+      loadGuestbookDirect(memorialId);
+      
+    } catch (error) {
+      console.error('Error submitting guestbook entry:', error);
+      import('@/utils/ui.js').then(({ showNotification }) => {
+        showNotification('Error sharing memory. Please try again.', 'error');
+      });
     }
-  } catch (error) {
-    console.error('Error loading services:', error);
-  }
-}
-
-// Load moments directly
-async function loadMomentsDirect(memorialId) {
-  try {
-    const { getClient } = await import('@/api/supabaseClient.js');
-    const supabase = getClient();
-    
-    const { data: moments, error } = await supabase
-      .from('memorial_moments')
-      .select('*')
-      .eq('memorial_id', memorialId)
-      .order('display_order', { ascending: true });
-    
-    if (error) throw error;
-    
-    const momentsContent = document.getElementById('momentsContent');
-    if (!momentsContent) return;
-    
-    if (moments && moments.length > 0) {
-      momentsContent.innerHTML = `
-        <div class="moments-gallery">
-          ${moments.map(moment => `
-            <div class="moment-item">
-              <img src="${moment.url}" alt="${moment.caption || 'Memorial moment'}" />
-              ${moment.caption ? `<p class="moment-caption">${moment.caption}</p>` : ''}
-            </div>
-          `).join('')}
-        </div>
-      `;
-    }
-  } catch (error) {
-    console.error('Error loading moments:', error);
-  }
+  });
 }
 
 /* ──────────────────────────────────────────
-   SHARE MEMORIAL FUNCTION
+   HELPER FUNCTIONS
    ────────────────────────────────────────── */
-window.shareMemorial = function(memorialId) {
-  const url = `${window.location.origin}${window.location.pathname}#memorial/${memorialId}`;
+function formatTime(timeStr) {
+  if (!timeStr) return '';
+  const [hours, minutes] = timeStr.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+  return `${displayHour}:${minutes} ${ampm}`;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+}
+
+function viewMomentDetail(card) {
+  const img = card.querySelector('img');
+  const date = card.querySelector('.moment-date-vsco')?.textContent || '';
+  const caption = card.querySelector('.moment-caption-vsco')?.textContent || '';
+
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.style.display = 'block';
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width:900px;">
+      <div class="modal-header">
+        <h2>${caption || 'Memorial Moment'}</h2>
+        <button class="close-modal">&times;</button>
+      </div>
+      <img src="${img.src}" style="width:100%;border-radius:10px;margin-bottom:1rem;">
+      <p style="text-align:center;color:var(--text-secondary);">${date}</p>
+    </div>`;
   
-  if (navigator.share) {
-    navigator.share({
-      title: 'Memorial Page',
-      text: 'View this memorial page',
-      url: url
-    }).catch(err => console.log('Error sharing:', err));
-  } else {
-    // Fallback - copy to clipboard
-    navigator.clipboard.writeText(url).then(() => {
-      import('@/utils/ui.js').then(({ showNotification }) => {
-        showNotification('Memorial link copied to clipboard!', 'success');
-      });
-    }).catch(err => {
-      console.error('Could not copy text: ', err);
-    });
-  }
-};
+  document.body.appendChild(modal);
+  document.body.style.overflow = 'hidden';
+
+  // Close handlers
+  modal.querySelector('.close-modal').addEventListener('click', () => {
+    modal.remove();
+    document.body.style.overflow = 'auto';
+  });
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.remove();
+      document.body.style.overflow = 'auto';
+    }
+  });
+}
 
 /* ──────────────────────────────────────────
    AUTH CALLBACK HANDLER - NEW FUNCTION
