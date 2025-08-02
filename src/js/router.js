@@ -1,4 +1,4 @@
-/* src/js/router.js - Fixed version */
+/* src/js/router.js - Fixed version with direct memorial query */
 import { initBlog } from '@/features/blog/blog.js';
 import { initFAQ } from '@/features/faq/faq.js';
 import { initMemorialView, cleanupMemorialView } from '@/features/memorials/memorialView.js';
@@ -373,7 +373,7 @@ function handleRouteChange() {
 }
 
 /* ──────────────────────────────────────────
-   DIRECT MEMORIAL LOADER
+   DIRECT MEMORIAL LOADER - FIXED TO USE DIRECT QUERY
    ────────────────────────────────────────── */
 async function loadMemorialDirect(memorialId) {
   console.log('Loading memorial directly:', memorialId);
@@ -396,7 +396,8 @@ async function loadMemorialDirect(memorialId) {
     const authToken = localStorage.getItem('sb-virtdzxnedksjsmeshyt-auth-token');
     const headers = {
       'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpcnRkenhuZWRrc2pzbWVzaHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjY2NzI1OTgsImV4cCI6MjA0MjI0ODU5OH0.aV7oaBj5Z4Cfs-WyZ9cetY-4aaQbicvFxyuN7K5dW1o',
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
     };
     
     // Add auth header if we have a token
@@ -409,14 +410,25 @@ async function loadMemorialDirect(memorialId) {
       }
     }
     
-    // Fetch memorial data using REST API
-    const response = await fetch('https://virtdzxnedksjsmeshyt.supabase.co/rest/v1/rpc/get_memorial', {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify({ identifier: memorialId })
+    // FIXED: Query memorials table directly by slug instead of using RPC
+    const response = await fetch(`https://virtdzxnedksjsmeshyt.supabase.co/rest/v1/memorials?slug=eq.${memorialId}&select=*`, {
+      method: 'GET',
+      headers: headers
     });
     
     if (!response.ok) {
+      // If 404, memorial doesn't exist
+      if (response.status === 404) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 4rem;">
+            <i class="fas fa-search" style="font-size: 3rem; color: #9b8b7e; margin-bottom: 1rem; display: block;"></i>
+            <h2 style="color: #4a4238; margin-bottom: 1rem;">Memorial Not Found</h2>
+            <p style="color: #9b8b7e; margin-bottom: 2rem;">We couldn't find the memorial you're looking for.</p>
+            <a href="#home" class="btn-primary" style="display: inline-block; padding: 0.75rem 2rem; background: #6b9174; color: white; text-decoration: none; border-radius: 4px;">Return Home</a>
+          </div>
+        `;
+        return;
+      }
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
@@ -436,6 +448,32 @@ async function loadMemorialDirect(memorialId) {
     
     const memorial = memorials[0];
     console.log('Memorial loaded:', memorial);
+    
+    // Check if memorial is private and user needs to enter password
+    if (memorial.privacy_setting === 'private' && (!window.currentUser || memorial.user_id !== window.currentUser.id)) {
+      // Check if we have access in session
+      const accessKey = `memorial_access_${memorial.id}`;
+      const hasAccess = sessionStorage.getItem(accessKey) === 'granted';
+      
+      if (!hasAccess && memorial.access_password) {
+        // Show password prompt
+        container.innerHTML = `
+          <div style="text-align: center; padding: 4rem;">
+            <i class="fas fa-lock" style="font-size: 3rem; color: #9b8b7e; margin-bottom: 1rem; display: block;"></i>
+            <h2 style="color: #4a4238; margin-bottom: 1rem;">Private Memorial</h2>
+            <p style="color: #9b8b7e; margin-bottom: 2rem;">This memorial is private. Please enter the password to view.</p>
+            <div style="max-width: 400px; margin: 0 auto;">
+              <input type="password" id="memorialPassword" placeholder="Enter password" style="width: 100%; padding: 0.75rem; border: 2px solid #e8d5b7; border-radius: 4px; margin-bottom: 1rem;">
+              <button onclick="checkMemorialPassword('${memorial.id}', '${memorial.access_password}')" class="btn-primary" style="display: inline-block; padding: 0.75rem 2rem; background: #6b9174; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer;">
+                Enter
+              </button>
+              <a href="#home" style="display: block; margin-top: 1rem; color: #9b8b7e;">Return Home</a>
+            </div>
+          </div>
+        `;
+        return;
+      }
+    }
     
     // Check if published
     if (!memorial.is_published && (!window.currentUser || memorial.user_id !== window.currentUser.id)) {
@@ -465,6 +503,28 @@ async function loadMemorialDirect(memorialId) {
     `;
   }
 }
+
+/* ──────────────────────────────────────────
+   PASSWORD CHECK FUNCTION
+   ────────────────────────────────────────── */
+window.checkMemorialPassword = function(memorialId, correctPassword) {
+  const input = document.getElementById('memorialPassword');
+  const enteredPassword = input.value;
+  
+  if (enteredPassword === correctPassword) {
+    // Grant access
+    sessionStorage.setItem(`memorial_access_${memorialId}`, 'granted');
+    // Reload the memorial
+    loadMemorialDirect(window.location.hash.split('/')[1]);
+  } else {
+    // Show error
+    import('@/utils/ui.js').then(({ showNotification }) => {
+      showNotification('Incorrect password. Please try again.', 'error');
+    });
+    input.value = '';
+    input.focus();
+  }
+};
 
 /* ──────────────────────────────────────────
    DIRECT MEMORIAL DISPLAY
@@ -634,6 +694,7 @@ function displayMemorialDirect(memorial, container) {
           <div class="guestbook-actions" style="text-align: center; margin-bottom: 2rem;">
             <button class="btn-primary" onclick="
               import('@/utils/modal.js').then(({ openModal }) => {
+                window.currentMemorialId = '${memorial.id}';
                 openModal('guestbook');
               }).catch(() => {
                 alert('Guestbook feature coming soon!');
