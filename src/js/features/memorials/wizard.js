@@ -2,14 +2,12 @@
 let clickHandlerBound = false;
 import {
   showNotification,
-  qs,
-  showToast
+  qs /* ← you already export this from utils/ui.js */
 } from '@/utils/ui.js';
 import { MemorialSanitizer } from '@/utils/sanitizer.js';
 import { cloudinaryConfig } from '@/api/cloudinaryClient.js';
 import { getClient } from '@/api/supabaseClient.js';
-import { handleError, withErrorHandling, retryOperation } from '@/utils/errorHandler.js';
-
+import { showNotification, qs, setButtonLoading } from '@/utils/ui.js';
 /* ──────────────────────────────────────────
      STATE
      ────────────────────────────────────────── */
@@ -28,7 +26,7 @@ const memorialData = {
 /* ──────────────────────────────────────────
      PUBLIC API
      ────────────────────────────────────────── */
-export const initWizard = withErrorHandling(async function() {
+export async function initWizard() {
   console.log('initWizard() called from features/memorials/wizard.js');
   
   // Check if we're on the correct page
@@ -38,65 +36,52 @@ export const initWizard = withErrorHandling(async function() {
     return;
   }
   
-  try {
-    // Count total steps
-    totalSteps = document.querySelectorAll('.form-step').length;
-    if (totalSteps === 0) {
-      throw new Error('No form steps found');
+  // Wire up delegated event handlers
+  wireDelegatedClicks();
+  
+  // Set up photo upload handlers
+  wirePhotoUploadHandlers();
+  
+  // Initialize moments board
+  wireMoments();
+  
+  // IMPORTANT: Check if we should load a draft
+  // Only load draft if there's a currentDraftId in localStorage
+  // This prevents auto-loading drafts when user clicks "Create Memorial"
+  const currentDraftId = localStorage.getItem('currentDraftId');
+  const memorialDraft = localStorage.getItem('memorialDraft');
+  
+  // Load from Supabase if we have a draft ID
+  if (currentDraftId && window.currentUser) {
+    console.log('Loading draft from Supabase...');
+    const loaded = await loadDraftFromSupabase();
+    if (loaded) {
+      showNotification('Draft loaded', 'success');
     }
-    
-    // Wire up delegated event handlers
-    wireDelegatedClicks();
-    
-    // Set up photo upload handlers
-    wirePhotoUploadHandlers();
-    
-    // Initialize moments board
-    wireMoments();
-    
-    // Set up privacy password handlers
-    setupPrivacyHandlers();
-
-    // IMPORTANT: Check if we should load a draft
-    // Only load draft if there's a currentDraftId in localStorage
-    // This prevents auto-loading drafts when user clicks "Create Memorial"
-    const currentDraftId = localStorage.getItem('currentDraftId');
-    const memorialDraft = localStorage.getItem('memorialDraft');
-    
-    // Load from Supabase if we have a draft ID
-    if (currentDraftId && window.currentUser) {
-      console.log('Loading draft from Supabase...');
-      const loaded = await loadDraftFromSupabase();
-      if (loaded) {
-        showToast('Draft loaded', 'success');
-      }
-    } 
-    // Load from localStorage if we have a local draft but no Supabase draft
-    else if (memorialDraft && !currentDraftId) {
-      console.log('Loading draft from localStorage...');
-      loadDraft();
-      showToast('Draft loaded from local storage', 'success');
-    }
-    // Otherwise, start fresh
-    else {
-      console.log('Starting new memorial...');
-      resetWizard();
-    }
-    
-    // Always update progress to show current step
-    updateProgress();
-    updatePreview();
-  } catch (error) {
-    handleError(error, 'Initialize Wizard');
+  } 
+  // Load from localStorage if we have a local draft but no Supabase draft
+  else if (memorialDraft && !currentDraftId) {
+    console.log('Loading draft from localStorage...');
+    loadDraft();
+    showNotification('Draft loaded from local storage', 'success');
   }
-}, 'Initialize Wizard');
+  // Otherwise, start fresh
+  else {
+    console.log('Starting new memorial...');
+    resetWizard();
+  }
+  
+  // Always update progress to show current step
+  updateProgress();
+  updatePreview();
+}
 
 export { nextStep, previousStep }; // consumed elsewhere if needed
 
 /* ──────────────────────────────────────────
      CLOUDINARY UPLOAD FUNCTIONS
      ────────────────────────────────────────── */
-const uploadImage = withErrorHandling(async function(type) {
+async function uploadImage(type) {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
@@ -107,17 +92,17 @@ const uploadImage = withErrorHandling(async function(type) {
     
     // Validate file
     if (!file.type.startsWith('image/')) {
-      showToast('Please select an image file', 'error');
+      showNotification('Please select an image file', 'error');
       return;
     }
     
     if (file.size > 10 * 1024 * 1024) { // 10MB limit for profile/background
-      showToast('Image size must be less than 10MB', 'error');
+      showNotification('Image size must be less than 10MB', 'error');
       return;
     }
     
     try {
-      showToast('Uploading image...', 'info');
+      showNotification('Uploading image...', 'info');
       
       const formData = new FormData();
       formData.append('file', file);
@@ -127,19 +112,14 @@ const uploadImage = withErrorHandling(async function(type) {
       const memorialId = window.currentMemorialId || 'draft';
       formData.append('folder', `tayvu/memorials/${memorialId}/${type}`);
       
-      // Use retry logic for upload
-      const response = await retryOperation(async () => {
-        const res = await fetch(
-          `${cloudinaryConfig.uploadUrl}/image/upload`,
-          { method: 'POST', body: formData }
-        );
-        
-        if (!res.ok) {
-          throw new Error(`Upload failed: ${res.statusText}`);
-        }
-        
-        return res;
-      }, 3, 2000);
+      const response = await fetch(
+        `${cloudinaryConfig.uploadUrl}/image/upload`,
+        { method: 'POST', body: formData }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
       
       const data = await response.json();
       
@@ -172,38 +152,34 @@ const uploadImage = withErrorHandling(async function(type) {
         }
       }
       
-      showToast('Image uploaded successfully!', 'success');
+      showNotification('Image uploaded successfully!', 'success');
       
     } catch (error) {
       console.error('Upload error:', error);
-      handleError(error, 'Image Upload');
+      showNotification('Failed to upload image. Please try again.', 'error');
     }
   };
   
   input.click();
-}, 'Upload Image');
+}
 
 // Make uploadImage globally available for onclick handlers
 window.uploadImage = uploadImage;
 
 // Function to select default background
 function selectDefaultBackground(bgUrl) {
-  try {
-    const preview = qs('#backgroundPhotoPreview');
-    if (preview) {
-      preview.src = bgUrl;
-      preview.style.display = 'block';
-      preview.dataset.isDefault = 'true';
-    }
-    
-    // Update UI to show selection
-    document.querySelectorAll('.default-bg-option').forEach(opt => {
-      opt.classList.remove('selected');
-    });
-    event.target.closest('.default-bg-option')?.classList.add('selected');
-  } catch (error) {
-    handleError(error, 'Select Background');
+  const preview = qs('#backgroundPhotoPreview');
+  if (preview) {
+    preview.src = bgUrl;
+    preview.style.display = 'block';
+    preview.dataset.isDefault = 'true';
   }
+  
+  // Update UI to show selection
+  document.querySelectorAll('.default-bg-option').forEach(opt => {
+    opt.classList.remove('selected');
+  });
+  event.target.closest('.default-bg-option')?.classList.add('selected');
 }
 
 // Make it globally available
@@ -212,89 +188,81 @@ window.selectDefaultBackground = selectDefaultBackground;
 
 // Function to add a new service item
 function addServiceItem() {
-  try {
-    const serviceItemsContainer = document.getElementById('serviceItems');
-    if (!serviceItemsContainer) return;
-    
-    // Count existing service items
-    const existingServices = serviceItemsContainer.querySelectorAll('.service-item-form').length;
-    const serviceNumber = existingServices + 1;
-    
-    // Create new service item HTML
-    const newServiceHTML = `
-      <div class="service-item-form">
-        <div class="service-header">
-          <h3>Service ${serviceNumber}</h3>
-          <button type="button" class="btn-remove" onclick="removeServiceItem(this)">
-            <i class="fas fa-times"></i>
-          </button>
+  const serviceItemsContainer = document.getElementById('serviceItems');
+  if (!serviceItemsContainer) return;
+  
+  // Count existing service items
+  const existingServices = serviceItemsContainer.querySelectorAll('.service-item-form').length;
+  const serviceNumber = existingServices + 1;
+  
+  // Create new service item HTML
+  const newServiceHTML = `
+    <div class="service-item-form">
+      <div class="service-header">
+        <h3>Service ${serviceNumber}</h3>
+        <button type="button" class="btn-remove" onclick="removeServiceItem(this)">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Service Type</label>
+          <select name="serviceType">
+            <option value="">Select type...</option>
+            <option value="viewing">Viewing & Visitation</option>
+            <option value="funeral">Funeral Service</option>
+            <option value="memorial">Memorial Service</option>
+            <option value="celebration">Celebration of Life</option>
+            <option value="reception">Reception</option>
+            <option value="burial">Burial</option>
+          </select>
         </div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Service Type</label>
-            <select name="serviceType">
-              <option value="">Select type...</option>
-              <option value="viewing">Viewing & Visitation</option>
-              <option value="funeral">Funeral Service</option>
-              <option value="memorial">Memorial Service</option>
-              <option value="celebration">Celebration of Life</option>
-              <option value="reception">Reception</option>
-              <option value="burial">Burial</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Date</label>
-            <input type="date" name="serviceDate" />
-          </div>
-          <div class="form-group">
-            <label>Time</label>
-            <input type="time" name="serviceTime" />
-          </div>
-          <div class="form-group">
-            <label>Location Name</label>
-            <input type="text" name="locationName" placeholder="e.g., St. Mary's Church" />
-          </div>
-          <div class="form-group full-width">
-            <label>Address</label>
-            <input type="text" name="locationAddress" placeholder="Full address" />
-          </div>
-          <div class="form-group full-width">
-            <label>Additional Information (Optional)</label>
-            <textarea name="additionalInfo" rows="2" placeholder="Any special instructions or details..."></textarea>
-          </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" name="serviceDate" />
+        </div>
+        <div class="form-group">
+          <label>Time</label>
+          <input type="time" name="serviceTime" />
+        </div>
+        <div class="form-group">
+          <label>Location Name</label>
+          <input type="text" name="locationName" placeholder="e.g., St. Mary's Church" />
+        </div>
+        <div class="form-group full-width">
+          <label>Address</label>
+          <input type="text" name="locationAddress" placeholder="Full address" />
+        </div>
+        <div class="form-group full-width">
+          <label>Additional Information (Optional)</label>
+          <textarea name="additionalInfo" rows="2" placeholder="Any special instructions or details..."></textarea>
         </div>
       </div>
-    `;
-    
-    // Add the new service item to the container
-    serviceItemsContainer.insertAdjacentHTML('beforeend', newServiceHTML);
-    
-    // Scroll to the new service item
-    const newServiceItem = serviceItemsContainer.lastElementChild;
-    newServiceItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  } catch (error) {
-    handleError(error, 'Add Service Item');
-  }
+    </div>
+  `;
+  
+  // Add the new service item to the container
+  serviceItemsContainer.insertAdjacentHTML('beforeend', newServiceHTML);
+  
+  // Scroll to the new service item
+  const newServiceItem = serviceItemsContainer.lastElementChild;
+  newServiceItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // Function to remove a service item
 function removeServiceItem(button) {
-  try {
-    const serviceItem = button.closest('.service-item-form');
-    if (serviceItem) {
-      // Don't remove if it's the only service item
-      const allServiceItems = document.querySelectorAll('.service-item-form');
-      if (allServiceItems.length > 1) {
-        serviceItem.remove();
-        
-        // Renumber remaining services
-        renumberServices();
-      } else {
-        showToast('At least one service must remain', 'info');
-      }
+  const serviceItem = button.closest('.service-item-form');
+  if (serviceItem) {
+    // Don't remove if it's the only service item
+    const allServiceItems = document.querySelectorAll('.service-item-form');
+    if (allServiceItems.length > 1) {
+      serviceItem.remove();
+      
+      // Renumber remaining services
+      renumberServices();
+    } else {
+      showNotification('At least one service must remain', 'info');
     }
-  } catch (error) {
-    handleError(error, 'Remove Service Item');
   }
 }
 
@@ -313,119 +281,14 @@ function renumberServices() {
 window.addServiceItem = addServiceItem;
 window.removeServiceItem = removeServiceItem;
 
-// Date validation function for inline HTML handlers
-function validateDates() {
-  try {
-    const birthDateInput = document.getElementById('birthDate');
-    const deathDateInput = document.getElementById('deathDate');
-    const birthDateError = document.getElementById('birthDateError');
-    const deathDateError = document.getElementById('deathDateError');
-    
-    if (!birthDateInput || !deathDateInput) return;
-    
-    const birthDate = birthDateInput.value ? new Date(birthDateInput.value) : null;
-    const deathDate = deathDateInput.value ? new Date(deathDateInput.value) : null;
-    const today = new Date();
-    
-    // Clear previous errors
-    if (birthDateError) {
-      birthDateError.style.display = 'none';
-      birthDateError.textContent = '';
-    }
-    if (deathDateError) {
-      deathDateError.style.display = 'none';
-      deathDateError.textContent = '';
-    }
-    
-    // Remove error classes
-    birthDateInput.classList.remove('error');
-    deathDateInput.classList.remove('error');
-    
-    // Validate birth date
-    if (birthDate) {
-      if (birthDate > today) {
-        if (birthDateError) {
-          birthDateError.textContent = 'Birth date cannot be in the future';
-          birthDateError.style.display = 'block';
-        }
-        birthDateInput.classList.add('error');
-        return false;
-      }
-      
-      // If both dates exist, check if birth is before death
-      if (deathDate && birthDate > deathDate) {
-        if (birthDateError) {
-          birthDateError.textContent = 'Birth date must be before death date';
-          birthDateError.style.display = 'block';
-        }
-        birthDateInput.classList.add('error');
-        return false;
-      }
-    }
-    
-    // Validate death date
-    if (deathDate) {
-      if (deathDate > today) {
-        if (deathDateError) {
-          deathDateError.textContent = 'Death date cannot be in the future';
-          deathDateError.style.display = 'block';
-        }
-        deathDateInput.classList.add('error');
-        return false;
-      }
-      
-      // If both dates exist, check if death is after birth
-      if (birthDate && deathDate < birthDate) {
-        if (deathDateError) {
-          deathDateError.textContent = 'Death date must be after birth date';
-          deathDateError.style.display = 'block';
-        }
-        deathDateInput.classList.add('error');
-        return false;
-      }
-    }
-    
-    // Set max date for birth date (can't be after death date if death date is set)
-    if (deathDate) {
-      birthDateInput.max = deathDateInput.value;
-    } else {
-      birthDateInput.max = today.toISOString().split('T')[0];
-    }
-    
-    // Set min date for death date (can't be before birth date if birth date is set)
-    if (birthDate) {
-      deathDateInput.min = birthDateInput.value;
-    }
-    
-    // Set max date for death date (can't be in the future)
-    deathDateInput.max = today.toISOString().split('T')[0];
-    
-    return true;
-  } catch (error) {
-    console.error('Error in validateDates:', error);
-    // Don't show error to user, just log it
-    return true;
-  }
-}
-
-// Make validateDates globally available for the HTML onchange/oninput handlers
-window.validateDates = validateDates;
 
 
 /* ──────────────────────────────────────────
    DRAFT MANAGEMENT WITH SUPABASE
    ────────────────────────────────────────── */
-const saveDraftToSupabase = withErrorHandling(async function() {
+async function saveDraftToSupabase() {
   const supabase = getClient();
-  if (!supabase) {
-    console.log('Cannot save draft - Supabase not initialized');
-    return;
-  }
-
-  // CRITICAL FIX: Use supabase.auth.getUser() instead of window.currentUser
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  
-  if (authError || !user) {
+  if (!supabase || !window.currentUser) {
     console.log('Cannot save draft - user not authenticated');
     return;
   }
@@ -433,13 +296,13 @@ const saveDraftToSupabase = withErrorHandling(async function() {
   try {
     // Prepare draft data
     const draftData = {
-      user_id: user.id,  // FIXED: Use user.id from supabase.auth.getUser()
+      user_id: window.currentUser.id,
       deceased_name: memorialData.basic.name || 'Untitled Memorial',
       birth_date: memorialData.basic.birthDate || null,
       death_date: memorialData.basic.deathDate || null,
       headline: memorialData.basic.headline || null,
-      opening_statement: memorialData.basic.openingStatement || null,
-      additional_info: memorialData.additionalInfo || null,
+  opening_statement: memorialData.basic.openingStatement || null,
+  additional_info: memorialData.additionalInfo || null,
       profile_photo_url: qs('#profilePhotoPreview')?.src || null,
       profile_photo_public_id: qs('#profilePhotoPreview')?.dataset.publicId || null,
       background_photo_url: qs('#backgroundPhotoPreview')?.src || null,
@@ -447,7 +310,6 @@ const saveDraftToSupabase = withErrorHandling(async function() {
       obituary: memorialData.story.obituary || '',
       life_story: memorialData.story.lifeStory || '',
       privacy_setting: memorialData.settings.privacy || 'public',
-      access_password: memorialData.settings.password || null,
       is_published: false,
       is_draft: true
     };
@@ -455,65 +317,62 @@ const saveDraftToSupabase = withErrorHandling(async function() {
     // Check if we already have a draft ID
     let draftId = localStorage.getItem('currentDraftId');
     
-    // Use retry logic for save operation
-    await retryOperation(async () => {
-      if (draftId) {
-        // Update existing draft
-        const { error } = await supabase
-          .from('memorials')
-          .update(draftData)
-          .eq('id', draftId)
-          .eq('user_id', user.id);  // FIXED: Use user.id here too
-          
-        if (error) throw error;
-      } else {
-        // Create new draft
-        const { data, error } = await supabase
-          .from('memorials')
-          .insert(draftData)
-          .select()
-          .single();
-          
-        if (error) throw error;
+    if (draftId) {
+      // Update existing draft
+      const { error } = await supabase
+        .from('memorials')
+        .update(draftData)
+        .eq('id', draftId)
+        .eq('user_id', window.currentUser.id);
         
-        // Store draft ID for future updates
-        localStorage.setItem('currentDraftId', data.id);
-        window.currentMemorialId = data.id;
-      }
-    }, 3, 2000);
+      if (error) throw error;
+    } else {
+      // Create new draft
+      const { data, error } = await supabase
+        .from('memorials')
+        .insert(draftData)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      // Store draft ID for future updates
+      localStorage.setItem('currentDraftId', data.id);
+      window.currentMemorialId = data.id;
+    }
     
-    showToast('Draft saved', 'success');
+    showNotification('Draft saved', 'success');
   } catch (error) {
     console.error('Error saving draft:', error);
-    handleError(error, 'Save Draft');
     // Fall back to localStorage if Supabase fails
     localStorage.setItem('memorialDraft', JSON.stringify(memorialData));
-    showToast('Draft saved locally', 'info');
   }
-}, 'Save Draft to Supabase');
+}
 
 // Replace the existing saveDraft function
-const saveDraft = withErrorHandling(async function() {
-  saveStepData();
-  await saveDraftToSupabase();
-}, 'Save Draft');
+async function saveDraft() {
+  const btn = qs('[data-wizard-save-draft]');
+  setButtonLoading(btn, true, 'Saving draft...');
+  
+  try {
+    saveStepData();
+    await saveDraftToSupabase();
+  } finally {
+    setButtonLoading(btn, false);
+  }
+}
 
 // Add function to load draft from Supabase
-const loadDraftFromSupabase = withErrorHandling(async function() {
+async function loadDraftFromSupabase() {
   const supabase = getClient();
-  if (!supabase) return false;
-
-  // CRITICAL FIX: Use supabase.auth.getUser() instead of window.currentUser
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  
-  if (authError || !user) return false;
+  if (!supabase || !window.currentUser) return false;
 
   try {
     // Find user's most recent draft
     const { data: drafts, error } = await supabase
       .from('memorials')
       .select('*')
-      .eq('user_id', user.id)  // FIXED: Use user.id from supabase.auth.getUser()
+      .eq('user_id', window.currentUser.id)
       .eq('is_draft', true)
       .eq('is_published', false)
       .order('updated_at', { ascending: false })
@@ -532,9 +391,7 @@ const loadDraftFromSupabase = withErrorHandling(async function() {
       memorialData.basic = {
         name: draft.deceased_name,
         birthDate: draft.birth_date,
-        deathDate: draft.death_date,
-        headline: draft.headline,
-        openingStatement: draft.opening_statement
+        deathDate: draft.death_date
       };
       
       memorialData.story = {
@@ -543,11 +400,8 @@ const loadDraftFromSupabase = withErrorHandling(async function() {
       };
       
       memorialData.settings = {
-        privacy: draft.privacy_setting || 'public',
-        password: draft.access_password || null
+        privacy: draft.privacy_setting || 'public'
       };
-      
-      memorialData.additionalInfo = draft.additional_info || '';
       
       // Load photos into preview
       if (draft.profile_photo_url) {
@@ -574,19 +428,15 @@ const loadDraftFromSupabase = withErrorHandling(async function() {
       // Load any saved services
       await loadDraftServices(draft.id);
       
-      // Populate form fields
-      populateFormFromData();
-      
       return true;
     }
     
     return false;
   } catch (error) {
     console.error('Error loading draft from Supabase:', error);
-    handleError(error, 'Load Draft');
     return false;
   }
-}, 'Load Draft from Supabase');
+}
 
 // Add function to load draft moments
 async function loadDraftMoments(memorialId) {
@@ -643,66 +493,17 @@ async function loadDraftServices(memorialId) {
   }
 }
 
-// Function to populate form fields from loaded data
-function populateFormFromData() {
-  try {
-    // Basic info
-    if (memorialData.basic.name) {
-      const nameParts = memorialData.basic.name.split(' ');
-      if (qs('#firstName')) qs('#firstName').value = nameParts[0] || '';
-      if (qs('#lastName')) qs('#lastName').value = nameParts[nameParts.length - 1] || '';
-      if (nameParts.length > 2 && qs('#middleName')) {
-        qs('#middleName').value = nameParts.slice(1, -1).join(' ');
-      }
-    }
-    if (qs('#birthDate')) qs('#birthDate').value = memorialData.basic.birthDate || '';
-    if (qs('#deathDate')) qs('#deathDate').value = memorialData.basic.deathDate || '';
-    if (qs('#headline')) qs('#headline').value = memorialData.basic.headline || '';
-    if (qs('#openingStatement')) qs('#openingStatement').value = memorialData.basic.openingStatement || '';
-    
-    // Story
-    if (qs('#lifeStory')) qs('#lifeStory').innerHTML = memorialData.story.obituary || '';
-    
-    // Additional info
-    if (qs('#serviceNote')) qs('#serviceNote').value = memorialData.additionalInfo || '';
-    
-    // Privacy settings
-    if (memorialData.settings.privacy) {
-      const privacyRadio = document.querySelector(`input[name="privacy"][value="${memorialData.settings.privacy}"]`);
-      if (privacyRadio) {
-        privacyRadio.checked = true;
-        togglePasswordField(); // Update password field visibility
-      }
-    }
-    
-    // Password if private
-    if (memorialData.settings.password && qs('#memorialPassword')) {
-      qs('#memorialPassword').value = memorialData.settings.password;
-    }
-  } catch (error) {
-    console.error('Error populating form:', error);
-  }
-}
-
 /* ──────────────────────────────────────────
    PUBLISH MEMORIAL TO SUPABASE
    ────────────────────────────────────────── */
-const publishMemorial = withErrorHandling(async function() {
+async function publishMemorial() {
   const supabase = getClient();
-  if (!supabase) {
-    showToast('Application not initialized', 'error');
+  if (!supabase || !window.currentUser) {
+    showNotification('Please sign in to publish', 'error');
     return;
   }
 
-  // CRITICAL FIX: Use supabase.auth.getUser() instead of window.currentUser
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  
-  if (authError || !user) {
-    showToast('Please sign in to publish', 'error');
-    return;
-  }
-
-  // Validate required fields
+// Validate required fields
   const validationErrors = [];
   
   if (!memorialData.basic.name?.trim()) {
@@ -727,24 +528,17 @@ const publishMemorial = withErrorHandling(async function() {
     }
   }
   
-  // Validate password if private
-  const isPrivate = memorialData.settings?.privacy === 'private';
-  if (isPrivate) {
-    const password = memorialData.settings?.password;
-    if (!password || password.length < 6) {
-      validationErrors.push('Private memorials require a password of at least 6 characters');
-    }
-  }
-  
   // If there are validation errors, show them and stop
   if (validationErrors.length > 0) {
-    showToast(validationErrors[0], 'error');
+    showNotification(validationErrors[0], 'error'); // Show first error
     return;
   }
+  // END OF VALIDATION SECTION
+
+
 
   const btn = qs('[data-wizard-publish]');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
+setButtonLoading(btn, true, 'Publishing...');
 
   try {
     // Get moments data from moments.js
@@ -752,13 +546,10 @@ const publishMemorial = withErrorHandling(async function() {
     
     // Prepare memorial data
     const memorialToSave = {
-      user_id: user.id,  // FIXED: Use user.id from supabase.auth.getUser()
+      user_id: window.currentUser.id,
       deceased_name: memorialData.basic.name,
       birth_date: memorialData.basic.birthDate || null,
       death_date: memorialData.basic.deathDate || null,
-      headline: memorialData.basic.headline || null,
-      opening_statement: memorialData.basic.openingStatement || null,
-      additional_info: memorialData.additionalInfo || null,
       profile_photo_url: qs('#profilePhotoPreview')?.src || null,
       profile_photo_public_id: qs('#profilePhotoPreview')?.dataset.publicId || null,
       background_photo_url: qs('#backgroundPhotoPreview')?.src || null,
@@ -766,41 +557,73 @@ const publishMemorial = withErrorHandling(async function() {
       obituary: memorialData.story.obituary || '',
       life_story: memorialData.story.lifeStory || '',
       privacy_setting: memorialData.settings.privacy || 'public',
-      access_password: memorialData.settings.password || null,
       is_published: true,
       is_draft: false,
       published_at: new Date().toISOString()
     };
 
-    let memorial;
+    
+let memorial;
     const draftId = localStorage.getItem('currentDraftId');
     
-    // Use retry logic for publish operation
-    memorial = await retryOperation(async () => {
-      if (draftId) {
-        // Update existing draft to published
-        const { data, error } = await supabase
-          .from('memorials')
-          .update(memorialToSave)
-          .eq('id', draftId)
-          .eq('user_id', user.id)  // FIXED: Use user.id here too
-          .select()
-          .single();
-          
-        if (error) throw error;
-        return data;
-      } else {
-        // Create new memorial
-        const { data, error } = await supabase
-          .from('memorials')
-          .insert(memorialToSave)
-          .select()
-          .single();
-          
-        if (error) throw error;
-        return data;
+    // ADD RETRY LOGIC HERE
+    let retries = 3;
+    let lastError;
+    
+    while (retries > 0) {
+      try {
+        if (draftId) {
+          // Update existing draft to published
+          const { data, error } = await supabase
+            .from('memorials')
+            .update(memorialToSave)
+            .eq('id', draftId)
+            .eq('user_id', window.currentUser.id)
+            .select()
+            .single();
+            
+          if (error) throw error;
+          memorial = data;
+        } else {
+          // Create new memorial
+          const { data, error } = await supabase
+            .from('memorials')
+            .insert(memorialToSave)
+            .select()
+            .single();
+            
+          if (error) throw error;
+          memorial = data;
+        }
+        
+        // If successful, break out of retry loop
+        break;
+        
+      } catch (error) {
+        lastError = error;
+        retries--;
+        
+        if (retries > 0) {
+          console.log(`Retry attempt ${3 - retries} failed, retrying...`);
+          // Show a notification to user about retry
+          showNotification(`Connection issue, retrying... (${retries} attempts left)`, 'info');
+          // Wait 1 second before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
-    }, 3, 2000);
+    }
+    
+    // If all retries failed, throw the last error
+    if (retries === 0 && lastError) {
+      throw lastError;
+    }
+    // END RETRY LOGIC
+
+
+
+
+
+
 
     // Generate and update slug
     const { data: slugData } = await supabase
@@ -867,31 +690,65 @@ const publishMemorial = withErrorHandling(async function() {
     localStorage.removeItem('memorialDraft');
     localStorage.removeItem('currentDraftId');
     
-    showToast('Memorial published successfully!', 'success');
+    showNotification('Memorial published successfully!', 'success');
     
     // Redirect to the memorial page
-    setTimeout(() => {
-      window.location.hash = `#memorial/${memorial.slug || memorial.id}`;
-    }, 1500);
+    window.location.hash = `#memorial/${memorial.slug || memorial.id}`;
     
-  } catch (error) {
+ } catch (error) {
     console.error('Error publishing memorial:', error);
-    handleError(error, 'Publish Memorial');
+    
+    // Provide specific error messages based on the error
+    let errorMessage = 'Failed to publish memorial. Please try again.';
+    
+    if (error.message?.includes('duplicate key')) {
+      errorMessage = 'A memorial with this name already exists. Please choose a different name.';
+    } else if (error.message?.includes('violates foreign key')) {
+      errorMessage = 'There was a problem with your account. Please sign out and sign back in.';
+    } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+      errorMessage = 'Network error. Please check your internet connection and try again.';
+    } else if (error.message?.includes('row-level security')) {
+      errorMessage = 'You do not have permission to create memorials. Please contact support.';
+    } else if (error.message?.includes('timeout')) {
+      errorMessage = 'The operation timed out. Please try again.';
+    } else if (error.message?.includes('Failed to fetch')) {
+      errorMessage = 'Cannot connect to server. Please check your internet connection.';
+    } else if (error.message?.includes('Too many requests')) {
+      errorMessage = 'Too many requests. Please wait a moment and try again.';
+    } else if (error.message?.includes('invalid input syntax for type uuid')) {
+      errorMessage = 'Invalid data format. Please refresh the page and try again.';
+    } else if (error.message?.includes('JWT')) {
+      errorMessage = 'Your session has expired. Please sign in again.';
+    } else if (error.message?.includes('unique constraint')) {
+      errorMessage = 'This memorial already exists. Please use a different name.';
+    } else if (error.message) {
+      // Use the actual error message if it's user-friendly
+      errorMessage = error.message;
+    }
+    
+    showNotification(errorMessage, 'error');
+    
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-check"></i> Publish Memorial';
+    btn.textContent = 'Publish Memorial';
+    btn.innerHTML = '<i class="fas fa-check"></i> Publish Memorial'; // Reset with icon
   }
-}, 'Publish Memorial');
+
+
+
+
+
+
+
+}
 
 /* ──────────────────────────────────────────
      INTERNAL HELPERS
      ────────────────────────────────────────── */
 
 function wireDelegatedClicks() {
-  if (clickHandlerBound) return;
-  
   document
-    .getElementById('createMemorial')
+    .getElementById('createMemorial') // root of the wizard page
     ?.addEventListener('click', (e) => {
       if (e.target.closest('[data-wizard-next]')) return nextStep();
       if (e.target.closest('[data-wizard-prev]')) return previousStep();
@@ -899,363 +756,169 @@ function wireDelegatedClicks() {
       if (e.target.closest('[data-wizard-save-draft]')) return saveDraft();
       if (e.target.closest('[data-wizard-publish]')) return publishMemorial();
     });
-    
-  clickHandlerBound = true;
-}
-
-function wirePhotoUploadHandlers() {
-  // Additional photo upload setup if needed
-}
-
-function wireMoments() {
-  // Initialize moments functionality
-  import('../memorials/moments.js').then(({ initMomentsBoard }) => {
-    initMomentsBoard();
-  }).catch(error => {
-    console.error('Error loading moments module:', error);
-  });
-}
-
-function resetWizard() {
-  currentStep = 1;
-  Object.keys(memorialData).forEach(key => {
-    if (Array.isArray(memorialData[key])) {
-      memorialData[key] = [];
-    } else {
-      memorialData[key] = {};
-    }
-  });
-}
-
-function loadDraft() {
-  try {
-    const draft = localStorage.getItem('memorialDraft');
-    if (draft) {
-      const parsed = JSON.parse(draft);
-      Object.assign(memorialData, parsed);
-    }
-  } catch (error) {
-    console.error('Error loading local draft:', error);
-  }
-}
-
-function updatePreview() {
-  // Update preview if on preview step
-  if (currentStep === 5) {
-    generatePreview();
-  }
 }
 
 /* ---------- navigation ---------- */
 function updateProgress() {
-  try {
-    // Count total steps dynamically
-    totalSteps = document.querySelectorAll('.form-step').length;
-    
-    /* 1. progress bar */
-    const bar = document.getElementById('progressFill');
-    if (bar) bar.style.width = `${(currentStep / totalSteps) * 100}%`;
+  /* 1. progress bar */
+  const bar = document.getElementById('progressFill');
+  if (bar) bar.style.width = `${(currentStep / totalSteps) * 100}%`;
 
-    /* 2. step indicators */
-    document.querySelectorAll('.progress-step').forEach((step, idx) => {
-      step.classList.remove('active', 'completed');
-      if (idx < currentStep - 1) step.classList.add('completed');
-      if (idx === currentStep - 1) step.classList.add('active');
-    });
+  /* 2. step indicators */
+  document.querySelectorAll('.progress-step').forEach((step, idx) => {
+    step.classList.remove('active', 'completed');
+    if (idx < currentStep - 1) step.classList.add('completed');
+    if (idx === currentStep - 1) step.classList.add('active');
+  });
 
-    /* 3. show / hide steps */
-    document.querySelectorAll('.form-step').forEach((s) => {
-      s.classList.remove('active');
-      s.style.display = 'none';
-    });
-    const currentStepEl = qs(`#step${currentStep}`);
-    if (currentStepEl) {
-      currentStepEl.classList.add('active');
-      currentStepEl.style.setProperty('display', 'block');
-    }
+  /* 3. show / hide steps */
+  document.querySelectorAll('.form-step').forEach((s) => {
+    s.classList.remove('active');
+    s.style.display = 'none';
+  });
+  qs(`#step${currentStep}`)?.classList.add('active');
+  qs(`#step${currentStep}`)?.style.setProperty('display', 'block');
 
-    /* extra UX touches */
-    window.scrollTo(0, 80); // keep nav visible
-    qs('.create-memorial-page')?.classList.toggle('compact-layout', currentStep !== 1);
+  /* extra UX touches */
+  window.scrollTo(0, 80); // keep nav visible
+  qs('.create-memorial-page')?.classList.toggle('compact-layout', currentStep !== 1);
 
-    /* step-specific hooks */
-    if (currentStep === 2) {
-      setTimeout(() => {
-        initializeRichTextAutoSave();
-        loadDraftLifeStory();
-      }, 100);
-    }
-  } catch (error) {
-    handleError(error, 'Update Progress');
+  /* step-specific hooks */
+  if (currentStep === 2) {
+    setTimeout(() => {
+      initializeRichTextAutoSave();
+      loadDraftLifeStory();
+    }, 100);
   }
 }
 
 function nextStep() {
-  try {
-    if (!validateCurrentStep()) return;
-    saveStepData();
-    if (currentStep < totalSteps) {
-      currentStep += 1;
-      updateProgress();
-      if (currentStep === 5) {
-        // Generate preview when reaching the preview step
-        generatePreview();
-        
-        // Add resize listener to update preview on window resize
-        window.addEventListener('resize', debounce(generatePreview, 500));
-      }
-    }
-  } catch (error) {
-    handleError(error, 'Next Step');
+  if (!validateCurrentStep()) return;
+  saveStepData();
+  if (currentStep < totalSteps) {
+    currentStep += 1;
+    updateProgress();
+    if (currentStep === 5) generatePreview();
   }
 }
 
-
-// Add debounce utility function if not already present
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
-
-
-
-
 function previousStep() {
-  try {
-    if (currentStep === 5) {
-      // Remove resize listener when leaving preview step
-      window.removeEventListener('resize', debounce(generatePreview, 500));
-    }
-    
-    if (currentStep > 1) {
-      currentStep -= 1;
-      updateProgress();
-    }
-  } catch (error) {
-    handleError(error, 'Previous Step');
+  if (currentStep > 1) {
+    currentStep -= 1;
+    updateProgress();
   }
 }
 
 function skipStep() {
-  try {
-    if (currentStep < totalSteps) {
-      currentStep += 1;
-      updateProgress();
-    }
-  } catch (error) {
-    handleError(error, 'Skip Step');
+  if (currentStep < totalSteps) {
+    currentStep += 1;
+    updateProgress();
   }
 }
 
 /* ---------- validation ---------- */
 function validateCurrentStep() {
-  try {
-    if (currentStep === 1) {
-      // Check for both first and last name fields
-      const firstName = qs('#firstName')?.value.trim();
-      const lastName = qs('#lastName')?.value.trim();
-      
-      if (!firstName || !lastName) {
-        showToast('Please enter both first and last name', 'error');
-        return false;
-      }
-      
-      // Also validate dates
-      const birthDate = qs('#birthDate')?.value;
-      const deathDate = qs('#deathDate')?.value;
-      
-      if (!birthDate || !deathDate) {
-        showToast('Please enter both birth and death dates', 'error');
-        return false;
-      }
+  if (currentStep === 1) {
+    // Check for both first and last name fields
+    const firstName = qs('#firstName')?.value.trim();
+    const lastName = qs('#lastName')?.value.trim();
+    
+    if (!firstName || !lastName) {
+      showNotification('Please enter both first and last name', 'error');
+      return false;
     }
     
-    // Add validation for step 5 (privacy settings)
-    if (currentStep === 5) {
-      const isPrivate = document.querySelector('input[name="privacy"]:checked')?.value === 'private';
-      const passwordInput = document.getElementById('memorialPassword');
-      
-      if (isPrivate && passwordInput) {
-        const password = passwordInput.value.trim();
-        
-        if (password.length < 6) {
-          passwordInput.classList.add('error');
-          const errorEl = document.getElementById('passwordError');
-          if (errorEl) {
-            errorEl.classList.add('show');
-          }
-          showToast('Password must be at least 6 characters long', 'error');
-          passwordInput.focus();
-          return false;
-        }
-      }
-    }
+    // Also validate dates
+    const birthDate = qs('#birthDate')?.value;
+    const deathDate = qs('#deathDate')?.value;
     
-    return true;
-  } catch (error) {
-    handleError(error, 'Validate Step');
-    return false;
+    if (!birthDate || !deathDate) {
+      showNotification('Please enter both birth and death dates', 'error');
+      return false;
+    }
   }
+  return true;
 }
 
 /* ---------- collect / save data ---------- */
 function saveStepData() {
-  try {
-    switch (currentStep) {
-      case 1:
-        // Combine first, middle, and last names
-        const firstName = qs('#firstName')?.value.trim();
-        const middleName = qs('#middleName')?.value.trim();
-        const lastName = qs('#lastName')?.value.trim();
+  switch (currentStep) {
+    case 1:
+      // Combine first, middle, and last names
+      const firstName = qs('#firstName')?.value.trim();
+      const middleName = qs('#middleName')?.value.trim();
+      const lastName = qs('#lastName')?.value.trim();
+      
+      // Create full name with proper spacing
+      let fullName = firstName;
+      if (middleName) fullName += ` ${middleName}`;
+      fullName += ` ${lastName}`;
+      
+      memorialData.basic = {
+        name: fullName,
+        firstName: firstName,
+        middleName: middleName,
+        lastName: lastName,
+        birthDate: qs('#birthDate')?.value,
+        deathDate: qs('#deathDate')?.value,
+        // THESE TWO LINES ARE NEW - They save the headline and opening statement
+        headline: qs('#headline')?.value || '',
+        openingStatement: qs('#openingStatement')?.value || ''
+      };
+      break;
+      
+    case 2:
+  memorialData.story = {
+    obituary: qs('#lifeStory')?.innerHTML || '',
+    lifeStory: ''  // Empty if you don't have a separate life story field
+  };
+  break;
+      
+    case 3:
+      // THIS ENTIRE CASE 3 IS NEW - It saves all service information
+      // Collect all service information
+      const services = [];
+      const serviceItems = document.querySelectorAll('.service-item-form');
+      
+      serviceItems.forEach((item) => {
+        const serviceType = item.querySelector('select[name="serviceType"]')?.value;
+        const serviceDate = item.querySelector('input[name="serviceDate"]')?.value;
+        const serviceTime = item.querySelector('input[name="serviceTime"]')?.value;
+        const locationName = item.querySelector('input[name="locationName"]')?.value;
+        const locationAddress = item.querySelector('input[name="locationAddress"]')?.value;
+        const additionalInfo = item.querySelector('textarea[name="additionalInfo"]')?.value;
         
-        // Create full name with proper spacing
-        let fullName = firstName;
-        if (middleName) fullName += ` ${middleName}`;
-        fullName += ` ${lastName}`;
-        
-        memorialData.basic = {
-          name: fullName,
-          firstName: firstName,
-          middleName: middleName,
-          lastName: lastName,
-          birthDate: qs('#birthDate')?.value,
-          deathDate: qs('#deathDate')?.value,
-          headline: qs('#headline')?.value || '',
-          openingStatement: qs('#openingStatement')?.value || ''
-        };
-        break;
-        
-      case 2:
-        memorialData.story = {
-          obituary: qs('#lifeStory')?.innerHTML || '',
-          lifeStory: ''  // Empty if you don't have a separate life story field
-        };
-        break;
-        
-      case 3:
-        // Collect all service information
-        const services = [];
-        const serviceItems = document.querySelectorAll('.service-item-form');
-        
-        serviceItems.forEach((item) => {
-          const serviceType = item.querySelector('select[name="serviceType"]')?.value;
-          const serviceDate = item.querySelector('input[name="serviceDate"]')?.value;
-          const serviceTime = item.querySelector('input[name="serviceTime"]')?.value;
-          const locationName = item.querySelector('input[name="locationName"]')?.value;
-          const locationAddress = item.querySelector('input[name="locationAddress"]')?.value;
-          const additionalInfo = item.querySelector('textarea[name="additionalInfo"]')?.value;
-          
-          // Only save if at least service type is selected
-          if (serviceType) {
-            services.push({
-              type: serviceType,
-              date: serviceDate,
-              time: serviceTime,
-              locationName: locationName,
-              address: locationAddress,
-              additionalInfo: additionalInfo
-            });
-          }
-        });
-        
-        memorialData.services = services;
-        
-        // Also save any additional information from step 3
-        memorialData.additionalInfo = qs('#serviceNote')?.value || '';
-        break;
-        
-      case 4:
-        // Get moments from the moments module and save them
-        memorialData.moments = window.getMomentsForSave?.() || [];
-        break;
-        
-      case 5:
-        const privacySetting = qs('input[name="privacy"]:checked')?.value || 'public';
-        memorialData.settings = {
-          privacy: privacySetting
-        };
-        
-        // Add password if private - FIXED to use consistent key
-        if (privacySetting === 'private') {
-          const password = qs('#memorialPassword')?.value.trim();
-          if (password) {
-            memorialData.settings.password = password; // Changed from 'access_password' to 'password'
-          }
-        } else {
-          // Clear password if not private
-          memorialData.settings.password = null;
+        // Only save if at least service type is selected
+        if (serviceType) {
+          services.push({
+            type: serviceType,
+            date: serviceDate,
+            time: serviceTime,
+            locationName: locationName,
+            address: locationAddress,
+            additionalInfo: additionalInfo
+          });
         }
-        break;
-    }
-  } catch (error) {
-    handleError(error, 'Save Step Data');
+      });
+      
+      memorialData.services = services;
+      
+      // Also save any additional information from step 3
+      memorialData.additionalInfo = qs('#serviceNote')?.value || '';
+      break;
+      
+    case 4:
+  // Get moments from the moments module and save them
+  memorialData.moments = window.getMomentsForSave?.() || [];
+  break;
+      
+    case 5:
+      memorialData.settings = {
+        privacy: qs('input[name="privacy"]:checked')?.value || 'public'
+      };
+      break;
   }
 }
-
-
-
-/* ──────────────────────────────────────────
-   PRIVACY PASSWORD TOGGLE
-   ────────────────────────────────────────── */
-function setupPrivacyHandlers() {
-  // Add change listener to privacy radio buttons
-  const privacyRadios = document.querySelectorAll('input[name="privacy"]');
-  privacyRadios.forEach(radio => {
-    radio.addEventListener('change', togglePasswordField);
-  });
-  
-  // Add input listener to password field to clear errors
-  const passwordInput = document.getElementById('memorialPassword');
-  if (passwordInput) {
-    passwordInput.addEventListener('input', function() {
-      if (this.value.length >= 6) {
-        this.classList.remove('error');
-        const errorEl = document.getElementById('passwordError');
-        if (errorEl) {
-          errorEl.classList.remove('show');
-        }
-      }
-    });
-  }
-}
-
-function togglePasswordField() {
-  const isPrivate = document.querySelector('input[name="privacy"]:checked')?.value === 'private';
-  const passwordSection = document.getElementById('passwordSection');
-  const passwordInput = document.getElementById('memorialPassword');
-  
-  if (!passwordSection || !passwordInput) return;
-  
-  if (isPrivate) {
-    passwordSection.style.display = 'block';
-    passwordInput.required = true;
-  } else {
-    passwordSection.style.display = 'none';
-    passwordInput.required = false;
-    passwordInput.value = '';
-    // Clear any error states
-    passwordInput.classList.remove('error');
-    const errorEl = document.getElementById('passwordError');
-    if (errorEl) {
-      errorEl.classList.remove('show');
-    }
-  }
-}
-
-
-
-
-
-
-
-
 
 
 
@@ -1268,451 +931,405 @@ function togglePasswordField() {
 
 // Replace the existing generatePreview function with this improved version
 function generatePreview() {
-  try {
-    const iframe = document.getElementById('memorialPreview');
-    const deviceFrame = document.getElementById('deviceFrame');
-    if (!iframe || !deviceFrame) return;
-    
-    // Auto-detect device type based on screen width
-    const screenWidth = window.innerWidth;
-    let deviceType = 'desktop';
-    
-    if (screenWidth <= 768) {
-      deviceType = 'mobile';
-    } else if (screenWidth <= 1024) {
-      deviceType = 'tablet';
-    }
-    
-    // Remove all device classes first
-    deviceFrame.classList.remove('desktop-view', 'tablet-view', 'mobile-view');
-    
-    // Apply appropriate device class and iframe dimensions
-    switch(deviceType) {
-      case 'mobile':
-        deviceFrame.classList.add('mobile-view');
-        // Keep the iframe responsive within mobile frame
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        break;
-      case 'tablet':
-        deviceFrame.classList.add('tablet-view');
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        break;
-      default: // desktop
-        deviceFrame.classList.add('desktop-view');
-        iframe.style.width = '100%';
-        iframe.style.height = '600px';
-    }
-    
-    // Generate the preview content
-    const previewHTML = generatePreviewHTML();
-    
-    // Add responsive viewport meta tag to preview
-    const responsivePreviewHTML = previewHTML.replace(
-      '<head>',
-      '<head><meta name="viewport" content="width=device-width, initial-scale=1">'
-    );
-    
-    // Write the preview content to the iframe
-    iframe.srcdoc = responsivePreviewHTML;
-  } catch (error) {
-    handleError(error, 'Generate Preview');
-  }
+  const iframe = document.getElementById('memorialPreview');
+  if (!iframe) return;
+  
+  // Instead of loading an external URL, we'll generate the preview content inline
+  const previewHTML = generatePreviewHTML();
+  
+  // Write the preview content to the iframe
+  iframe.srcdoc = previewHTML;
 }
+
 
 // New function to generate the preview HTML matching the Example Memorial page
 function generatePreviewHTML() {
-  try {
-    // Get the current memorial data
-    const profilePhoto = qs('#profilePhotoPreview')?.src || 'https://via.placeholder.com/200';
-    const backgroundPhoto = qs('#backgroundPhotoPreview')?.src || 'https://images.unsplash.com/photo-1516475429286-465d815a0df7?w=1200';
-    
-    const fullName = memorialData.basic?.name || 'Preview Name';
-    const birthDate = memorialData.basic?.birthDate || '1950-01-01';
-    const deathDate = memorialData.basic?.deathDate || '2024-01-01';
-    const headline = memorialData.basic?.headline || '';
-    const openingStatement = memorialData.basic?.openingStatement || '';
-    
-    const obituary = memorialData.story?.obituary || '<p>Memorial preview will appear here...</p>';
-    const lifeStory = memorialData.story?.lifeStory || '';
-    const additionalInfo = memorialData.additionalInfo || '';
-    
-    // Get services data
-    const services = memorialData.services || [];
-    
-    // Get moments data if available - first try saved data, then get fresh data
-    const moments = memorialData.moments || window.getMomentsForSave?.() || [];
-    
-    // Format dates
-    const formatDate = (dateStr) => {
-      if (!dateStr) return '';
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
-    };
-    
-    // Format time
-    const formatTime = (timeStr) => {
-      if (!timeStr) return '';
-      const [hours, minutes] = timeStr.split(':');
-      const hour = parseInt(hours);
-      const ampm = hour >= 12 ? 'PM' : 'AM';
-      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-      return `${displayHour}:${minutes} ${ampm}`;
-    };
-    
-    // Format life span dates
-    const birthYear = birthDate ? new Date(birthDate).getFullYear() : '';
-    const deathYear = deathDate ? new Date(deathDate).getFullYear() : '';
-    // Format full dates for display
-    const formattedBirthDate = birthDate ? formatDate(birthDate) : '';
-    const formattedDeathDate = deathDate ? formatDate(deathDate) : '';
+  // Get the current memorial data
+  const profilePhoto = qs('#profilePhotoPreview')?.src || 'https://via.placeholder.com/200';
+  const backgroundPhoto = qs('#backgroundPhotoPreview')?.src || 'https://images.unsplash.com/photo-1516475429286-465d815a0df7?w=1200';
+  
+  const fullName = memorialData.basic?.name || 'Preview Name';
+  const birthDate = memorialData.basic?.birthDate || '1950-01-01';
+  const deathDate = memorialData.basic?.deathDate || '2024-01-01';
+  const headline = memorialData.basic?.headline || '';
+  const openingStatement = memorialData.basic?.openingStatement || '';
+  
+  const obituary = memorialData.story?.obituary || '<p>Memorial preview will appear here...</p>';
+  const lifeStory = memorialData.story?.lifeStory || '';
+  const additionalInfo = memorialData.additionalInfo || '';
+  
+  // Get services data
+  const services = memorialData.services || [];
+  
+  // Get moments data if available - first try saved data, then get fresh data
+const moments = memorialData.moments || window.getMomentsForSave?.() || [];
+  
+  // Format dates
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+  
+  // Format time
+  const formatTime = (timeStr) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+  
+  // Format life span dates
+  const birthYear = birthDate ? new Date(birthDate).getFullYear() : '';
+  const deathYear = deathDate ? new Date(deathDate).getFullYear() : '';
+  // Format full dates for display
+const formattedBirthDate = birthDate ? formatDate(birthDate) : '';
+const formattedDeathDate = deathDate ? formatDate(deathDate) : '';
 
-    // Generate services HTML
-    const servicesHTML = services.length > 0 ? services.map(service => `
-      <div class="service-item">
-        <div class="service-icon">
-          <i class="fas ${getServiceIcon(service.type)}"></i>
-        </div>
-        <div class="service-details">
-          <h3>${getServiceTitle(service.type)}</h3>
-          ${service.date ? `<p class="service-date">${formatDate(service.date)}${service.time ? ` at ${formatTime(service.time)}` : ''}</p>` : ''}
-          ${service.locationName ? `<p class="service-location"><strong>${service.locationName}</strong></p>` : ''}
-          ${service.address ? `<p class="service-address">${service.address}</p>` : ''}
-          ${service.additionalInfo ? `<p class="service-info">${service.additionalInfo}</p>` : ''}
-        </div>
+
+  // Generate services HTML
+  const servicesHTML = services.length > 0 ? services.map(service => `
+    <div class="service-item">
+      <div class="service-icon">
+        <i class="fas ${getServiceIcon(service.type)}"></i>
       </div>
-    `).join('') : '<p class="no-services">No services scheduled at this time.</p>';
-    
-    // Generate moments gallery HTML
-    const momentsHTML = moments.length > 0 ? `
-      <div class="moments-gallery">
-        ${moments.slice(0, 6).map(moment => `
-          <div class="moment-item">
-            <img src="${moment.url}" alt="${moment.caption || 'Memorial moment'}" />
-            ${moment.caption ? `<p class="moment-caption">${moment.caption}</p>` : ''}
+      <div class="service-details">
+        <h3>${getServiceTitle(service.type)}</h3>
+        ${service.date ? `<p class="service-date">${formatDate(service.date)}${service.time ? ` at ${formatTime(service.time)}` : ''}</p>` : ''}
+        ${service.locationName ? `<p class="service-location"><strong>${service.locationName}</strong></p>` : ''}
+        ${service.address ? `<p class="service-address">${service.address}</p>` : ''}
+        ${service.additionalInfo ? `<p class="service-info">${service.additionalInfo}</p>` : ''}
+      </div>
+    </div>
+  `).join('') : '<p class="no-services">No services scheduled at this time.</p>';
+  
+  // Generate moments gallery HTML
+  const momentsHTML = moments.length > 0 ? `
+    <div class="moments-gallery">
+      ${moments.slice(0, 6).map(moment => `
+        <div class="moment-item">
+          <img src="${moment.url}" alt="${moment.caption || 'Memorial moment'}" />
+          ${moment.caption ? `<p class="moment-caption">${moment.caption}</p>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  ` : '';
+  
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${fullName} - Memorial Preview</title>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@300;400&display=swap">
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+      <style>
+        /* Reset and Base */
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body {
+          font-family: 'Inter', sans-serif;
+          color: #4a4238;
+          background: #fefdfb;
+          line-height: 1.6;
+        }
+        
+        /* Memorial Hero Section */
+        .memorial-hero {
+          position: relative;
+          height: 400px;
+          background: url('${backgroundPhoto}') center/cover;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+        }
+        
+        .memorial-hero-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.5));
+        }
+        
+        .memorial-hero-content {
+          position: relative;
+          text-align: center;
+          color: white;
+          padding: 2rem;
+          z-index: 1;
+        }
+        
+        .memorial-main-photo {
+          width: 160px;
+          height: 160px;
+          border-radius: 50%;
+          border: 4px solid white;
+          margin-bottom: 1rem;
+          object-fit: cover;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .memorial-main-name {
+          font-size: 2.5rem;
+          font-weight: 600;
+          margin-bottom: 0.5rem;
+        }
+        
+        .memorial-dates {
+          font-size: 1.1rem;
+          opacity: 0.9;
+        }
+        
+        .memorial-headline {
+          font-size: 1.3rem;
+          font-style: italic;
+          margin-top: 1rem;
+          opacity: 0.95;
+        }
+        
+        /* Content Container */
+        .memorial-content {
+          max-width: 800px;
+          margin: 0 auto;
+          padding: 3rem 2rem;
+        }
+        
+        /* Opening Statement */
+        .opening-statement {
+          text-align: center;
+          font-size: 1.2rem;
+          color: #6b9174;
+          font-style: italic;
+          margin-bottom: 3rem;
+          padding: 2rem;
+          background: rgba(107, 145, 116, 0.05);
+          border-radius: 10px;
+        }
+        
+        /* Section Headers */
+        h2 {
+          font-size: 2rem;
+          color: #4a4238;
+          margin: 3rem 0 1.5rem;
+          font-family: 'Merriweather', serif;
+        }
+        
+        /* Obituary Section */
+        .obituary-content {
+          font-family: 'Merriweather', serif;
+          line-height: 1.8;
+          color: #4a4238;
+          margin-bottom: 2rem;
+        }
+        
+        .obituary-content p {
+          margin-bottom: 1rem;
+        }
+        
+        /* Life Story Section */
+        .life-story {
+          background: #f9f9f9;
+          padding: 2rem;
+          border-radius: 10px;
+          margin: 2rem 0;
+        }
+        
+        .life-story p {
+          margin-bottom: 1rem;
+          line-height: 1.8;
+        }
+        
+        /* Service Section */
+        .service-section {
+          margin: 3rem 0;
+        }
+        
+        .service-item {
+          display: flex;
+          gap: 1.5rem;
+          margin-bottom: 2rem;
+          padding: 1.5rem;
+          background: white;
+          border-radius: 10px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .service-icon {
+          flex-shrink: 0;
+          width: 50px;
+          height: 50px;
+          background: linear-gradient(135deg, #6b9174, #4f7354);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+        }
+        
+        .service-details h3 {
+          font-size: 1.2rem;
+          color: #4a4238;
+          margin-bottom: 0.5rem;
+        }
+        
+        .service-details p {
+          color: #64748b;
+          margin-bottom: 0.25rem;
+        }
+        
+        .service-location {
+          font-weight: 500;
+        }
+        
+        .no-services {
+          text-align: center;
+          color: #64748b;
+          font-style: italic;
+        }
+        
+        /* Additional Info */
+        .additional-info {
+          background: #faf8f3;
+          padding: 2rem;
+          border-radius: 10px;
+          margin: 2rem 0;
+          border-left: 4px solid #6b9174;
+        }
+        
+        /* Moments Gallery */
+        .moments-gallery {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          gap: 1rem;
+          margin: 2rem 0;
+        }
+        
+        .moment-item {
+          position: relative;
+          border-radius: 10px;
+          overflow: hidden;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .moment-item img {
+          width: 100%;
+          height: 200px;
+          object-fit: cover;
+        }
+        
+        .moment-caption {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: rgba(0,0,0,0.7);
+          color: white;
+          padding: 0.5rem;
+          font-size: 0.875rem;
+        }
+        
+        /* Guestbook Section */
+        .guestbook-section {
+          margin-top: 3rem;
+          padding: 2rem;
+          background: white;
+          border-radius: 10px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+          text-align: center;
+        }
+        
+        .guestbook-section p {
+          color: #64748b;
+          margin-top: 1rem;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="memorial-page">
+        <!-- Hero Section -->
+        <section class="memorial-hero">
+          <div class="memorial-hero-overlay"></div>
+          <div class="memorial-hero-content">
+            <img src="${profilePhoto}" alt="${fullName}" class="memorial-main-photo" />
+            <h1 class="memorial-main-name">${fullName}</h1>
+            <p class="memorial-dates">${formattedBirthDate} - ${formattedDeathDate}</p>
+            ${headline ? `<p class="memorial-headline">"${headline}"</p>` : ''}
           </div>
-        `).join('')}
-      </div>
-    ` : '';
-    
-    return `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${fullName} - Memorial Preview</title>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@300;400&display=swap">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-        <style>
-          /* Reset and Base */
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
+        </section>
+        
+        <!-- Content -->
+        <div class="memorial-content">
+          ${openingStatement ? `
+            <div class="opening-statement">
+              ${openingStatement}
+            </div>
+          ` : ''}
           
-          body {
-            font-family: 'Inter', sans-serif;
-            color: #4a4238;
-            background: #fefdfb;
-            line-height: 1.6;
-          }
-          
-          /* Memorial Hero Section */
-          .memorial-hero {
-            position: relative;
-            height: 400px;
-            background: url('${backgroundPhoto}') center/cover;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-          }
-          
-          .memorial-hero-overlay {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.5));
-          }
-          
-          .memorial-hero-content {
-            position: relative;
-            text-align: center;
-            color: white;
-            padding: 2rem;
-            z-index: 1;
-          }
-          
-          .memorial-main-photo {
-            width: 160px;
-            height: 160px;
-            border-radius: 50%;
-            border: 4px solid white;
-            margin-bottom: 1rem;
-            object-fit: cover;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-          }
-          
-          .memorial-main-name {
-            font-size: 2.5rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-          }
-          
-          .memorial-dates {
-            font-size: 1.1rem;
-            opacity: 0.9;
-          }
-          
-          .memorial-headline {
-            font-size: 1.3rem;
-            font-style: italic;
-            margin-top: 1rem;
-            opacity: 0.95;
-          }
-          
-          /* Content Container */
-          .memorial-content {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 3rem 2rem;
-          }
-          
-          /* Opening Statement */
-          .opening-statement {
-            text-align: center;
-            font-size: 1.2rem;
-            color: #6b9174;
-            font-style: italic;
-            margin-bottom: 3rem;
-            padding: 2rem;
-            background: rgba(107, 145, 116, 0.05);
-            border-radius: 10px;
-          }
-          
-          /* Section Headers */
-          h2 {
-            font-size: 2rem;
-            color: #4a4238;
-            margin: 3rem 0 1.5rem;
-            font-family: 'Merriweather', serif;
-          }
-          
-          /* Obituary Section */
-          .obituary-content {
-            font-family: 'Merriweather', serif;
-            line-height: 1.8;
-            color: #4a4238;
-            margin-bottom: 2rem;
-          }
-          
-          .obituary-content p {
-            margin-bottom: 1rem;
-          }
-          
-          /* Life Story Section */
-          .life-story {
-            background: #f9f9f9;
-            padding: 2rem;
-            border-radius: 10px;
-            margin: 2rem 0;
-          }
-          
-          .life-story p {
-            margin-bottom: 1rem;
-            line-height: 1.8;
-          }
-          
-          /* Service Section */
-          .service-section {
-            margin: 3rem 0;
-          }
-          
-          .service-item {
-            display: flex;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-            padding: 1.5rem;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-          }
-          
-          .service-icon {
-            flex-shrink: 0;
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, #6b9174, #4f7354);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-          }
-          
-          .service-details h3 {
-            font-size: 1.2rem;
-            color: #4a4238;
-            margin-bottom: 0.5rem;
-          }
-          
-          .service-details p {
-            color: #64748b;
-            margin-bottom: 0.25rem;
-          }
-          
-          .service-location {
-            font-weight: 500;
-          }
-          
-          .no-services {
-            text-align: center;
-            color: #64748b;
-            font-style: italic;
-          }
-          
-          /* Additional Info */
-          .additional-info {
-            background: #faf8f3;
-            padding: 2rem;
-            border-radius: 10px;
-            margin: 2rem 0;
-            border-left: 4px solid #6b9174;
-          }
-          
-          /* Moments Gallery */
-          .moments-gallery {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 1rem;
-            margin: 2rem 0;
-          }
-          
-          .moment-item {
-            position: relative;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-          }
-          
-          .moment-item img {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-          }
-          
-          .moment-caption {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 0.5rem;
-            font-size: 0.875rem;
-          }
-          
-          /* Guestbook Section */
-          .guestbook-section {
-            margin-top: 3rem;
-            padding: 2rem;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            text-align: center;
-          }
-          
-          .guestbook-section p {
-            color: #64748b;
-            margin-top: 1rem;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="memorial-page">
-          <!-- Hero Section -->
-          <section class="memorial-hero">
-            <div class="memorial-hero-overlay"></div>
-            <div class="memorial-hero-content">
-              <img src="${profilePhoto}" alt="${fullName}" class="memorial-main-photo" />
-              <h1 class="memorial-main-name">${fullName}</h1>
-              <p class="memorial-dates">${formattedBirthDate} - ${formattedDeathDate}</p>
-              ${headline ? `<p class="memorial-headline">"${headline}"</p>` : ''}
+          <!-- Obituary -->
+          <section>
+            <h2>Celebrating a Life Well Lived</h2>
+            <div class="obituary-content">
+              ${obituary}
             </div>
           </section>
           
-          <!-- Content -->
-          <div class="memorial-content">
-            ${openingStatement ? `
-              <div class="opening-statement">
-                ${openingStatement}
-              </div>
-            ` : ''}
-            
-            <!-- Obituary -->
+          <!-- Life Story -->
+          ${lifeStory ? `
             <section>
-              <h2>Celebrating a Life Well Lived</h2>
-              <div class="obituary-content">
-                ${obituary}
+              <h2>Life Story</h2>
+              <div class="life-story">
+                ${lifeStory}
               </div>
             </section>
-            
-            <!-- Life Story -->
-            ${lifeStory ? `
-              <section>
-                <h2>Life Story</h2>
-                <div class="life-story">
-                  ${lifeStory}
-                </div>
-              </section>
-            ` : ''}
-            
-            <!-- Service Information -->
-            ${services.length > 0 ? `
-              <section class="service-section">
-                <h2>Service Information</h2>
-                ${servicesHTML}
-              </section>
-            ` : ''}
-            
-            <!-- Additional Information -->
-            ${additionalInfo ? `
-              <section>
-                <h2>Additional Information</h2>
-                <div class="additional-info">
-                  ${additionalInfo}
-                </div>
-              </section>
-            ` : ''}
-            
-            <!-- Moments Gallery -->
-            ${moments.length > 0 ? `
-              <section>
-                <h2>Cherished Moments</h2>
-                ${momentsHTML}
-              </section>
-            ` : ''}
-            
-            <!-- Guestbook -->
-            <section class="guestbook-section">
-              <h2>Guestbook</h2>
-              <p>Be the first to sign the guestbook.</p>
+          ` : ''}
+          
+          <!-- Service Information -->
+          ${services.length > 0 ? `
+            <section class="service-section">
+              <h2>Service Information</h2>
+              ${servicesHTML}
             </section>
-          </div>
+          ` : ''}
+          
+          <!-- Additional Information -->
+          ${additionalInfo ? `
+            <section>
+              <h2>Additional Information</h2>
+              <div class="additional-info">
+                ${additionalInfo}
+              </div>
+            </section>
+          ` : ''}
+          
+          <!-- Moments Gallery -->
+          ${moments.length > 0 ? `
+            <section>
+              <h2>Cherished Moments</h2>
+              ${momentsHTML}
+            </section>
+          ` : ''}
+          
+          <!-- Guestbook -->
+          <section class="guestbook-section">
+            <h2>Guestbook</h2>
+            <p>Be the first to sign the guestbook.</p>
+          </section>
         </div>
-      </body>
-      </html>
-    `;
-  } catch (error) {
-    handleError(error, 'Generate Preview HTML');
-    return '<html><body><p>Error generating preview</p></body></html>';
-  }
+      </div>
+    </body>
+    </html>
+  `;
 }
 
 // Helper functions for service icons and titles
@@ -1742,36 +1359,67 @@ function getServiceTitle(type) {
 
 
 
+
+
+
+// Device preview function
+window.previewDevice = function(device) {
+  const frame = document.querySelector('.device-frame');
+  const iframe = document.getElementById('memorialPreview');
+  
+  if (!frame) return;
+  
+  // Remove all device classes
+  frame.classList.remove('desktop-view', 'tablet-view', 'mobile-view');
+  
+  // Add the selected device class and update iframe dimensions
+  switch(device) {
+    case 'desktop':
+      frame.classList.add('desktop-view');
+      iframe.style.width = '100%';
+      iframe.style.height = '600px';
+      break;
+    case 'tablet':
+      frame.classList.add('tablet-view');
+      iframe.style.width = '768px';
+      iframe.style.height = '1024px';
+      break;
+    case 'mobile':
+      frame.classList.add('mobile-view');
+      iframe.style.width = '375px';
+      iframe.style.height = '667px';
+      break;
+  }
+  
+  // Update button states
+  document.querySelectorAll('.preview-actions button').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  event.target.closest('button').classList.add('active');
+}
+
 /* ---------- rich text autosave ---------- */
 function initializeRichTextAutoSave() {
-  try {
-    const editor = document.querySelector('#lifeStory');
-    if (!editor) return;
+  const editor = document.querySelector('#lifeStory');  // Changed from .rich-text-editor to #lifeStory
+  if (!editor) return;
 
-    let autoSaveTimer;
-    editor.addEventListener('input', () => {
-      clearTimeout(autoSaveTimer);
-      autoSaveTimer = setTimeout(() => {
-        saveStepData();
-        saveDraftToSupabase(); // Save to Supabase
-      }, 2000); // Auto-save after 2 seconds of inactivity
-    });
-  } catch (error) {
-    handleError(error, 'Initialize Auto Save');
-  }
+  let autoSaveTimer;
+  editor.addEventListener('input', () => {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => {
+      saveStepData();
+      saveDraftToSupabase(); // Save to Supabase
+    }, 2000); // Auto-save after 2 seconds of inactivity
+  });
 }
 
 function loadDraftLifeStory() {
-  try {
-    if (memorialData.story?.lifeStory) {
-      const editor = qs('#lifeStoryEditor');
-      if (editor) editor.innerHTML = memorialData.story.lifeStory;
-    }
-    if (memorialData.story?.obituary) {
-      const editor = qs('#lifeStory');
-      if (editor) editor.innerHTML = memorialData.story.obituary;
-    }
-  } catch (error) {
-    handleError(error, 'Load Draft Life Story');
+  if (memorialData.story?.lifeStory) {
+    const editor = qs('#lifeStoryEditor');
+    if (editor) editor.innerHTML = memorialData.story.lifeStory;
+  }
+  if (memorialData.story?.obituary) {
+    const editor = qs('#lifeStory');  // Changed from #obituaryEditor to #lifeStory
+    if (editor) editor.innerHTML = memorialData.story.obituary;
   }
 }
