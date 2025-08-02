@@ -1025,4 +1025,12 @@ export { showPage, navigateTo, goBack, getCurrentPage };
 window.showPage = showPage;
 window.navigateTo = navigateTo;
 window.goBack = goBack;
- 
+
+/* ──────────────────────────────────────────
+   ENSURE MEMORIAL FUNCTIONS ARE GLOBAL
+   ────────────────────────────────────────── */
+window.showMemorialPage = showMemorialPage;
+window.loadMemorialFallback = loadMemorialFallback;
+window.displayMemorialFallback = displayMemorialFallback;
+window.setupMemorialTabs = setupMemorialTabs;
+window.loadGuestbookFallback = loadGuestbookFallback;
