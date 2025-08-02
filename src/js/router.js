@@ -1025,3 +1025,4 @@ export { showPage, navigateTo, goBack, getCurrentPage };
 window.showPage = showPage;
 window.navigateTo = navigateTo;
 window.goBack = goBack;
+ 
