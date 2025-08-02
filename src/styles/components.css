@@ -4186,6 +4186,30 @@ footer {
   animation: fadeIn 1.5s ease;
 }
 
+/* Memorial Section Stacking */
+.memorial-hero {
+  position: relative;
+  z-index: 10;
+}
+
+.memorial-body {
+  position: relative;
+  z-index: 5;
+  background: white;
+  margin-top: -50px; /* If it needs to overlap slightly */
+  padding-top: 50px;
+  overflow: hidden;
+}
+
+.memorial-tabs-wrapper {
+  position: relative;
+  overflow: hidden;
+  background: white;
+}
+
+
+
+
 .memorial-main-photo {
   width: 220px;
   height: 220px;
@@ -4254,6 +4278,16 @@ footer {
   margin: 0 auto;
   padding: 0 2rem;
 }
+
+/* Memorial Content Container - Prevents tab overflow */
+.memorial-content {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--background);
+  border-radius: 0 0 20px 20px;
+}
+
+
 
 /* Obituary Section */
 .obituary-section {
@@ -6554,4 +6588,372 @@ footer {
 
 #passwordSection .form-input.error {
   border-color: #e53e3e;
+}
+
+
+
+
+
+/* Additional safeguard for the About section specifically */
+.memorial-page .about-section:not(.active),
+.memorial-page #aboutTab:not(.active),
+.memorial-page [data-tab="about"]:not(.active) {
+  display: none !important;
+  position: fixed !important;
+  left: -99999px !important;
+  top: -99999px !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  z-index: -9999 !important;
+}
+
+/* ──────────────────────────────────────────
+   MEMORIAL PAGE STYLES - CORRECTED
+   ────────────────────────────────────────── */
+
+/* Memorial Page Base - Ensure content is visible */
+.memorial-page {
+  padding: 0;
+  background: white;
+  min-height: 100vh;
+}
+
+/* Memorial sections should be VISIBLE by default */
+.memorial-page .obituary-section,
+.memorial-page .service-section,
+.memorial-page .guestbook-section {
+  display: block !important;
+  visibility: visible !important;
+  height: auto !important;
+  position: relative !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+  left: 0 !important;
+}
+
+/* Ensure memorial body shows content properly */
+.memorial-body {
+  position: relative;
+  background: white;
+  z-index: 5;
+  overflow: visible; /* Changed from hidden to visible */
+}
+
+/* Memorial content wrapper */
+.memorial-content {
+  position: relative;
+  overflow: visible; /* Changed from hidden to visible */
+  background-color: white;
+}
+
+/* Remove any tab-related behavior from memorial pages */
+.memorial-page .tab-pane,
+.memorial-page .tab-content,
+.memorial-page [role="tabpanel"] {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  position: relative !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* Additional Information Section styling */
+.additional-info-section {
+  padding: 4rem 0;
+  background: var(--background);
+  text-align: center;
+}
+
+.additional-info-section h2 {
+  font-size: 2rem;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+  font-family: 'Merriweather', serif;
+}
+
+.additional-info-section p {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  max-width: 700px;
+  margin: 0 auto 2rem;
+  line-height: 1.8;
+}
+
+/* Edit Memorial Button */
+.edit-memorial-btn,
+.btn-edit-memorial {
+  background: var(--gradient-earth);
+  color: white;
+  padding: 0.875rem 2rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.edit-memorial-btn:hover,
+.btn-edit-memorial:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(107, 145, 116, 0.3);
+  background: linear-gradient(135deg, #7ca185 0%, #5a8360 100%);
+  color: white;
+}
+
+/* Ensure proper spacing between sections */
+.memorial-page section {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hero image should stay behind content */
+.memorial-hero {
+  position: relative;
+  z-index: 10;
+}
+
+/* Fix any z-index stacking issues */
+.obituary-section {
+  position: relative;
+  z-index: 20;
+}
+
+.service-section {
+  position: relative;
+  z-index: 15;
+}
+
+.guestbook-section {
+  position: relative;
+  z-index: 15;
+}
+
+/* Opening Statement */
+.opening-statement-section {
+  padding: 3rem 0;
+  background: rgba(107, 145, 116, 0.05);
+  text-align: center;
+}
+
+.opening-statement {
+  font-size: 1.3rem;
+  color: var(--primary-sage);
+  font-style: italic;
+  line-height: 1.8;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* Life Story Section */
+.life-story-section {
+  padding: 4rem 0;
+  background: white;
+}
+
+.life-story-content {
+  font-family: 'Merriweather', serif;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.life-story-content p {
+  margin-bottom: 1.5rem;
+}
+
+/* Memorial Headline */
+.memorial-headline {
+  font-size: 1.25rem;
+  font-style: italic;
+  margin-top: 1rem;
+  opacity: 0.9;
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Moments Section */
+.moments-section {
+  padding: 4rem 0;
+  background: var(--background);
+}
+
+.moments-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.no-moments-message,
+.no-services-message,
+.no-entries-message {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 2rem;
+  font-style: italic;
+}
+
+/* Ensure proper max-width utility classes */
+.max-w-3xl {
+  max-width: 48rem;
+}
+
+.max-w-6xl {
+  max-width: 72rem;
+}
+
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.px-4 {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.mb-8 {
+  margin-bottom: 2rem;
+}
+
+/* Memorial Content Container - consistent width */
+.memorial-content {
+  max-width: 850px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* Opening Statement Section */
+.opening-statement-section {
+  padding: 4rem 0 2rem;
+  background: white;
+}
+
+.opening-statement {
+  text-align: center;
+  font-size: 1.3rem;
+  color: var(--primary-sage);
+  font-style: italic;
+  line-height: 1.8;
+  padding: 2rem;
+  background: rgba(107, 145, 116, 0.05);
+  border-radius: 10px;
+}
+
+/* Life Story Section */
+.life-story-section {
+  padding: 3rem 0;
+  background: white;
+}
+
+.life-story-content {
+  font-family: 'Merriweather', serif;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.life-story-content p {
+  margin-bottom: 1.5rem;
+}
+
+/* Additional Information Section */
+.additional-info-section {
+  padding: 3rem 0;
+  background: var(--background);
+  text-align: center;
+}
+
+.additional-info-section h2 {
+  font-size: 2rem;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+  font-family: 'Merriweather', serif;
+}
+
+.additional-info-section p {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+/* Memorial Headline in Hero */
+.memorial-headline {
+  font-size: 1.25rem;
+  font-style: italic;
+  margin-top: 1rem;
+  opacity: 0.9;
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Fix hero dates display */
+.memorial-main-dates {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  opacity: 0.95;
+  font-weight: 300;
+  letter-spacing: 1px;
+}
+
+/* Moments Section */
+.moments-section {
+  padding: 4rem 0;
+  background: white;
+}
+
+.moments-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.moment-item {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.moment-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+}
+
+.moment-item img {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+}
+
+.moment-caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+  color: white;
+  padding: 1rem;
+  font-size: 0.875rem;
+}
+
+/* Ensure no-content messages are styled consistently */
+.no-services-message,
+.no-moments-message,
+.no-entries-message {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 2rem;
+  font-style: italic;
+  font-size: 1.1rem;
 }
