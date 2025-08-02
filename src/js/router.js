@@ -496,6 +496,9 @@ async function loadMemorialDirect(memorialId) {
     // Update window.currentUser for backward compatibility
     window.currentUser = user;
     
+    // Store memorial data globally for other functions
+    window.currentMemorial = memorial;
+    
     // Display the memorial
     displayMemorialDirect(memorial, container);
     
@@ -537,266 +540,335 @@ window.checkMemorialPassword = function(memorialId, correctPassword) {
 };
 
 /* ──────────────────────────────────────────
-   DIRECT MEMORIAL DISPLAY - FIXED WITH PROPER CONTAINER
+   DIRECT MEMORIAL DISPLAY - CORRECTED TO MATCH EXAMPLE MEMORIAL
    ────────────────────────────────────────── */
 function displayMemorialDirect(memorial, container) {
-  // Format dates
-  const birthYear = memorial.birth_date ? new Date(memorial.birth_date).getFullYear() : '';
-  const deathYear = memorial.death_date ? new Date(memorial.death_date).getFullYear() : '';
-  const dates = (birthYear || deathYear) ? `${birthYear} - ${deathYear}` : '';
+  // Format dates helper functions
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+  };
+
+  const formatTime = (timeStr) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  // Format full dates for display (like "March 15, 1945")
+  const birthDateFormatted = memorial.birth_date ? formatDate(memorial.birth_date) : '';
+  const deathDateFormatted = memorial.death_date ? formatDate(memorial.death_date) : '';
+  const fullDates = `${birthDateFormatted} - ${deathDateFormatted}`;
   
   // Update page title
   document.title = `${memorial.deceased_name} - Memorial | GatherMemorials`;
   
-  // Build the memorial HTML with proper page-container wrapper
+  // Build the memorial HTML matching the EXACT example memorial structure
   container.innerHTML = `
-    <div class="page-container">
-      <div class="memorial-page">
-        <div class="memorial-header-section">
-          <div class="memorial-cover-photo" style="
-            height: 300px;
-            background-image: url('${memorial.background_photo_url || 'https://images.unsplash.com/photo-1516475429286-465d815a0df7?w=1200'}');
-            background-size: cover;
-            background-position: center;
-            position: relative;
-          ">
-            <div class="memorial-overlay" style="
-              position: absolute;
-              top: 0;
-              left: 0;
-              right: 0;
-              bottom: 0;
-              background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.6));
-            "></div>
-          </div>
-        </div>
-        
-        <div class="memorial-content" style="max-width: 1200px; margin: 0 auto; padding: 0 2rem;">
-          <div class="memorial-profile-section" style="text-align: center; margin-top: -80px; position: relative; z-index: 10;">
-            <img src="${memorial.profile_photo_url || '/assets/default-avatar.jpg'}" 
-                 alt="${memorial.deceased_name}" 
-                 class="memorial-profile-photo" 
-                 style="width: 160px; height: 160px; border-radius: 50%; border: 4px solid white; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-            <h1 class="memorial-name" style="color: #4a4238; font-size: 2.5rem; margin-bottom: 0.5rem;">${memorial.deceased_name}</h1>
-            ${dates ? `<p class="memorial-dates" style="color: #9b8b7e; font-size: 1.25rem; margin-bottom: 0.5rem;">${dates}</p>` : ''}
-            ${memorial.headline ? `<p class="memorial-tagline" style="color: #6b9174; font-style: italic; font-size: 1.1rem;">${memorial.headline}</p>` : ''}
-          </div>
-          
-          <div class="memorial-tabs" style="display: flex; justify-content: center; gap: 2rem; margin: 3rem 0 2rem; border-bottom: 2px solid #e8d5b7; padding-bottom: 0;">
-            <button class="tab-button active" data-tab="about" style="
-              padding: 0.75rem 1.5rem;
-              background: none;
-              border: none;
-              cursor: pointer;
-              color: #6b9174;
-              font-weight: 500;
-              border-bottom: 3px solid #6b9174;
-              margin-bottom: -2px;
-              transition: all 0.3s ease;
-            ">About</button>
-            <button class="tab-button" data-tab="gallery" style="
-              padding: 0.75rem 1.5rem;
-              background: none;
-              border: none;
-              cursor: pointer;
-              color: #9b8b7e;
-              font-weight: 500;
-              border-bottom: 3px solid transparent;
-              margin-bottom: -2px;
-              transition: all 0.3s ease;
-            ">Photos & Videos</button>
-            <button class="tab-button" data-tab="tributes" style="
-              padding: 0.75rem 1.5rem;
-              background: none;
-              border: none;
-              cursor: pointer;
-              color: #9b8b7e;
-              font-weight: 500;
-              border-bottom: 3px solid transparent;
-              margin-bottom: -2px;
-              transition: all 0.3s ease;
-            ">Tributes</button>
-            <button class="tab-button" data-tab="service" style="
-              padding: 0.75rem 1.5rem;
-              background: none;
-              border: none;
-              cursor: pointer;
-              color: #9b8b7e;
-              font-weight: 500;
-              border-bottom: 3px solid transparent;
-              margin-bottom: -2px;
-              transition: all 0.3s ease;
-            ">Service Info</button>
-          </div>
-          
-          <div class="memorial-tab-content">
-            <div class="tab-pane active" id="about-tab">
-              ${memorial.opening_statement ? `
-                <div class="memorial-section" style="margin-bottom: 2rem;">
-                  <p class="opening-statement" style="font-size: 1.2rem; color: #4a4238; line-height: 1.8; font-style: italic; text-align: center; padding: 1.5rem; background: #faf8f3; border-radius: 8px;">${memorial.opening_statement}</p>
-                </div>
-              ` : ''}
-              
-              ${memorial.obituary ? `
-                <div class="memorial-section obituary-section" style="margin-bottom: 2rem;">
-                  <h2 style="color: #4a4238; font-size: 1.75rem; margin-bottom: 1rem;">Obituary</h2>
-                  <div class="memorial-text" style="color: #4a4238; line-height: 1.8; font-size: 1.1rem;">${memorial.obituary}</div>
-                </div>
-              ` : ''}
-              
-              ${memorial.life_story ? `
-                <div class="memorial-section" style="margin-bottom: 2rem;">
-                  <h2 style="color: #4a4238; font-size: 1.75rem; margin-bottom: 1rem;">Life Story</h2>
-                  <div class="memorial-text" style="color: #4a4238; line-height: 1.8; font-size: 1.1rem;">${memorial.life_story}</div>
-                </div>
-              ` : ''}
-              
-              ${memorial.additional_info ? `
-                <div class="memorial-section" style="margin-bottom: 2rem;">
-                  <h2 style="color: #4a4238; font-size: 1.75rem; margin-bottom: 1rem;">Additional Information</h2>
-                  <div class="memorial-text" style="color: #4a4238; line-height: 1.8; font-size: 1.1rem;">${memorial.additional_info}</div>
-                </div>
-              ` : ''}
-            </div>
-            
-            <div class="tab-pane" id="gallery-tab" style="display: none;">
-              <div class="memorial-gallery" id="memorialGallery" style="padding: 2rem 0;">
-                <div class="loading-spinner" style="text-align: center;">
-                  <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #6b9174;"></i>
-                  <p style="color: #9b8b7e; margin-top: 1rem;">Loading photos...</p>
-                </div>
-              </div>
-            </div>
-            
-            <div class="tab-pane" id="tributes-tab" style="display: none;">
-              <div class="memorial-tributes" style="padding: 2rem 0;">
-                <p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">No tributes have been shared yet.</p>
-              </div>
-            </div>
-            
-            <div class="tab-pane" id="service-tab" style="display: none;">
-              <div class="memorial-service-info" style="padding: 2rem 0;">
-                <p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">No service information is available at this time.</p>
-              </div>
-            </div>
-          </div>
-          
-          ${memorial.user_id === window.currentUser?.id ? `
-            <div class="owner-controls" style="margin: 3rem 0; text-align: center;">
-              <button onclick="
-                localStorage.setItem('currentDraftId', '${memorial.id}');
-                window.location.hash='#createMemorial';
-              " class="btn-primary" style="
-                display: inline-block;
-                padding: 0.75rem 2rem;
-                background: #6b9174;
-                color: white;
-                text-decoration: none;
-                border: none;
-                border-radius: 4px;
-                font-size: 1rem;
-                cursor: pointer;
-                transition: background 0.3s ease;
-              ">
-                <i class="fas fa-edit"></i> Edit Memorial
+    <section id="exampleMemorial" class="page-section memorial-page">
+      <!-- Hero Section with background image -->
+      <div class="memorial-hero" style="background-image: url('${memorial.background_photo_url || 'https://images.unsplash.com/photo-1516589091380-5d8e87df6999?w=1600&h=600&fit=crop'}');">
+        <div class="memorial-hero-overlay"></div>
+        <div class="memorial-hero-content">
+          <img
+            src="${memorial.profile_photo_url || 'https://images.unsplash.com/photo-1566616213894-2d4e1baee5d8?w=200&h=200&fit=crop'}"
+            alt="${memorial.deceased_name}"
+            class="memorial-main-photo"
+          />
+          <h1 class="memorial-main-name">${memorial.deceased_name}</h1>
+          <p class="memorial-main-dates">${fullDates}</p>
+          ${memorial.headline ? `<p class="memorial-headline">"${memorial.headline}"</p>` : ''}
+
+          <div class="memorial-hero-actions">
+            <button class="memorial-hero-btn" onclick="shareMemorial()">
+              <i class="fas fa-share"></i>
+              Share Memorial
+            </button>
+            ${window.currentUser?.id === memorial.user_id ? `
+              <button class="memorial-hero-btn" onclick="editMemorial('${memorial.id}')">
+                <i class="fas fa-edit"></i>
+                Edit Memorial
               </button>
-            </div>
-          ` : ''}
-          
-          <section class="guestbook-section" style="margin-top: 3rem; padding: 3rem 0; border-top: 2px solid #e8d5b7;">
-            <h2 style="color: #4a4238; font-size: 2rem; margin-bottom: 1.5rem; text-align: center;">Guestbook</h2>
-            <div class="guestbook-actions" style="text-align: center; margin-bottom: 2rem;">
-              <button class="btn-primary" onclick="
-                import('@/utils/modal.js').then(({ openModal }) => {
-                  window.currentMemorialId = '${memorial.id}';
-                  openModal('guestbook');
-                }).catch(() => {
-                  alert('Guestbook feature coming soon!');
-                });
-              " style="
-                display: inline-block;
-                padding: 0.75rem 2rem;
-                background: #6b9174;
-                color: white;
-                text-decoration: none;
-                border: none;
-                border-radius: 4px;
-                font-size: 1rem;
-                cursor: pointer;
-                transition: background 0.3s ease;
-              ">
-                <i class="fas fa-pen"></i> Leave a Message
-              </button>
-            </div>
-            <div class="guestbook-entries" id="guestbookEntries">
-              <p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">Loading messages...</p>
-            </div>
-          </section>
+            ` : ''}
+          </div>
         </div>
       </div>
-    </div>
+
+      <div class="memorial-body">
+        <!-- Obituary Section (always shown, with hero gradient background) -->
+        <section class="obituary-section">
+          <div class="obituary-container">
+            <h2 class="obituary-title">Celebrating a Life of Love and Compassion</h2>
+            <div class="obituary-content">
+              ${memorial.opening_statement ? `
+                <p class="obituary-lead serif-text">
+                  ${memorial.opening_statement}
+                </p>
+              ` : ''}
+              ${memorial.obituary ? `
+                <div class="obituary-details">
+                  ${memorial.obituary}
+                  ${memorial.obituary && !memorial.obituary.includes('class="obituary-closing"') ? `
+                    <p class="obituary-closing">
+                      Forever in our hearts, your memory will continue to inspire and guide us.
+                    </p>
+                  ` : ''}
+                </div>
+              ` : `
+                <div class="obituary-details">
+                  <p>A beautiful life that came to an end.</p>
+                  <p>They died as they lived, everyone's friend.</p>
+                  <p class="obituary-closing">
+                    In our hearts a memory will always be kept, of one we loved, and will never forget.
+                  </p>
+                </div>
+              `}
+            </div>
+          </div>
+        </section>
+
+        <!-- Service Information Section -->
+        <section class="service-section">
+          <div class="service-container">
+            <div class="service-card-container">
+              <h2 class="service-title">Service Information</h2>
+              <div id="memorialServices" class="service-cards">
+                <!-- Services will be loaded here -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Photo Gallery Section (VSCO style) -->
+        <section class="memories-section">
+          <div class="memories-container">
+            <h2 class="section-title" style="font-family: 'Montserrat', sans-serif; font-weight: 300; letter-spacing: 4px; text-transform: uppercase;">
+              Memories
+            </h2>
+            
+            <div id="memorialGallery" class="moments-grid-vsco">
+              <!-- Photos will be loaded here -->
+            </div>
+            
+            <!-- Load More button -->
+            <div class="load-more-vsco" style="display: none;">
+              <button class="load-more-btn" onclick="loadMoreMemories()">load more memories</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Guest Book Section -->
+        <section class="guestbook-section">
+          <div class="guestbook-container">
+            <h2 class="section-title">Messages of Love</h2>
+            <div class="guestbook-header">
+              <p class="guestbook-intro">
+                Share your memories and messages for the ${memorial.deceased_name.split(' ').pop()} family
+              </p>
+              <button class="btn-primary" data-action="open-guestbook" onclick="showGuestbookForm()">
+                <i class="fas fa-pen"></i>
+                Leave a Message
+              </button>
+            </div>
+
+            <div id="guestbookEntries" class="guestbook-entries">
+              <!-- Guestbook entries will be loaded here -->
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
   `;
   
-  // Set up tab functionality
-  setupMemorialTabsDirect(container);
-  
-  // Try to load guestbook entries
-  loadGuestbookDirect(memorial.id);
-  
-  // Load memorial moments/photos
-  loadMemorialMomentsDirect(memorial.id);
+  // After DOM is rendered, load additional data
+  setTimeout(() => {
+    if (memorial.id) {
+      loadMemorialServicesDirect(memorial.id);
+      loadMemorialMomentsDirect(memorial.id);
+      loadGuestbookDirect(memorial.id);
+    }
+  }, 100);
 }
 
 /* ──────────────────────────────────────────
-   DIRECT TAB SETUP
+   SERVICE LOADER FUNCTION (MATCHING EXAMPLE'S CARD STYLE)
    ────────────────────────────────────────── */
-function setupMemorialTabsDirect(container) {
-  const tabButtons = container.querySelectorAll('.tab-button');
-  const tabPanes = container.querySelectorAll('.tab-pane');
-  
-  tabButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const targetTab = button.getAttribute('data-tab');
-      
-      // Update active button
-      tabButtons.forEach(btn => {
-        btn.classList.remove('active');
-        btn.style.color = '#9b8b7e';
-        btn.style.borderBottomColor = 'transparent';
+async function loadMemorialServicesDirect(memorialId) {
+  try {
+    const supabase = getClient();
+    if (!supabase) return;
+    
+    const { data: services, error } = await supabase
+      .from('memorial_services')
+      .select('*')
+      .eq('memorial_id', memorialId)
+      .order('service_date', { ascending: true });
+    
+    if (error) throw error;
+    
+    const container = document.getElementById('memorialServices');
+    if (!container) return;
+    
+    // Helper to format date
+    const formatDate = (dateStr) => {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { 
+        weekday: 'long',
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
       });
-      button.classList.add('active');
-      button.style.color = '#6b9174';
-      button.style.borderBottomColor = '#6b9174';
-      
-      // Update active pane
-      tabPanes.forEach(pane => {
-        pane.style.display = 'none';
-        pane.classList.remove('active');
-      });
-      
-      const targetPane = container.querySelector(`#${targetTab}-tab`);
-      if (targetPane) {
-        targetPane.style.display = 'block';
-        targetPane.classList.add('active');
-      }
-    });
-  });
+    };
+
+    // Helper to format time
+    const formatTime = (timeStr) => {
+      if (!timeStr) return '';
+      const [hours, minutes] = timeStr.split(':');
+      const hour = parseInt(hours);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+      return `${displayHour}:${minutes} ${ampm}`;
+    };
+    
+    if (services && services.length > 0) {
+      container.innerHTML = services.map(service => {
+        const serviceDate = service.service_date ? formatDate(service.service_date) : '';
+        const serviceTime = service.service_time ? formatTime(service.service_time) : '';
+        
+        return `
+          <div class="service-card">
+            <div class="service-icon">
+              <i class="fas ${service.is_virtual ? 'fa-video' : 'fa-calendar-alt'}"></i>
+            </div>
+            <div class="service-details">
+              <h3>${service.service_type || 'Memorial Service'}</h3>
+              ${serviceDate || serviceTime ? `
+                <p class="service-date">
+                  <i class="far fa-clock"></i>
+                  ${serviceDate}${serviceTime ? ` at ${serviceTime}` : ''}
+                </p>
+              ` : ''}
+              ${service.location_name ? `
+                <p class="service-location">
+                  <i class="fas fa-map-marker-alt"></i>
+                  ${service.location_name}
+                  ${service.location_address ? `<br>${service.location_address}` : ''}
+                  ${service.location_city || service.location_state ? `
+                    <br>${[service.location_city, service.location_state].filter(Boolean).join(', ')}
+                  ` : ''}
+                </p>
+              ` : ''}
+              ${service.is_virtual && service.virtual_meeting_url ? `
+                <p class="service-virtual">
+                  <i class="fas fa-link"></i>
+                  <a href="${service.virtual_meeting_url}" target="_blank">Join Virtual Service</a>
+                </p>
+              ` : ''}
+              ${service.additional_info ? `
+                <p class="service-notes">${service.additional_info}</p>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    } else {
+      container.innerHTML = '<p class="text-center text-gray-500">Service information will be updated soon.</p>';
+    }
+  } catch (error) {
+    console.error('Error loading services:', error);
+    const container = document.getElementById('memorialServices');
+    if (container) {
+      container.innerHTML = '<p class="text-center text-gray-500">Unable to load service information.</p>';
+    }
+  }
 }
 
 /* ──────────────────────────────────────────
-   DIRECT GUESTBOOK LOADER - FIXED TO USE SUPABASE CLIENT
+   LOAD MEMORIAL PHOTOS (VSCO STYLE GALLERY)
+   ────────────────────────────────────────── */
+async function loadMemorialMomentsDirect(memorialId) {
+  try {
+    const supabase = getClient();
+    if (!supabase) return;
+    
+    const { data: moments, error } = await supabase
+      .from('memorial_moments')
+      .select('*')
+      .eq('memorial_id', memorialId)
+      .order('display_order', { ascending: true });
+    
+    if (error) throw error;
+    
+    const galleryContainer = document.getElementById('memorialGallery');
+    if (!galleryContainer) return;
+    
+    // Helper to format date
+    const formatDate = (dateStr) => {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    };
+    
+    if (moments && moments.length > 0) {
+      galleryContainer.innerHTML = moments.map((moment, index) => {
+        // Add variety to layout - some images span wider
+        const isWide = index % 5 === 0;
+        const isTall = index % 7 === 2;
+        
+        return `
+          <div class="moment-vsco ${isWide ? 'wide' : ''} ${isTall ? 'tall' : ''}">
+            <img
+              src="${moment.url}"
+              alt="${moment.caption || 'Memory'}"
+            />
+            <div class="moment-overlay-vsco">
+              ${moment.date_taken ? `<div class="moment-date-vsco">${formatDate(moment.date_taken)}</div>` : ''}
+              ${moment.caption ? `<div class="moment-caption-vsco">${moment.caption}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      // Show load more button if many photos
+      if (moments.length > 12) {
+        const loadMoreEl = galleryContainer.parentElement.querySelector('.load-more-vsco');
+        if (loadMoreEl) loadMoreEl.style.display = 'block';
+      }
+    } else {
+      galleryContainer.innerHTML = `
+        <div class="empty-moments">
+          <p>No photos have been added yet.</p>
+          ${window.currentUser?.id === window.currentMemorial?.user_id ? `
+            <button class="btn-primary" onclick="window.location.hash='#createMemorial'">
+              <i class="fas fa-plus"></i> Add Photos
+            </button>
+          ` : ''}
+        </div>
+      `;
+    }
+  } catch (error) {
+    console.error('Error loading moments:', error);
+  }
+}
+
+/* ──────────────────────────────────────────
+   LOAD GUESTBOOK ENTRIES
    ────────────────────────────────────────── */
 async function loadGuestbookDirect(memorialId) {
   try {
-    // Get Supabase client
     const supabase = getClient();
+    if (!supabase) return;
     
-    if (!supabase) {
-      console.error('Supabase client not initialized');
-      return;
-    }
-    
-    // Query guestbook entries
     const { data: entries, error } = await supabase
       .from('guestbook_entries')
       .select('*')
@@ -804,182 +876,100 @@ async function loadGuestbookDirect(memorialId) {
       .eq('is_approved', true)
       .order('created_at', { ascending: false });
     
-    if (error) {
-      console.error('Error loading guestbook:', error);
-      return;
-    }
+    if (error) throw error;
     
     const container = document.getElementById('guestbookEntries');
     if (!container) return;
     
+    // Helper to format date
+    const formatDate = (dateStr) => {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    };
+    
     if (entries && entries.length > 0) {
       container.innerHTML = entries.map(entry => `
-        <div class="guestbook-entry" style="background: #faf8f3; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
-          <p style="color: #4a4238; line-height: 1.6; margin-bottom: 0.5rem;">${entry.message}</p>
-          <p style="color: #9b8b7e; font-size: 0.9rem;">
-            <strong>${entry.author_name}</strong> - 
-            ${new Date(entry.created_at).toLocaleDateString()}
-          </p>
+        <div class="guestbook-entry">
+          <div class="entry-header">
+            <img
+              src="https://ui-avatars.com/api/?name=${encodeURIComponent(entry.author_name)}&background=6b9174&color=fff"
+              alt="${entry.author_name}"
+            />
+            <div class="entry-info">
+              <h4>${entry.author_name}</h4>
+              <p class="entry-date">${formatDate(entry.created_at)}</p>
+            </div>
+          </div>
+          <p class="entry-message">${entry.message}</p>
+          <div class="entry-actions">
+            <button class="action-btn"><i class="fas fa-heart"></i> ${entry.likes || 0}</button>
+          </div>
         </div>
       `).join('');
     } else {
-      container.innerHTML = '<p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">No messages yet. Be the first to leave a tribute.</p>';
+      container.innerHTML = '<p class="text-center text-gray-500">Be the first to leave a message of love.</p>';
     }
   } catch (error) {
     console.error('Error loading guestbook:', error);
-    const container = document.getElementById('guestbookEntries');
-    if (container) {
-      container.innerHTML = '<p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">Unable to load messages at this time.</p>';
-    }
   }
 }
 
 /* ──────────────────────────────────────────
-   DIRECT MEMORIAL MOMENTS LOADER
+   GLOBAL HELPER FUNCTIONS
    ────────────────────────────────────────── */
-async function loadMemorialMomentsDirect(memorialId) {
-  try {
-    // Get Supabase client
-    const supabase = getClient();
-    
-    if (!supabase) {
-      console.error('Supabase client not initialized');
-      return;
-    }
-    
-    // Query memorial moments
-    const { data: moments, error } = await supabase
-      .from('memorial_moments')
-      .select('*')
-      .eq('memorial_id', memorialId)
-      .order('display_order', { ascending: true });
-    
-    if (error) {
-      console.error('Error loading memorial moments:', error);
-      return;
-    }
-    
-    const galleryContainer = document.getElementById('memorialGallery');
-    if (!galleryContainer) return;
-    
-    if (moments && moments.length > 0) {
-      // Create VSCO-style grid layout
-      galleryContainer.innerHTML = `
-        <div class="moments-grid-vsco" style="
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          gap: 8px;
-          margin-bottom: 3rem;
-        ">
-          ${moments.map((moment, index) => {
-            // Add variety to the layout - some images span 2 columns or rows
-            const isWide = index % 5 === 0;
-            const isTall = index % 7 === 2;
-            
-            return `
-              <div class="moment-vsco" style="
-                position: relative;
-                overflow: hidden;
-                background: #faf8f3;
-                cursor: pointer;
-                ${isWide ? 'grid-column: span 2;' : ''}
-                ${isTall ? 'grid-row: span 2; aspect-ratio: auto;' : 'aspect-ratio: 1;'}
-              ">
-                ${moment.type === 'video' ? `
-                  <video src="${moment.url}" style="width: 100%; height: 100%; object-fit: cover;" muted loop></video>
-                  <div class="video-indicator" style="
-                    position: absolute;
-                    top: 1rem;
-                    right: 1rem;
-                    width: 32px;
-                    height: 32px;
-                    background: rgba(0, 0, 0, 0.5);
-                    backdrop-filter: blur(10px);
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-size: 0.75rem;
-                  ">
-                    <i class="fas fa-play"></i>
-                  </div>
-                ` : `
-                  <img src="${moment.url || moment.thumbnail_url}" 
-                       alt="${moment.caption || 'Memorial moment'}" 
-                       style="width: 100%; height: 100%; object-fit: cover; display: block;"
-                       loading="lazy">
-                `}
-                
-                <div class="moment-overlay-vsco" style="
-                  position: absolute;
-                  inset: 0;
-                  background: linear-gradient(to bottom, transparent 60%, rgba(0, 0, 0, 0.3) 100%);
-                  opacity: 0;
-                  transition: opacity 0.3s ease;
-                  display: flex;
-                  flex-direction: column;
-                  justify-content: flex-end;
-                  padding: 1.5rem;
-                " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'">
-                  ${moment.date_taken ? `
-                    <p class="moment-date-vsco" style="
-                      font-size: 0.75rem;
-                      color: rgba(255, 255, 255, 0.8);
-                      margin-bottom: 0.25rem;
-                      font-weight: 400;
-                      letter-spacing: 0.5px;
-                    ">${new Date(moment.date_taken).toLocaleDateString()}</p>
-                  ` : ''}
-                  ${moment.caption ? `
-                    <p class="moment-caption-vsco" style="
-                      font-size: 0.875rem;
-                      color: white;
-                      font-weight: 300;
-                      line-height: 1.4;
-                    ">${moment.caption}</p>
-                  ` : ''}
-                </div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      `;
-      
-      // Add responsive styles
-      const styleSheet = document.createElement('style');
-      styleSheet.textContent = `
-        @media (max-width: 768px) {
-          .moments-grid-vsco {
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 4px !important;
-          }
-          .moment-vsco[style*="grid-column: span 2"] {
-            grid-column: span 1 !important;
-          }
-        }
-        @media (max-width: 480px) {
-          .moments-grid-vsco {
-            grid-template-columns: 1fr !important;
-          }
-        }
-        .moment-vsco video:hover {
-          opacity: 0.9;
-        }
-      `;
-      document.head.appendChild(styleSheet);
-      
-    } else {
-      galleryContainer.innerHTML = '<p style="text-align: center; color: #9b8b7e; font-size: 1.1rem; padding: 2rem 0;">No photos or videos have been added yet.</p>';
-    }
-  } catch (error) {
-    console.error('Error loading memorial moments:', error);
-    const galleryContainer = document.getElementById('memorialGallery');
-    if (galleryContainer) {
-      galleryContainer.innerHTML = '<p style="text-align: center; color: #9b8b7e; font-size: 1.1rem; padding: 2rem 0;">Unable to load photos at this time.</p>';
-    }
+window.shareMemorial = function() {
+  const url = window.location.href;
+  
+  if (navigator.share) {
+    navigator.share({
+      title: document.title,
+      url: url
+    }).catch(err => console.log('Error sharing:', err));
+  } else {
+    navigator.clipboard.writeText(url)
+      .then(() => {
+        // Show toast notification instead of alert
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        toast.innerHTML = '<i class="fas fa-check"></i> Memorial link copied to clipboard!';
+        toast.style.cssText = `
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          background: #6b9174;
+          color: white;
+          padding: 1rem 1.5rem;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          z-index: 9999;
+          animation: slideIn 0.3s ease;
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      })
+      .catch(() => alert('Please copy this link: ' + url));
   }
-}
+};
+
+window.editMemorial = function(memorialId) {
+  localStorage.setItem('currentDraftId', memorialId);
+  window.location.hash = '#createMemorial';
+};
+
+window.showGuestbookForm = function() {
+  // This would open a modal or expand a form for leaving a message
+  alert('Guestbook form coming soon!');
+};
+
+window.loadMoreMemories = function() {
+  // This would load additional photos
+  console.log('Loading more memories...');
+};
 
 /* ──────────────────────────────────────────
    AUTH CALLBACK HANDLER - NEW FUNCTION
@@ -1211,6 +1201,6 @@ window.goBack = goBack;
 window.handleRouteChange = handleRouteChange;
 window.loadMemorialDirect = loadMemorialDirect;
 window.displayMemorialDirect = displayMemorialDirect;
-window.setupMemorialTabsDirect = setupMemorialTabsDirect;
 window.loadGuestbookDirect = loadGuestbookDirect;
 window.loadMemorialMomentsDirect = loadMemorialMomentsDirect;
+window.loadMemorialServicesDirect = loadMemorialServicesDirect;
