@@ -384,43 +384,60 @@ async function loadMemorialDirect(memorialId) {
   
   // Show loading state
   container.innerHTML = `
-    <div class="loading-container" style="text-align: center; padding: 4rem;">
-      <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #6b9174;"></i>
+    <div class="page-container">
+      <div class="loading-container" style="text-align: center; padding: 4rem;">
+        <div class="loading-spinner">
+          <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #6b9174;"></i>
+        </div>
+        <p style="color: #4a4238; margin-top: 1rem;">Loading memorial...</p>
       </div>
-      <p style="color: #4a4238; margin-top: 1rem;">Loading memorial...</p>
     </div>
   `;
   
   try {
-    // Import and use the Supabase client instead of manual fetch
-    const { getClient } = await import('@/api/supabaseClient.js');
+    // Get Supabase client
     const supabase = getClient();
     
     if (!supabase) {
-      throw new Error('Supabase client not initialized');
+      throw new Error('Supabase client not initialized. Please check your environment variables.');
     }
     
-    // Use Supabase client to query - it handles auth automatically
-    const { data: memorials, error } = await supabase
-      .from('memorials')
-      .select('*')
-      .eq('slug', memorialId);
+    // Try to use RPC function first (if it exists)
+    let memorials, error;
+    
+    // First attempt: Try RPC function
+    const rpcResult = await supabase.rpc('get_memorial', { identifier: memorialId });
+    
+    if (rpcResult.error) {
+      console.log('RPC function failed, falling back to direct query:', rpcResult.error.message);
+      
+      // Fallback: Direct query
+      const queryResult = await supabase
+        .from('memorials')
+        .select('*')
+        .eq('slug', memorialId);
+        
+      memorials = queryResult.data;
+      error = queryResult.error;
+    } else {
+      memorials = rpcResult.data;
+      error = rpcResult.error;
+    }
     
     if (error) {
       console.error('Supabase error:', error);
       throw error;
     }
     
-
-    
     if (!memorials || memorials.length === 0) {
       container.innerHTML = `
-        <div style="text-align: center; padding: 4rem;">
-          <i class="fas fa-search" style="font-size: 3rem; color: #9b8b7e; margin-bottom: 1rem; display: block;"></i>
-          <h2 style="color: #4a4238; margin-bottom: 1rem;">Memorial Not Found</h2>
-          <p style="color: #9b8b7e; margin-bottom: 2rem;">We couldn't find the memorial you're looking for.</p>
-          <a href="#home" class="btn-primary" style="display: inline-block; padding: 0.75rem 2rem; background: #6b9174; color: white; text-decoration: none; border-radius: 4px;">Return Home</a>
+        <div class="page-container">
+          <div style="text-align: center; padding: 4rem;">
+            <i class="fas fa-search" style="font-size: 3rem; color: #9b8b7e; margin-bottom: 1rem; display: block;"></i>
+            <h2 style="color: #4a4238; margin-bottom: 1rem;">Memorial Not Found</h2>
+            <p style="color: #9b8b7e; margin-bottom: 2rem;">We couldn't find the memorial you're looking for.</p>
+            <a href="#home" class="btn-primary" style="display: inline-block; padding: 0.75rem 2rem; background: #6b9174; color: white; text-decoration: none; border-radius: 4px;">Return Home</a>
+          </div>
         </div>
       `;
       return;
@@ -442,16 +459,18 @@ async function loadMemorialDirect(memorialId) {
       if (!hasAccess && memorial.access_password) {
         // Show password prompt
         container.innerHTML = `
-          <div style="text-align: center; padding: 4rem;">
-            <i class="fas fa-lock" style="font-size: 3rem; color: #9b8b7e; margin-bottom: 1rem; display: block;"></i>
-            <h2 style="color: #4a4238; margin-bottom: 1rem;">Private Memorial</h2>
-            <p style="color: #9b8b7e; margin-bottom: 2rem;">This memorial is private. Please enter the password to view.</p>
-            <div style="max-width: 400px; margin: 0 auto;">
-              <input type="password" id="memorialPassword" placeholder="Enter password" style="width: 100%; padding: 0.75rem; border: 2px solid #e8d5b7; border-radius: 4px; margin-bottom: 1rem;">
-              <button onclick="checkMemorialPassword('${memorial.id}', '${memorial.access_password}')" class="btn-primary" style="display: inline-block; padding: 0.75rem 2rem; background: #6b9174; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer;">
-                Enter
-              </button>
-              <a href="#home" style="display: block; margin-top: 1rem; color: #9b8b7e;">Return Home</a>
+          <div class="page-container">
+            <div style="text-align: center; padding: 4rem;">
+              <i class="fas fa-lock" style="font-size: 3rem; color: #9b8b7e; margin-bottom: 1rem; display: block;"></i>
+              <h2 style="color: #4a4238; margin-bottom: 1rem;">Private Memorial</h2>
+              <p style="color: #9b8b7e; margin-bottom: 2rem;">This memorial is private. Please enter the password to view.</p>
+              <div style="max-width: 400px; margin: 0 auto;">
+                <input type="password" id="memorialPassword" placeholder="Enter password" style="width: 100%; padding: 0.75rem; border: 2px solid #e8d5b7; border-radius: 4px; margin-bottom: 1rem;">
+                <button onclick="checkMemorialPassword('${memorial.id}', '${memorial.access_password}')" class="btn-primary" style="display: inline-block; padding: 0.75rem 2rem; background: #6b9174; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer;">
+                  Enter
+                </button>
+                <a href="#home" style="display: block; margin-top: 1rem; color: #9b8b7e;">Return Home</a>
+              </div>
             </div>
           </div>
         `;
@@ -462,11 +481,13 @@ async function loadMemorialDirect(memorialId) {
     // Check if published
     if (!memorial.is_published && memorial.user_id !== currentUserId) {
       container.innerHTML = `
-        <div style="text-align: center; padding: 4rem;">
-          <i class="fas fa-lock" style="font-size: 3rem; color: #9b8b7e; margin-bottom: 1rem; display: block;"></i>
-          <h2 style="color: #4a4238; margin-bottom: 1rem;">Memorial Not Published</h2>
-          <p style="color: #9b8b7e; margin-bottom: 2rem;">This memorial is not yet available for viewing.</p>
-          <a href="#home" class="btn-primary" style="display: inline-block; padding: 0.75rem 2rem; background: #6b9174; color: white; text-decoration: none; border-radius: 4px;">Return Home</a>
+        <div class="page-container">
+          <div style="text-align: center; padding: 4rem;">
+            <i class="fas fa-lock" style="font-size: 3rem; color: #9b8b7e; margin-bottom: 1rem; display: block;"></i>
+            <h2 style="color: #4a4238; margin-bottom: 1rem;">Memorial Not Published</h2>
+            <p style="color: #9b8b7e; margin-bottom: 2rem;">This memorial is not yet available for viewing.</p>
+            <a href="#home" class="btn-primary" style="display: inline-block; padding: 0.75rem 2rem; background: #6b9174; color: white; text-decoration: none; border-radius: 4px;">Return Home</a>
+          </div>
         </div>
       `;
       return;
@@ -481,11 +502,13 @@ async function loadMemorialDirect(memorialId) {
   } catch (error) {
     console.error('Error loading memorial:', error);
     container.innerHTML = `
-      <div style="text-align: center; padding: 4rem;">
-        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #d2755a; margin-bottom: 1rem; display: block;"></i>
-        <h2 style="color: #4a4238; margin-bottom: 1rem;">Something Went Wrong</h2>
-        <p style="color: #9b8b7e; margin-bottom: 2rem;">We couldn't load the memorial. Please try again later.</p>
-        <a href="#home" class="btn-primary" style="display: inline-block; padding: 0.75rem 2rem; background: #6b9174; color: white; text-decoration: none; border-radius: 4px;">Return Home</a>
+      <div class="page-container">
+        <div style="text-align: center; padding: 4rem;">
+          <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #d2755a; margin-bottom: 1rem; display: block;"></i>
+          <h2 style="color: #4a4238; margin-bottom: 1rem;">Something Went Wrong</h2>
+          <p style="color: #9b8b7e; margin-bottom: 2rem;">We couldn't load the memorial. Please try again later.</p>
+          <a href="#home" class="btn-primary" style="display: inline-block; padding: 0.75rem 2rem; background: #6b9174; color: white; text-decoration: none; border-radius: 4px;">Return Home</a>
+        </div>
       </div>
     `;
   }
@@ -514,7 +537,7 @@ window.checkMemorialPassword = function(memorialId, correctPassword) {
 };
 
 /* ──────────────────────────────────────────
-   DIRECT MEMORIAL DISPLAY
+   DIRECT MEMORIAL DISPLAY - FIXED WITH PROPER CONTAINER
    ────────────────────────────────────────── */
 function displayMemorialDirect(memorial, container) {
   // Format dates
@@ -525,186 +548,188 @@ function displayMemorialDirect(memorial, container) {
   // Update page title
   document.title = `${memorial.deceased_name} - Memorial | GatherMemorials`;
   
-  // Build the memorial HTML
+  // Build the memorial HTML with proper page-container wrapper
   container.innerHTML = `
-    <div class="memorial-page">
-      <div class="memorial-header-section">
-        <div class="memorial-cover-photo" style="
-          height: 300px;
-          background-image: url('${memorial.background_photo_url || 'https://images.unsplash.com/photo-1516475429286-465d815a0df7?w=1200'}');
-          background-size: cover;
-          background-position: center;
-          position: relative;
-        ">
-          <div class="memorial-overlay" style="
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.6));
-          "></div>
-        </div>
-      </div>
-      
-      <div class="memorial-content" style="max-width: 1200px; margin: 0 auto; padding: 0 2rem;">
-        <div class="memorial-profile-section" style="text-align: center; margin-top: -80px; position: relative; z-index: 10;">
-          <img src="${memorial.profile_photo_url || '/assets/default-avatar.jpg'}" 
-               alt="${memorial.deceased_name}" 
-               class="memorial-profile-photo" 
-               style="width: 160px; height: 160px; border-radius: 50%; border: 4px solid white; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-          <h1 class="memorial-name" style="color: #4a4238; font-size: 2.5rem; margin-bottom: 0.5rem;">${memorial.deceased_name}</h1>
-          ${dates ? `<p class="memorial-dates" style="color: #9b8b7e; font-size: 1.25rem; margin-bottom: 0.5rem;">${dates}</p>` : ''}
-          ${memorial.headline ? `<p class="memorial-tagline" style="color: #6b9174; font-style: italic; font-size: 1.1rem;">${memorial.headline}</p>` : ''}
-        </div>
-        
-        <div class="memorial-tabs" style="display: flex; justify-content: center; gap: 2rem; margin: 3rem 0 2rem; border-bottom: 2px solid #e8d5b7; padding-bottom: 0;">
-          <button class="tab-button active" data-tab="about" style="
-            padding: 0.75rem 1.5rem;
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #6b9174;
-            font-weight: 500;
-            border-bottom: 3px solid #6b9174;
-            margin-bottom: -2px;
-            transition: all 0.3s ease;
-          ">About</button>
-          <button class="tab-button" data-tab="gallery" style="
-            padding: 0.75rem 1.5rem;
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #9b8b7e;
-            font-weight: 500;
-            border-bottom: 3px solid transparent;
-            margin-bottom: -2px;
-            transition: all 0.3s ease;
-          ">Photos & Videos</button>
-          <button class="tab-button" data-tab="tributes" style="
-            padding: 0.75rem 1.5rem;
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #9b8b7e;
-            font-weight: 500;
-            border-bottom: 3px solid transparent;
-            margin-bottom: -2px;
-            transition: all 0.3s ease;
-          ">Tributes</button>
-          <button class="tab-button" data-tab="service" style="
-            padding: 0.75rem 1.5rem;
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #9b8b7e;
-            font-weight: 500;
-            border-bottom: 3px solid transparent;
-            margin-bottom: -2px;
-            transition: all 0.3s ease;
-          ">Service Info</button>
-        </div>
-        
-        <div class="memorial-tab-content">
-          <div class="tab-pane active" id="about-tab">
-            ${memorial.opening_statement ? `
-              <div class="memorial-section" style="margin-bottom: 2rem;">
-                <p class="opening-statement" style="font-size: 1.2rem; color: #4a4238; line-height: 1.8; font-style: italic; text-align: center; padding: 1.5rem; background: #faf8f3; border-radius: 8px;">${memorial.opening_statement}</p>
-              </div>
-            ` : ''}
-            
-            ${memorial.obituary ? `
-              <div class="memorial-section obituary-section" style="margin-bottom: 2rem;">
-                <h2 style="color: #4a4238; font-size: 1.75rem; margin-bottom: 1rem;">Obituary</h2>
-                <div class="memorial-text" style="color: #4a4238; line-height: 1.8; font-size: 1.1rem;">${memorial.obituary}</div>
-              </div>
-            ` : ''}
-            
-            ${memorial.life_story ? `
-              <div class="memorial-section" style="margin-bottom: 2rem;">
-                <h2 style="color: #4a4238; font-size: 1.75rem; margin-bottom: 1rem;">Life Story</h2>
-                <div class="memorial-text" style="color: #4a4238; line-height: 1.8; font-size: 1.1rem;">${memorial.life_story}</div>
-              </div>
-            ` : ''}
-            
-            ${memorial.additional_info ? `
-              <div class="memorial-section" style="margin-bottom: 2rem;">
-                <h2 style="color: #4a4238; font-size: 1.75rem; margin-bottom: 1rem;">Additional Information</h2>
-                <div class="memorial-text" style="color: #4a4238; line-height: 1.8; font-size: 1.1rem;">${memorial.additional_info}</div>
-              </div>
-            ` : ''}
-          </div>
-          
-          <div class="tab-pane" id="gallery-tab" style="display: none;">
-            <div class="memorial-gallery" style="padding: 2rem 0;">
-              <p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">No photos or videos have been added yet.</p>
-            </div>
-          </div>
-          
-          <div class="tab-pane" id="tributes-tab" style="display: none;">
-            <div class="memorial-tributes" style="padding: 2rem 0;">
-              <p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">No tributes have been shared yet.</p>
-            </div>
-          </div>
-          
-          <div class="tab-pane" id="service-tab" style="display: none;">
-            <div class="memorial-service-info" style="padding: 2rem 0;">
-              <p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">No service information is available at this time.</p>
-            </div>
+    <div class="page-container">
+      <div class="memorial-page">
+        <div class="memorial-header-section">
+          <div class="memorial-cover-photo" style="
+            height: 300px;
+            background-image: url('${memorial.background_photo_url || 'https://images.unsplash.com/photo-1516475429286-465d815a0df7?w=1200'}');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+          ">
+            <div class="memorial-overlay" style="
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.6));
+            "></div>
           </div>
         </div>
         
-        ${memorial.user_id === window.currentUser?.id ? `
-          <div class="owner-controls" style="margin: 3rem 0; text-align: center;">
-            <button onclick="
-              localStorage.setItem('currentDraftId', '${memorial.id}');
-              window.location.hash='#createMemorial';
-            " class="btn-primary" style="
-              display: inline-block;
-              padding: 0.75rem 2rem;
-              background: #6b9174;
-              color: white;
-              text-decoration: none;
+        <div class="memorial-content" style="max-width: 1200px; margin: 0 auto; padding: 0 2rem;">
+          <div class="memorial-profile-section" style="text-align: center; margin-top: -80px; position: relative; z-index: 10;">
+            <img src="${memorial.profile_photo_url || '/assets/default-avatar.jpg'}" 
+                 alt="${memorial.deceased_name}" 
+                 class="memorial-profile-photo" 
+                 style="width: 160px; height: 160px; border-radius: 50%; border: 4px solid white; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <h1 class="memorial-name" style="color: #4a4238; font-size: 2.5rem; margin-bottom: 0.5rem;">${memorial.deceased_name}</h1>
+            ${dates ? `<p class="memorial-dates" style="color: #9b8b7e; font-size: 1.25rem; margin-bottom: 0.5rem;">${dates}</p>` : ''}
+            ${memorial.headline ? `<p class="memorial-tagline" style="color: #6b9174; font-style: italic; font-size: 1.1rem;">${memorial.headline}</p>` : ''}
+          </div>
+          
+          <div class="memorial-tabs" style="display: flex; justify-content: center; gap: 2rem; margin: 3rem 0 2rem; border-bottom: 2px solid #e8d5b7; padding-bottom: 0;">
+            <button class="tab-button active" data-tab="about" style="
+              padding: 0.75rem 1.5rem;
+              background: none;
               border: none;
-              border-radius: 4px;
-              font-size: 1rem;
               cursor: pointer;
-              transition: background 0.3s ease;
-            ">
-              <i class="fas fa-edit"></i> Edit Memorial
-            </button>
-          </div>
-        ` : ''}
-        
-        <section class="guestbook-section" style="margin-top: 3rem; padding: 3rem 0; border-top: 2px solid #e8d5b7;">
-          <h2 style="color: #4a4238; font-size: 2rem; margin-bottom: 1.5rem; text-align: center;">Guestbook</h2>
-          <div class="guestbook-actions" style="text-align: center; margin-bottom: 2rem;">
-            <button class="btn-primary" onclick="
-              import('@/utils/modal.js').then(({ openModal }) => {
-                window.currentMemorialId = '${memorial.id}';
-                openModal('guestbook');
-              }).catch(() => {
-                alert('Guestbook feature coming soon!');
-              });
-            " style="
-              display: inline-block;
-              padding: 0.75rem 2rem;
-              background: #6b9174;
-              color: white;
-              text-decoration: none;
+              color: #6b9174;
+              font-weight: 500;
+              border-bottom: 3px solid #6b9174;
+              margin-bottom: -2px;
+              transition: all 0.3s ease;
+            ">About</button>
+            <button class="tab-button" data-tab="gallery" style="
+              padding: 0.75rem 1.5rem;
+              background: none;
               border: none;
-              border-radius: 4px;
-              font-size: 1rem;
               cursor: pointer;
-              transition: background 0.3s ease;
-            ">
-              <i class="fas fa-pen"></i> Leave a Message
-            </button>
+              color: #9b8b7e;
+              font-weight: 500;
+              border-bottom: 3px solid transparent;
+              margin-bottom: -2px;
+              transition: all 0.3s ease;
+            ">Photos & Videos</button>
+            <button class="tab-button" data-tab="tributes" style="
+              padding: 0.75rem 1.5rem;
+              background: none;
+              border: none;
+              cursor: pointer;
+              color: #9b8b7e;
+              font-weight: 500;
+              border-bottom: 3px solid transparent;
+              margin-bottom: -2px;
+              transition: all 0.3s ease;
+            ">Tributes</button>
+            <button class="tab-button" data-tab="service" style="
+              padding: 0.75rem 1.5rem;
+              background: none;
+              border: none;
+              cursor: pointer;
+              color: #9b8b7e;
+              font-weight: 500;
+              border-bottom: 3px solid transparent;
+              margin-bottom: -2px;
+              transition: all 0.3s ease;
+            ">Service Info</button>
           </div>
-          <div class="guestbook-entries" id="guestbookEntries">
-            <p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">Loading messages...</p>
+          
+          <div class="memorial-tab-content">
+            <div class="tab-pane active" id="about-tab">
+              ${memorial.opening_statement ? `
+                <div class="memorial-section" style="margin-bottom: 2rem;">
+                  <p class="opening-statement" style="font-size: 1.2rem; color: #4a4238; line-height: 1.8; font-style: italic; text-align: center; padding: 1.5rem; background: #faf8f3; border-radius: 8px;">${memorial.opening_statement}</p>
+                </div>
+              ` : ''}
+              
+              ${memorial.obituary ? `
+                <div class="memorial-section obituary-section" style="margin-bottom: 2rem;">
+                  <h2 style="color: #4a4238; font-size: 1.75rem; margin-bottom: 1rem;">Obituary</h2>
+                  <div class="memorial-text" style="color: #4a4238; line-height: 1.8; font-size: 1.1rem;">${memorial.obituary}</div>
+                </div>
+              ` : ''}
+              
+              ${memorial.life_story ? `
+                <div class="memorial-section" style="margin-bottom: 2rem;">
+                  <h2 style="color: #4a4238; font-size: 1.75rem; margin-bottom: 1rem;">Life Story</h2>
+                  <div class="memorial-text" style="color: #4a4238; line-height: 1.8; font-size: 1.1rem;">${memorial.life_story}</div>
+                </div>
+              ` : ''}
+              
+              ${memorial.additional_info ? `
+                <div class="memorial-section" style="margin-bottom: 2rem;">
+                  <h2 style="color: #4a4238; font-size: 1.75rem; margin-bottom: 1rem;">Additional Information</h2>
+                  <div class="memorial-text" style="color: #4a4238; line-height: 1.8; font-size: 1.1rem;">${memorial.additional_info}</div>
+                </div>
+              ` : ''}
+            </div>
+            
+            <div class="tab-pane" id="gallery-tab" style="display: none;">
+              <div class="memorial-gallery" style="padding: 2rem 0;">
+                <p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">No photos or videos have been added yet.</p>
+              </div>
+            </div>
+            
+            <div class="tab-pane" id="tributes-tab" style="display: none;">
+              <div class="memorial-tributes" style="padding: 2rem 0;">
+                <p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">No tributes have been shared yet.</p>
+              </div>
+            </div>
+            
+            <div class="tab-pane" id="service-tab" style="display: none;">
+              <div class="memorial-service-info" style="padding: 2rem 0;">
+                <p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">No service information is available at this time.</p>
+              </div>
+            </div>
           </div>
-        </section>
+          
+          ${memorial.user_id === window.currentUser?.id ? `
+            <div class="owner-controls" style="margin: 3rem 0; text-align: center;">
+              <button onclick="
+                localStorage.setItem('currentDraftId', '${memorial.id}');
+                window.location.hash='#createMemorial';
+              " class="btn-primary" style="
+                display: inline-block;
+                padding: 0.75rem 2rem;
+                background: #6b9174;
+                color: white;
+                text-decoration: none;
+                border: none;
+                border-radius: 4px;
+                font-size: 1rem;
+                cursor: pointer;
+                transition: background 0.3s ease;
+              ">
+                <i class="fas fa-edit"></i> Edit Memorial
+              </button>
+            </div>
+          ` : ''}
+          
+          <section class="guestbook-section" style="margin-top: 3rem; padding: 3rem 0; border-top: 2px solid #e8d5b7;">
+            <h2 style="color: #4a4238; font-size: 2rem; margin-bottom: 1.5rem; text-align: center;">Guestbook</h2>
+            <div class="guestbook-actions" style="text-align: center; margin-bottom: 2rem;">
+              <button class="btn-primary" onclick="
+                import('@/utils/modal.js').then(({ openModal }) => {
+                  window.currentMemorialId = '${memorial.id}';
+                  openModal('guestbook');
+                }).catch(() => {
+                  alert('Guestbook feature coming soon!');
+                });
+              " style="
+                display: inline-block;
+                padding: 0.75rem 2rem;
+                background: #6b9174;
+                color: white;
+                text-decoration: none;
+                border: none;
+                border-radius: 4px;
+                font-size: 1rem;
+                cursor: pointer;
+                transition: background 0.3s ease;
+              ">
+                <i class="fas fa-pen"></i> Leave a Message
+              </button>
+            </div>
+            <div class="guestbook-entries" id="guestbookEntries">
+              <p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">Loading messages...</p>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   `;
@@ -757,8 +782,7 @@ function setupMemorialTabsDirect(container) {
    ────────────────────────────────────────── */
 async function loadGuestbookDirect(memorialId) {
   try {
-    // Import and use the Supabase client
-    const { getClient } = await import('@/api/supabaseClient.js');
+    // Get Supabase client
     const supabase = getClient();
     
     if (!supabase) {
@@ -766,7 +790,7 @@ async function loadGuestbookDirect(memorialId) {
       return;
     }
     
-    // Use Supabase client to query
+    // Query guestbook entries
     const { data: entries, error } = await supabase
       .from('guestbook_entries')
       .select('*')
@@ -775,7 +799,8 @@ async function loadGuestbookDirect(memorialId) {
       .order('created_at', { ascending: false });
     
     if (error) {
-      throw error;
+      console.error('Error loading guestbook:', error);
+      return;
     }
     
     const container = document.getElementById('guestbookEntries');
@@ -936,71 +961,27 @@ function closeMobileMenu() {
 function createMemorialSection() {
   const section = document.createElement('section');
   section.id = 'memorialView';
-  section.className = 'page-section memorial-view-page';
+  section.className = 'page-section';
   section.style.display = 'none';
-  section.innerHTML = `
-    <div class="memorial-header">
-      <div class="memorial-nav">
-        <button onclick="goBack()" class="btn-back">
-          <i class="fas fa-arrow-left"></i> Back
-        </button>
-      </div>
-      <div class="memorial-cover-photo" id="memorialCoverPhoto">
-        <div class="memorial-overlay"></div>
-      </div>
-    </div>
-    
-    <div class="memorial-content">
-      <div class="memorial-profile-section">
-        <img src="" alt="" class="memorial-profile-photo" id="memorialProfilePhoto">
-        <h1 class="memorial-name" id="memorialName">Loading...</h1>
-        <p class="memorial-dates" id="memorialDates"></p>
-        <p class="memorial-tagline" id="memorialTagline"></p>
-      </div>
-      
-      <div class="memorial-tabs">
-        <button class="tab-button active" data-tab="about">About</button>
-        <button class="tab-button" data-tab="gallery">Photos & Videos</button>
-        <button class="tab-button" data-tab="tributes">Tributes</button>
-        <button class="tab-button" data-tab="service">Service Info</button>
-      </div>
-      
-      <div class="memorial-tab-content">
-        <div class="tab-pane active" id="about-tab">
-          <div class="memorial-section">
-            <h2>Life Story</h2>
-            <div id="memorialLifeStory" class="memorial-text"></div>
-          </div>
-        </div>
-        
-        <div class="tab-pane" id="gallery-tab">
-          <div class="memorial-gallery" id="memorialGallery"></div>
-        </div>
-        
-        <div class="tab-pane" id="tributes-tab">
-          <div class="memorial-tributes" id="memorialTributes"></div>
-        </div>
-        
-        <div class="tab-pane" id="service-tab">
-          <div class="memorial-service-info" id="memorialServiceInfo"></div>
-        </div>
-      </div>
-      
-      <section class="guestbook-section">
-        <h2>Guestbook</h2>
-        <div class="guestbook-actions">
-          <button class="btn-primary" onclick="openGuestbookModal()">
-            <i class="fas fa-pen"></i> Leave a Message
-          </button>
-        </div>
-        <div class="guestbook-entries"></div>
-      </section>
-    </div>
-  `;
   
-  // Add to main content area
-  const main = document.querySelector('main') || document.body;
-  main.appendChild(section);
+  // Don't add any content here - let displayMemorialDirect handle it
+  section.innerHTML = '';
+  
+  // Find the right place to insert - after the main tag but before footer
+  const main = document.querySelector('main');
+  if (main) {
+    // Insert after main
+    main.parentNode.insertBefore(section, main.nextSibling);
+  } else {
+    // Fallback - insert before footer
+    const footer = document.querySelector('footer');
+    if (footer) {
+      footer.parentNode.insertBefore(section, footer);
+    } else {
+      // Last resort
+      document.body.appendChild(section);
+    }
+  }
   
   return section;
 }
