@@ -493,8 +493,10 @@ async function loadMemorialDirect(memorialId) {
       return;
     }
     
-    // Update window.currentUser for backward compatibility
+    // Update window state for backward compatibility
     window.currentUser = user;
+    window.currentMemorialId = memorial.id;
+    window.isMemorialOwner = (memorial.user_id === currentUserId);
     
     // Display the memorial
     displayMemorialDirect(memorial, container);
@@ -536,7 +538,9 @@ window.checkMemorialPassword = function(memorialId, correctPassword) {
   }
 };
 
-
+/* ──────────────────────────────────────────
+   DIRECT MEMORIAL DISPLAY - FIXED TO USE CSS CLASSES
+   ────────────────────────────────────────── */
 function displayMemorialDirect(memorial, container) {
   // Format dates
   const formatDate = (dateStr) => {
@@ -703,8 +707,9 @@ function displayMemorialDirect(memorial, container) {
   }, 100);
 }
 
-
-
+/* ──────────────────────────────────────────
+   FORMAT HELPER FUNCTIONS
+   ────────────────────────────────────────── */
 // Format service type for display
 function formatServiceType(type) {
   const types = {
@@ -730,6 +735,9 @@ function formatTime(timeStr) {
   return `${displayHour}:${minutes} ${ampm}`;
 }
 
+/* ──────────────────────────────────────────
+   MEMORIAL DATA LOADERS - USING CORRECT IMPORT
+   ────────────────────────────────────────── */
 // Load guestbook entries directly
 async function loadGuestbookDirect(memorialId) {
   try {
@@ -859,7 +867,9 @@ async function loadMomentsDirect(memorialId) {
   }
 }
 
-// Share memorial function
+/* ──────────────────────────────────────────
+   SHARE MEMORIAL FUNCTION
+   ────────────────────────────────────────── */
 window.shareMemorial = function(memorialId) {
   const url = `${window.location.origin}${window.location.pathname}#memorial/${memorialId}`;
   
@@ -872,266 +882,14 @@ window.shareMemorial = function(memorialId) {
   } else {
     // Fallback - copy to clipboard
     navigator.clipboard.writeText(url).then(() => {
-      alert('Memorial link copied to clipboard!');
+      import('@/utils/ui.js').then(({ showNotification }) => {
+        showNotification('Memorial link copied to clipboard!', 'success');
+      });
     }).catch(err => {
       console.error('Could not copy text: ', err);
     });
   }
 };
-
-
-
-
-
-// Load guestbook entries directly
-async function loadGuestbookDirect(memorialId) {
-  try {
-    const { supabase } = await import('@/api/supabaseClient.js');
-    const client = supabase.getClient();
-    
-    const { data: entries, error } = await client
-      .from('guestbook_entries')
-      .select('*')
-      .eq('memorial_id', memorialId)
-      .eq('is_approved', true)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    
-    const entriesContainer = document.getElementById('guestbookEntries');
-    if (!entriesContainer) return;
-    
-    if (entries && entries.length > 0) {
-      entriesContainer.innerHTML = entries.map(entry => `
-        <div class="guestbook-entry">
-          <div class="guestbook-entry-header">
-            <h4 class="guestbook-entry-author">${entry.author_name}</h4>
-            <time class="guestbook-entry-date">${new Date(entry.created_at).toLocaleDateString()}</time>
-          </div>
-          <p class="guestbook-entry-message">${entry.message}</p>
-        </div>
-      `).join('');
-    }
-  } catch (error) {
-    console.error('Error loading guestbook:', error);
-  }
-}
-
-// Load services directly
-async function loadServicesDirect(memorialId) {
-  try {
-    const { supabase } = await import('@/api/supabaseClient.js');
-    const client = supabase.getClient();
-    
-    const { data: services, error } = await client
-      .from('memorial_services')
-      .select('*')
-      .eq('memorial_id', memorialId)
-      .order('service_date', { ascending: true });
-    
-    if (error) throw error;
-    
-    const servicesContent = document.getElementById('servicesContent');
-    if (!servicesContent) return;
-    
-    if (services && services.length > 0) {
-      servicesContent.innerHTML = services.map(service => `
-        <div class="service-card">
-          <h3 class="service-type">${formatServiceType(service.service_type)}</h3>
-          <div class="service-details">
-            <p class="service-date">
-              <i class="fas fa-calendar"></i>
-              ${new Date(service.service_date).toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </p>
-            ${service.service_time ? `
-              <p class="service-time">
-                <i class="fas fa-clock"></i>
-                ${formatTime(service.service_time)}
-              </p>
-            ` : ''}
-            ${service.location_name ? `
-              <p class="service-location">
-                <i class="fas fa-map-marker-alt"></i>
-                ${service.location_name}
-              </p>
-            ` : ''}
-          </div>
-        </div>
-      `).join('');
-    }
-  } catch (error) {
-    console.error('Error loading services:', error);
-  }
-}
-
-// Load moments directly
-async function loadMomentsDirect(memorialId) {
-  try {
-    const { supabase } = await import('@/api/supabaseClient.js');
-    const client = supabase.getClient();
-    
-    const { data: moments, error } = await client
-      .from('memorial_moments')
-      .select('*')
-      .eq('memorial_id', memorialId)
-      .order('display_order', { ascending: true });
-    
-    if (error) throw error;
-    
-    const momentsContent = document.getElementById('momentsContent');
-    if (!momentsContent) return;
-    
-    if (moments && moments.length > 0) {
-      momentsContent.innerHTML = `
-        <div class="moments-gallery">
-          ${moments.map(moment => `
-            <div class="moment-item">
-              <img src="${moment.url}" alt="${moment.caption || 'Memorial moment'}" />
-              ${moment.caption ? `<p class="moment-caption">${moment.caption}</p>` : ''}
-            </div>
-          `).join('')}
-        </div>
-      `;
-    }
-  } catch (error) {
-    console.error('Error loading moments:', error);
-  }
-}
-
-// Helper function to format service type
-function formatServiceType(type) {
-  const types = {
-    'funeral': 'Funeral Service',
-    'memorial': 'Memorial Service',
-    'celebration_of_life': 'Celebration of Life',
-    'wake': 'Wake',
-    'burial': 'Burial',
-    'other': 'Service'
-  };
-  return types[type] || type;
-}
-
-// Helper function to format time
-function formatTime(timeStr) {
-  if (!timeStr) return '';
-  const [hours, minutes] = timeStr.split(':');
-  const hour = parseInt(hours);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-  return `${displayHour}:${minutes} ${ampm}`;
-}
-
-
-
-/* ──────────────────────────────────────────
-   SHARE MEMORIAL FUNCTION
-   ────────────────────────────────────────── */
-window.shareMemorial = function(memorialId) {
-  const url = `${window.location.origin}/#memorial/${memorialId}`;
-  
-  if (navigator.share) {
-    navigator.share({
-      title: 'Memorial',
-      text: 'View this memorial on GatherMemorials',
-      url: url
-    }).catch(err => console.log('Share failed:', err));
-  } else {
-    // Fallback - copy to clipboard
-    navigator.clipboard.writeText(url).then(() => {
-      import('@/utils/ui.js').then(({ showNotification }) => {
-        showNotification('Memorial link copied to clipboard!', 'success');
-      });
-    });
-  }
-};
-
-/* ──────────────────────────────────────────
-   DIRECT TAB SETUP
-   ────────────────────────────────────────── */
-function setupMemorialTabsDirect(container) {
-  const tabButtons = container.querySelectorAll('.memorial-tab');
-  const tabPanes = container.querySelectorAll('.tab-pane');
-  
-  tabButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const targetTab = button.getAttribute('data-tab');
-      
-      // Update active button
-      tabButtons.forEach(btn => {
-        btn.classList.remove('active');
-      });
-      button.classList.add('active');
-      
-      // Update active pane
-      tabPanes.forEach(pane => {
-        pane.classList.remove('active');
-      });
-      
-      const targetPane = container.querySelector(`#${targetTab}-tab`);
-      if (targetPane) {
-        targetPane.classList.add('active');
-      }
-    });
-  });
-}
-
-/* ──────────────────────────────────────────
-   DIRECT GUESTBOOK LOADER - FIXED TO USE SUPABASE CLIENT
-   ────────────────────────────────────────── */
-async function loadGuestbookDirect(memorialId) {
-  try {
-    // Get Supabase client
-    const supabase = getClient();
-    
-    if (!supabase) {
-      console.error('Supabase client not initialized');
-      return;
-    }
-    
-    // Query guestbook entries
-    const { data: entries, error } = await supabase
-      .from('guestbook_entries')
-      .select('*')
-      .eq('memorial_id', memorialId)
-      .eq('is_approved', true)
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Error loading guestbook:', error);
-      return;
-    }
-    
-    const container = document.getElementById('guestbookEntries');
-    if (!container) return;
-    
-    if (entries && entries.length > 0) {
-      container.innerHTML = entries.map(entry => `
-        <div class="guestbook-entry">
-          <div class="guestbook-entry-content">
-            <p class="guestbook-message">${entry.message}</p>
-            <div class="guestbook-meta">
-              <span class="guestbook-author">${entry.author_name}</span>
-              <span class="guestbook-date">${new Date(entry.created_at).toLocaleDateString()}</span>
-            </div>
-          </div>
-        </div>
-      `).join('');
-    } else {
-      container.innerHTML = '<p class="empty-state-message">No messages yet. Be the first to leave a tribute.</p>';
-    }
-  } catch (error) {
-    console.error('Error loading guestbook:', error);
-    const container = document.getElementById('guestbookEntries');
-    if (container) {
-      container.innerHTML = '<p class="error-message">Unable to load messages at this time.</p>';
-    }
-  }
-}
 
 /* ──────────────────────────────────────────
    AUTH CALLBACK HANDLER - NEW FUNCTION
@@ -1356,6 +1114,10 @@ export { showPage, navigateTo, goBack, getCurrentPage };
 window.showPage = showPage;
 window.navigateTo = navigateTo;
 window.goBack = goBack;
+window.editMemorial = function(memorialId) {
+  localStorage.setItem('currentDraftId', memorialId);
+  window.location.hash = '#createMemorial';
+};
 
 /* ──────────────────────────────────────────
    MAKE MEMORIAL FUNCTIONS GLOBAL
@@ -1363,5 +1125,4 @@ window.goBack = goBack;
 window.handleRouteChange = handleRouteChange;
 window.loadMemorialDirect = loadMemorialDirect;
 window.displayMemorialDirect = displayMemorialDirect;
-window.setupMemorialTabsDirect = setupMemorialTabsDirect;
 window.loadGuestbookDirect = loadGuestbookDirect;
