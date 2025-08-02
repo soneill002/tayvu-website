@@ -1023,3 +1023,12 @@ export { showPage, navigateTo, goBack, getCurrentPage };
 window.showPage = showPage;
 window.navigateTo = navigateTo;
 window.goBack = goBack;
+
+/* ──────────────────────────────────────────
+   MAKE MEMORIAL FUNCTIONS GLOBAL
+   ────────────────────────────────────────── */
+window.handleRouteChange = handleRouteChange;
+window.loadMemorialDirect = loadMemorialDirect;
+window.displayMemorialDirect = displayMemorialDirect;
+window.setupMemorialTabsDirect = setupMemorialTabsDirect;
+window.loadGuestbookDirect = loadGuestbookDirect;
