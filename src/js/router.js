@@ -261,73 +261,122 @@ function showPage(page) {
 }
 
 /* ──────────────────────────────────────────
-   MEMORIAL ROUTING - UPDATED WITH FALLBACK
+   BLOG POST ROUTING
    ────────────────────────────────────────── */
-function showMemorialPage(page) {
-  const memorialId = page.split('/')[1];
+function showBlogPost(page) {
+  const postSlug = page.split('/')[1];
   
-  if (!memorialId) {
-    showPage('home');
+  if (!postSlug) {
+    showPage('blog');
     return;
   }
-  
-  // Clean up previous memorial view if any
-  if (currentPage && currentPage.startsWith('memorial/')) {
-    // Try to cleanup if function exists
-    if (typeof cleanupMemorialView === 'function') {
-      cleanupMemorialView();
-    }
-  }
-  
-  // Update page title (will be updated again once memorial loads)
-  document.title = 'Loading Memorial... - GatherMemorials';
   
   // Hide all sections
   hideAllSections();
   
-  // Show memorial view section
-  let memorialSection = document.getElementById('memorialView');
-  if (!memorialSection) {
-    // Create memorial section if it doesn't exist
-    memorialSection = createMemorialSection();
+  // Show the blogPost section (not blog section!)
+  const blogPostSection = document.getElementById('blogPost');  // ✅ CORRECT - This gets the blog post section!
+  if (blogPostSection) {
+    blogPostSection.classList.add('active');
+    blogPostSection.style.display = 'block';
   }
-  
-  // Add active class to show the section
-  memorialSection.classList.add('active');
-  memorialSection.style.display = 'block';
   
   currentPage = page;
   
-  // Try to use the imported initMemorialView first
-  if (typeof initMemorialView === 'function') {
-    initMemorialView(memorialId);
-  } else {
-    // Try to load memorial view with dynamic import
-    import('@/features/memorials/memorialView.js')
-      .then(({ initMemorialView }) => {
-        // Successfully loaded the module
-        console.log('Memorial view module loaded');
-        initMemorialView(memorialId);
-      })
-      .catch(error => {
-        console.error('Failed to load memorial view module:', error);
-        // Fallback: Load memorial directly
-        loadMemorialFallback(memorialId);
-      });
-  }
+  // Let blog module handle the specific post
+  import('@/features/blog/blog.js').then(({ showBlogPost }) => {
+    showBlogPost(postSlug);
+  });
   
-  // Update nav (no nav item for individual memorials)
-  updateActiveNavItems('');
-  
-  // Track memorial view
-  trackPageView(`memorial/${memorialId}`);
+  updateActiveNavItems('blog');
 }
 
 /* ──────────────────────────────────────────
-   MEMORIAL FALLBACK LOADER
+   ROUTE CHANGE HANDLER - UPDATED WITH MEMORIAL HANDLING
    ────────────────────────────────────────── */
-async function loadMemorialFallback(memorialId) {
-  console.log('Using fallback memorial loader for:', memorialId);
+function handleRouteChange() {
+  const hash = window.location.hash.slice(1); // Remove #
+  
+  // CHECK FOR AUTH CALLBACK TOKENS FIRST
+  if (hash.includes('access_token=')) {
+    handleAuthCallback();
+    return;
+  }
+  
+  const page = hash || 'home';
+  
+  console.log('Route change detected:', page);
+  
+  // Handle special routes
+  if (page.startsWith('memorial/')) {
+    // INLINE MEMORIAL HANDLING
+    const memorialId = page.split('/')[1];
+    
+    if (!memorialId) {
+      showPage('home');
+      return;
+    }
+    
+    // Update previous page
+    previousPage = currentPage;
+    currentPage = page;
+    
+    // Update page title
+    document.title = 'Loading Memorial... - GatherMemorials';
+    
+    // Hide all sections
+    hideAllSections();
+    
+    // Show memorial view section
+    let memorialSection = document.getElementById('memorialView');
+    if (!memorialSection) {
+      // Create memorial section if it doesn't exist
+      memorialSection = createMemorialSection();
+    }
+    
+    // Add active class to show the section
+    memorialSection.classList.add('active');
+    memorialSection.style.display = 'block';
+    
+    // Update nav
+    updateActiveNavItems('');
+    
+    // Track page view
+    trackPageView(`memorial/${memorialId}`);
+    
+    // Load the memorial directly
+    loadMemorialDirect(memorialId);
+    
+    return;
+  }
+  
+  if (page.startsWith('blog/')) {
+    showBlogPost(page);
+    return;
+  }
+  
+  // Handle query parameters if any
+  const [pageName, ...params] = page.split('?');
+  
+  showPage(pageName);
+  
+  // Handle post-login redirect
+  if (window.currentUser && sessionStorage.getItem('redirectAfterLogin')) {
+    const redirect = sessionStorage.getItem('redirectAfterLogin');
+    sessionStorage.removeItem('redirectAfterLogin');
+    
+    // Small delay to ensure auth state is fully updated
+    setTimeout(() => {
+      showPage(redirect);
+    }, 100);
+  }
+}
+
+/* ──────────────────────────────────────────
+   DIRECT MEMORIAL LOADER
+   ────────────────────────────────────────── */
+async function loadMemorialDirect(memorialId) {
+  console.log('Loading memorial directly:', memorialId);
   
   const container = document.getElementById('memorialView');
   if (!container) return;
@@ -343,23 +392,35 @@ async function loadMemorialFallback(memorialId) {
   `;
   
   try {
-    // Get Supabase client using the global method
-    const { getClient } = await import('@/api/supabaseClient.js').catch(() => {
-      // If import fails, try to get from window
-      return { getClient: window.getClient };
-    });
+    // Get auth token
+    const authToken = localStorage.getItem('sb-virtdzxnedksjsmeshyt-auth-token');
+    const headers = {
+      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpcnRkenhuZWRrc2pzbWVzaHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjY2NzI1OTgsImV4cCI6MjA0MjI0ODU5OH0.aV7oaBj5Z4Cfs-WyZ9cetY-4aaQbicvFxyuN7K5dW1o',
+      'Content-Type': 'application/json'
+    };
     
-    const supabase = getClient ? getClient() : window.supabase;
-    
-    if (!supabase) {
-      throw new Error('Unable to initialize Supabase client');
+    // Add auth header if we have a token
+    if (authToken) {
+      try {
+        const token = JSON.parse(authToken);
+        headers['Authorization'] = `Bearer ${token.access_token}`;
+      } catch (e) {
+        console.warn('Could not parse auth token');
+      }
     }
     
-    // Load memorial data
-    const { data: memorials, error } = await supabase
-      .rpc('get_memorial', { identifier: memorialId });
+    // Fetch memorial data using REST API
+    const response = await fetch('https://virtdzxnedksjsmeshyt.supabase.co/rest/v1/rpc/get_memorial', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ identifier: memorialId })
+    });
     
-    if (error) throw error;
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const memorials = await response.json();
     
     if (!memorials || memorials.length === 0) {
       container.innerHTML = `
@@ -374,12 +435,10 @@ async function loadMemorialFallback(memorialId) {
     }
     
     const memorial = memorials[0];
+    console.log('Memorial loaded:', memorial);
     
     // Check if published
-    const { data: { user } } = await supabase.auth.getUser();
-    const currentUserId = user?.id;
-    
-    if (!memorial.is_published && memorial.user_id !== currentUserId) {
+    if (!memorial.is_published && (!window.currentUser || memorial.user_id !== window.currentUser.id)) {
       container.innerHTML = `
         <div style="text-align: center; padding: 4rem;">
           <i class="fas fa-lock" style="font-size: 3rem; color: #9b8b7e; margin-bottom: 1rem; display: block;"></i>
@@ -392,7 +451,7 @@ async function loadMemorialFallback(memorialId) {
     }
     
     // Display the memorial
-    displayMemorialFallback(memorial, currentUserId, container);
+    displayMemorialDirect(memorial, container);
     
   } catch (error) {
     console.error('Error loading memorial:', error);
@@ -400,7 +459,7 @@ async function loadMemorialFallback(memorialId) {
       <div style="text-align: center; padding: 4rem;">
         <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #d2755a; margin-bottom: 1rem; display: block;"></i>
         <h2 style="color: #4a4238; margin-bottom: 1rem;">Something Went Wrong</h2>
-        <p style="color: #9b8b7e; margin-bottom: 2rem;">Error: ${error.message}</p>
+        <p style="color: #9b8b7e; margin-bottom: 2rem;">We couldn't load the memorial. Please try again later.</p>
         <a href="#home" class="btn-primary" style="display: inline-block; padding: 0.75rem 2rem; background: #6b9174; color: white; text-decoration: none; border-radius: 4px;">Return Home</a>
       </div>
     `;
@@ -408,9 +467,9 @@ async function loadMemorialFallback(memorialId) {
 }
 
 /* ──────────────────────────────────────────
-   MEMORIAL DISPLAY FALLBACK
+   DIRECT MEMORIAL DISPLAY
    ────────────────────────────────────────── */
-function displayMemorialFallback(memorial, currentUserId, container) {
+function displayMemorialDirect(memorial, container) {
   // Format dates
   const birthYear = memorial.birth_date ? new Date(memorial.birth_date).getFullYear() : '';
   const deathYear = memorial.death_date ? new Date(memorial.death_date).getFullYear() : '';
@@ -548,7 +607,7 @@ function displayMemorialFallback(memorial, currentUserId, container) {
           </div>
         </div>
         
-        ${memorial.user_id === currentUserId ? `
+        ${memorial.user_id === window.currentUser?.id ? `
           <div class="owner-controls" style="margin: 3rem 0; text-align: center;">
             <button onclick="
               localStorage.setItem('currentDraftId', '${memorial.id}');
@@ -603,16 +662,16 @@ function displayMemorialFallback(memorial, currentUserId, container) {
   `;
   
   // Set up tab functionality
-  setupMemorialTabs(container);
+  setupMemorialTabsDirect(container);
   
   // Try to load guestbook entries
-  loadGuestbookFallback(memorial.id);
+  loadGuestbookDirect(memorial.id);
 }
 
 /* ──────────────────────────────────────────
-   MEMORIAL TAB SETUP
+   DIRECT TAB SETUP
    ────────────────────────────────────────── */
-function setupMemorialTabs(container) {
+function setupMemorialTabsDirect(container) {
   const tabButtons = container.querySelectorAll('.tab-button');
   const tabPanes = container.querySelectorAll('.tab-pane');
   
@@ -646,24 +705,38 @@ function setupMemorialTabs(container) {
 }
 
 /* ──────────────────────────────────────────
-   GUESTBOOK FALLBACK LOADER
+   DIRECT GUESTBOOK LOADER
    ────────────────────────────────────────── */
-async function loadGuestbookFallback(memorialId) {
+async function loadGuestbookDirect(memorialId) {
   try {
-    const { getClient } = await import('@/api/supabaseClient.js').catch(() => ({ getClient: window.getClient }));
-    const supabase = getClient ? getClient() : window.supabase;
+    const authToken = localStorage.getItem('sb-virtdzxnedksjsmeshyt-auth-token');
+    const headers = {
+      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpcnRkenhuZWRrc2pzbWVzaHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjY2NzI1OTgsImV4cCI6MjA0MjI0ODU5OH0.aV7oaBj5Z4Cfs-WyZ9cetY-4aaQbicvFxyuN7K5dW1o',
+      'Content-Type': 'application/json'
+    };
     
-    const { data: entries, error } = await supabase
-      .from('guestbook_entries')
-      .select('*')
-      .eq('memorial_id', memorialId)
-      .eq('is_approved', true)
-      .order('created_at', { ascending: false });
+    if (authToken) {
+      try {
+        const token = JSON.parse(authToken);
+        headers['Authorization'] = `Bearer ${token.access_token}`;
+      } catch (e) {
+        console.warn('Could not parse auth token for guestbook');
+      }
+    }
+    
+    const response = await fetch(`https://virtdzxnedksjsmeshyt.supabase.co/rest/v1/guestbook_entries?memorial_id=eq.${memorialId}&is_approved=eq.true&order=created_at.desc`, {
+      method: 'GET',
+      headers: headers
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const entries = await response.json();
     
     const container = document.getElementById('guestbookEntries');
     if (!container) return;
-    
-    if (error) throw error;
     
     if (entries && entries.length > 0) {
       container.innerHTML = entries.map(entry => `
@@ -680,81 +753,6 @@ async function loadGuestbookFallback(memorialId) {
     }
   } catch (error) {
     console.error('Error loading guestbook:', error);
-  }
-}
-
-/* ──────────────────────────────────────────
-   BLOG POST ROUTING
-   ────────────────────────────────────────── */
-function showBlogPost(page) {
-  const postSlug = page.split('/')[1];
-  
-  if (!postSlug) {
-    showPage('blog');
-    return;
-  }
-  
-  // Hide all sections
-  hideAllSections();
-  
-  // Show the blogPost section (not blog section!)
-  const blogPostSection = document.getElementById('blogPost');  // ✅ CORRECT - This gets the blog post section!
-  if (blogPostSection) {
-    blogPostSection.classList.add('active');
-    blogPostSection.style.display = 'block';
-  }
-  
-  currentPage = page;
-  
-  // Let blog module handle the specific post
-  import('@/features/blog/blog.js').then(({ showBlogPost }) => {
-    showBlogPost(postSlug);
-  });
-  
-  updateActiveNavItems('blog');
-}
-
-/* ──────────────────────────────────────────
-   ROUTE CHANGE HANDLER - UPDATED WITH AUTH CALLBACK
-   ────────────────────────────────────────── */
-function handleRouteChange() {
-  const hash = window.location.hash.slice(1); // Remove #
-  
-  // CHECK FOR AUTH CALLBACK TOKENS FIRST
-  if (hash.includes('access_token=')) {
-    handleAuthCallback();
-    return;
-  }
-  
-  const page = hash || 'home';
-  
-  console.log('Route change detected:', page);
-  
-  // Handle special routes
-  if (page.startsWith('memorial/')) {
-    showMemorialPage(page);
-    return;
-  }
-  
-  if (page.startsWith('blog/')) {
-    showBlogPost(page);
-    return;
-  }
-  
-  // Handle query parameters if any
-  const [pageName, ...params] = page.split('?');
-  
-  showPage(pageName);
-  
-  // Handle post-login redirect
-  if (window.currentUser && sessionStorage.getItem('redirectAfterLogin')) {
-    const redirect = sessionStorage.getItem('redirectAfterLogin');
-    sessionStorage.removeItem('redirectAfterLogin');
-    
-    // Small delay to ensure auth state is fully updated
-    setTimeout(() => {
-      showPage(redirect);
-    }, 100);
   }
 }
 
@@ -1025,12 +1023,3 @@ export { showPage, navigateTo, goBack, getCurrentPage };
 window.showPage = showPage;
 window.navigateTo = navigateTo;
 window.goBack = goBack;
-
-/* ──────────────────────────────────────────
-   ENSURE MEMORIAL FUNCTIONS ARE GLOBAL
-   ────────────────────────────────────────── */
-window.showMemorialPage = showMemorialPage;
-window.loadMemorialFallback = loadMemorialFallback;
-window.displayMemorialFallback = displayMemorialFallback;
-window.setupMemorialTabs = setupMemorialTabs;
-window.loadGuestbookFallback = loadGuestbookFallback;
