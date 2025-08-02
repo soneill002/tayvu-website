@@ -1,8 +1,9 @@
-/* src/js/router.js - Fixed version with direct memorial query */
+/* src/js/router.js - Fixed version using Supabase client */
 import { initBlog } from '@/features/blog/blog.js';
 import { initFAQ } from '@/features/faq/faq.js';
 import { initMemorialView, cleanupMemorialView } from '@/features/memorials/memorialView.js';
 import { qs } from '@/utils/ui.js';
+import { getClient } from '@/api/supabaseClient.js';
 
 /* ──────────────────────────────────────────
    ROUTE CONFIGURATION
@@ -373,7 +374,7 @@ function handleRouteChange() {
 }
 
 /* ──────────────────────────────────────────
-   DIRECT MEMORIAL LOADER - FIXED TO USE DIRECT QUERY
+   DIRECT MEMORIAL LOADER - FIXED TO USE SUPABASE CLIENT
    ────────────────────────────────────────── */
 async function loadMemorialDirect(memorialId) {
   console.log('Loading memorial directly:', memorialId);
@@ -392,47 +393,26 @@ async function loadMemorialDirect(memorialId) {
   `;
   
   try {
-    // Get auth token
-    const authToken = localStorage.getItem('sb-virtdzxnedksjsmeshyt-auth-token');
-    const headers = {
-      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpcnRkenhuZWRrc2pzbWVzaHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjY2NzI1OTgsImV4cCI6MjA0MjI0ODU5OH0.aV7oaBj5Z4Cfs-WyZ9cetY-4aaQbicvFxyuN7K5dW1o',
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
-    };
+    // Import and use the Supabase client instead of manual fetch
+    const { getClient } = await import('@/api/supabaseClient.js');
+    const supabase = getClient();
     
-    // Add auth header if we have a token
-    if (authToken) {
-      try {
-        const token = JSON.parse(authToken);
-        headers['Authorization'] = `Bearer ${token.access_token}`;
-      } catch (e) {
-        console.warn('Could not parse auth token');
-      }
+    if (!supabase) {
+      throw new Error('Supabase client not initialized');
     }
     
-    // FIXED: Query memorials table directly by slug instead of using RPC
-    const response = await fetch(`https://virtdzxnedksjsmeshyt.supabase.co/rest/v1/memorials?slug=eq.${memorialId}&select=*`, {
-      method: 'GET',
-      headers: headers
-    });
+    // Use Supabase client to query - it handles auth automatically
+    const { data: memorials, error } = await supabase
+      .from('memorials')
+      .select('*')
+      .eq('slug', memorialId);
     
-    if (!response.ok) {
-      // If 404, memorial doesn't exist
-      if (response.status === 404) {
-        container.innerHTML = `
-          <div style="text-align: center; padding: 4rem;">
-            <i class="fas fa-search" style="font-size: 3rem; color: #9b8b7e; margin-bottom: 1rem; display: block;"></i>
-            <h2 style="color: #4a4238; margin-bottom: 1rem;">Memorial Not Found</h2>
-            <p style="color: #9b8b7e; margin-bottom: 2rem;">We couldn't find the memorial you're looking for.</p>
-            <a href="#home" class="btn-primary" style="display: inline-block; padding: 0.75rem 2rem; background: #6b9174; color: white; text-decoration: none; border-radius: 4px;">Return Home</a>
-          </div>
-        `;
-        return;
-      }
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (error) {
+      console.error('Supabase error:', error);
+      throw error;
     }
     
-    const memorials = await response.json();
+
     
     if (!memorials || memorials.length === 0) {
       container.innerHTML = `
@@ -449,8 +429,12 @@ async function loadMemorialDirect(memorialId) {
     const memorial = memorials[0];
     console.log('Memorial loaded:', memorial);
     
+    // Get current user for permission checks
+    const { data: { user } } = await supabase.auth.getUser();
+    const currentUserId = user?.id;
+    
     // Check if memorial is private and user needs to enter password
-    if (memorial.privacy_setting === 'private' && (!window.currentUser || memorial.user_id !== window.currentUser.id)) {
+    if (memorial.privacy_setting === 'private' && memorial.user_id !== currentUserId) {
       // Check if we have access in session
       const accessKey = `memorial_access_${memorial.id}`;
       const hasAccess = sessionStorage.getItem(accessKey) === 'granted';
@@ -476,7 +460,7 @@ async function loadMemorialDirect(memorialId) {
     }
     
     // Check if published
-    if (!memorial.is_published && (!window.currentUser || memorial.user_id !== window.currentUser.id)) {
+    if (!memorial.is_published && memorial.user_id !== currentUserId) {
       container.innerHTML = `
         <div style="text-align: center; padding: 4rem;">
           <i class="fas fa-lock" style="font-size: 3rem; color: #9b8b7e; margin-bottom: 1rem; display: block;"></i>
@@ -487,6 +471,9 @@ async function loadMemorialDirect(memorialId) {
       `;
       return;
     }
+    
+    // Update window.currentUser for backward compatibility
+    window.currentUser = user;
     
     // Display the memorial
     displayMemorialDirect(memorial, container);
@@ -766,35 +753,30 @@ function setupMemorialTabsDirect(container) {
 }
 
 /* ──────────────────────────────────────────
-   DIRECT GUESTBOOK LOADER
+   DIRECT GUESTBOOK LOADER - FIXED TO USE SUPABASE CLIENT
    ────────────────────────────────────────── */
 async function loadGuestbookDirect(memorialId) {
   try {
-    const authToken = localStorage.getItem('sb-virtdzxnedksjsmeshyt-auth-token');
-    const headers = {
-      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpcnRkenhuZWRrc2pzbWVzaHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjY2NzI1OTgsImV4cCI6MjA0MjI0ODU5OH0.aV7oaBj5Z4Cfs-WyZ9cetY-4aaQbicvFxyuN7K5dW1o',
-      'Content-Type': 'application/json'
-    };
+    // Import and use the Supabase client
+    const { getClient } = await import('@/api/supabaseClient.js');
+    const supabase = getClient();
     
-    if (authToken) {
-      try {
-        const token = JSON.parse(authToken);
-        headers['Authorization'] = `Bearer ${token.access_token}`;
-      } catch (e) {
-        console.warn('Could not parse auth token for guestbook');
-      }
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      return;
     }
     
-    const response = await fetch(`https://virtdzxnedksjsmeshyt.supabase.co/rest/v1/guestbook_entries?memorial_id=eq.${memorialId}&is_approved=eq.true&order=created_at.desc`, {
-      method: 'GET',
-      headers: headers
-    });
+    // Use Supabase client to query
+    const { data: entries, error } = await supabase
+      .from('guestbook_entries')
+      .select('*')
+      .eq('memorial_id', memorialId)
+      .eq('is_approved', true)
+      .order('created_at', { ascending: false });
     
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (error) {
+      throw error;
     }
-    
-    const entries = await response.json();
     
     const container = document.getElementById('guestbookEntries');
     if (!container) return;
@@ -814,6 +796,10 @@ async function loadGuestbookDirect(memorialId) {
     }
   } catch (error) {
     console.error('Error loading guestbook:', error);
+    const container = document.getElementById('guestbookEntries');
+    if (container) {
+      container.innerHTML = '<p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">Unable to load messages at this time.</p>';
+    }
   }
 }
 
