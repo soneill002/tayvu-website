@@ -4186,6 +4186,30 @@ footer {
   animation: fadeIn 1.5s ease;
 }
 
+/* Memorial Section Stacking */
+.memorial-hero {
+  position: relative;
+  z-index: 10;
+}
+
+.memorial-body {
+  position: relative;
+  z-index: 5;
+  background: white;
+  margin-top: -50px; /* If it needs to overlap slightly */
+  padding-top: 50px;
+  overflow: hidden;
+}
+
+.memorial-tabs-wrapper {
+  position: relative;
+  overflow: hidden;
+  background: white;
+}
+
+
+
+
 .memorial-main-photo {
   width: 220px;
   height: 220px;
@@ -4254,6 +4278,16 @@ footer {
   margin: 0 auto;
   padding: 0 2rem;
 }
+
+/* Memorial Content Container - Prevents tab overflow */
+.memorial-content {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--background);
+  border-radius: 0 0 20px 20px;
+}
+
+
 
 /* Obituary Section */
 .obituary-section {
@@ -6554,4 +6588,193 @@ footer {
 
 #passwordSection .form-input.error {
   border-color: #e53e3e;
+}
+
+/* ──────────────────────────────────────────
+   MEMORIAL PAGE TAB FIXES
+   ────────────────────────────────────────── */
+
+/* Memorial Body Container */
+.memorial-body {
+  position: relative;
+  z-index: 5;
+  background: white;
+  overflow: hidden; /* Critical: prevents content from escaping */
+}
+
+/* Memorial Content Wrapper */
+.memorial-content {
+  position: relative;
+  overflow: hidden;
+  background-color: white;
+  border-radius: 0 0 20px 20px;
+}
+
+/* Memorial Tabs Container */
+.memorial-tabs-container,
+.memorial-tabs-wrapper {
+  position: relative;
+  overflow: hidden;
+  background: white;
+}
+
+/* Tab Content Container */
+.memorial-tabs-content,
+.memorial-page .tab-content {
+  position: relative;
+  background: white;
+  overflow: hidden; /* Critical fix */
+  min-height: 400px;
+}
+
+/* Tab Panes - Default State (Hidden) */
+.memorial-tabs-content .tab-pane,
+.memorial-page .tab-pane,
+.memorial-content .tab-pane {
+  display: none !important;
+  opacity: 0;
+  visibility: hidden;
+  position: absolute;
+  top: 0;
+  left: -9999px;
+  width: 100%;
+  height: 0;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+}
+
+/* Tab Panes - Active State (Visible) */
+.memorial-tabs-content .tab-pane.active,
+.memorial-page .tab-pane.active,
+.memorial-content .tab-pane.active {
+  display: block !important;
+  opacity: 1;
+  visibility: visible;
+  position: relative;
+  left: 0;
+  height: auto;
+  overflow: visible;
+  padding: 2rem;
+}
+
+/* Hide Specific Memorial Sections When Not Active */
+.memorial-page .obituary-section:not(.active),
+.memorial-page .service-section:not(.active),
+.memorial-page .guestbook-section:not(.active),
+.memorial-page .timeline-section:not(.active),
+.memorial-page .moments-section:not(.active),
+.memorial-page .about-section:not(.active) {
+  display: none !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+  pointer-events: none !important;
+}
+
+/* NUCLEAR OPTION - Hide anything with data-tab attribute that's not active */
+.memorial-page [data-tab]:not(.active),
+.memorial-page [data-section]:not(.active),
+.memorial-page [role="tabpanel"]:not(.active) {
+  display: none !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Ensure memorial main content has proper background */
+.memorial-main-content {
+  background: white;
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Fix for any content that might be using different class names */
+.memorial-content > section:not(.active),
+.memorial-content > div:not(.active):not(.memorial-tabs):not(.memorial-hero):not(.memorial-header) {
+  display: none !important;
+}
+
+/* Ensure smooth transitions when switching tabs */
+.memorial-tabs-content {
+  transition: none; /* Prevent height jumping */
+}
+
+/* Additional safeguard for the About section specifically */
+.memorial-page .about-section:not(.active),
+.memorial-page #aboutTab:not(.active),
+.memorial-page [data-tab="about"]:not(.active) {
+  display: none !important;
+  position: fixed !important;
+  left: -99999px !important;
+  top: -99999px !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  z-index: -9999 !important;
+}
+
+/* ──────────────────────────────────────────
+   MEMORIAL PAGE - HIDE UNUSED SECTIONS
+   ────────────────────────────────────────── */
+
+/* Hide all memorial sections by default */
+.memorial-page .about-section,
+.memorial-page .timeline-section,
+.memorial-page .moments-section,
+.memorial-page .service-section,
+.memorial-page .obituary-section,
+.memorial-page .guestbook-section {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  left: -99999px !important;
+  opacity: 0 !important;
+}
+
+/* If you want to show specific sections, you can add an active class */
+.memorial-page .obituary-section.show,
+.memorial-page .service-section.show,
+.memorial-page .guestbook-section.show {
+  display: block !important;
+  visibility: visible !important;
+  height: auto !important;
+  overflow: visible !important;
+  position: relative !important;
+  left: 0 !important;
+  opacity: 1 !important;
+}
+
+/* Alternative: Hide any section that has a data attribute or role */
+.memorial-page [data-section],
+.memorial-page [role="tabpanel"],
+.memorial-page .tab-pane,
+.memorial-page .tab-content {
+  display: none !important;
+}
+
+/* Ensure the memorial body doesn't show hidden content */
+.memorial-body {
+  overflow: hidden;
+  position: relative;
+}
+
+.memorial-content {
+  overflow: hidden;
+  position: relative;
+}
+
+/* Remove any tab-related styling from memorial pages */
+.memorial-page .memorial-tabs,
+.memorial-page .tab-nav,
+.memorial-page .tab-navigation {
+  display: none !important;
 }
