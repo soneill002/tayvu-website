@@ -660,8 +660,11 @@ function displayMemorialDirect(memorial, container) {
             </div>
             
             <div class="tab-pane" id="gallery-tab" style="display: none;">
-              <div class="memorial-gallery" style="padding: 2rem 0;">
-                <p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">No photos or videos have been added yet.</p>
+              <div class="memorial-gallery" id="memorialGallery" style="padding: 2rem 0;">
+                <div class="loading-spinner" style="text-align: center;">
+                  <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #6b9174;"></i>
+                  <p style="color: #9b8b7e; margin-top: 1rem;">Loading photos...</p>
+                </div>
               </div>
             </div>
             
@@ -739,6 +742,9 @@ function displayMemorialDirect(memorial, container) {
   
   // Try to load guestbook entries
   loadGuestbookDirect(memorial.id);
+  
+  // Load memorial moments/photos
+  loadMemorialMomentsDirect(memorial.id);
 }
 
 /* ──────────────────────────────────────────
@@ -824,6 +830,153 @@ async function loadGuestbookDirect(memorialId) {
     const container = document.getElementById('guestbookEntries');
     if (container) {
       container.innerHTML = '<p style="text-align: center; color: #9b8b7e; font-size: 1.1rem;">Unable to load messages at this time.</p>';
+    }
+  }
+}
+
+/* ──────────────────────────────────────────
+   DIRECT MEMORIAL MOMENTS LOADER
+   ────────────────────────────────────────── */
+async function loadMemorialMomentsDirect(memorialId) {
+  try {
+    // Get Supabase client
+    const supabase = getClient();
+    
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      return;
+    }
+    
+    // Query memorial moments
+    const { data: moments, error } = await supabase
+      .from('memorial_moments')
+      .select('*')
+      .eq('memorial_id', memorialId)
+      .order('display_order', { ascending: true });
+    
+    if (error) {
+      console.error('Error loading memorial moments:', error);
+      return;
+    }
+    
+    const galleryContainer = document.getElementById('memorialGallery');
+    if (!galleryContainer) return;
+    
+    if (moments && moments.length > 0) {
+      // Create VSCO-style grid layout
+      galleryContainer.innerHTML = `
+        <div class="moments-grid-vsco" style="
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          gap: 8px;
+          margin-bottom: 3rem;
+        ">
+          ${moments.map((moment, index) => {
+            // Add variety to the layout - some images span 2 columns or rows
+            const isWide = index % 5 === 0;
+            const isTall = index % 7 === 2;
+            
+            return `
+              <div class="moment-vsco" style="
+                position: relative;
+                overflow: hidden;
+                background: #faf8f3;
+                cursor: pointer;
+                ${isWide ? 'grid-column: span 2;' : ''}
+                ${isTall ? 'grid-row: span 2; aspect-ratio: auto;' : 'aspect-ratio: 1;'}
+              ">
+                ${moment.type === 'video' ? `
+                  <video src="${moment.url}" style="width: 100%; height: 100%; object-fit: cover;" muted loop></video>
+                  <div class="video-indicator" style="
+                    position: absolute;
+                    top: 1rem;
+                    right: 1rem;
+                    width: 32px;
+                    height: 32px;
+                    background: rgba(0, 0, 0, 0.5);
+                    backdrop-filter: blur(10px);
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 0.75rem;
+                  ">
+                    <i class="fas fa-play"></i>
+                  </div>
+                ` : `
+                  <img src="${moment.url || moment.thumbnail_url}" 
+                       alt="${moment.caption || 'Memorial moment'}" 
+                       style="width: 100%; height: 100%; object-fit: cover; display: block;"
+                       loading="lazy">
+                `}
+                
+                <div class="moment-overlay-vsco" style="
+                  position: absolute;
+                  inset: 0;
+                  background: linear-gradient(to bottom, transparent 60%, rgba(0, 0, 0, 0.3) 100%);
+                  opacity: 0;
+                  transition: opacity 0.3s ease;
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: flex-end;
+                  padding: 1.5rem;
+                " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'">
+                  ${moment.date_taken ? `
+                    <p class="moment-date-vsco" style="
+                      font-size: 0.75rem;
+                      color: rgba(255, 255, 255, 0.8);
+                      margin-bottom: 0.25rem;
+                      font-weight: 400;
+                      letter-spacing: 0.5px;
+                    ">${new Date(moment.date_taken).toLocaleDateString()}</p>
+                  ` : ''}
+                  ${moment.caption ? `
+                    <p class="moment-caption-vsco" style="
+                      font-size: 0.875rem;
+                      color: white;
+                      font-weight: 300;
+                      line-height: 1.4;
+                    ">${moment.caption}</p>
+                  ` : ''}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+      
+      // Add responsive styles
+      const styleSheet = document.createElement('style');
+      styleSheet.textContent = `
+        @media (max-width: 768px) {
+          .moments-grid-vsco {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 4px !important;
+          }
+          .moment-vsco[style*="grid-column: span 2"] {
+            grid-column: span 1 !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .moments-grid-vsco {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        .moment-vsco video:hover {
+          opacity: 0.9;
+        }
+      `;
+      document.head.appendChild(styleSheet);
+      
+    } else {
+      galleryContainer.innerHTML = '<p style="text-align: center; color: #9b8b7e; font-size: 1.1rem; padding: 2rem 0;">No photos or videos have been added yet.</p>';
+    }
+  } catch (error) {
+    console.error('Error loading memorial moments:', error);
+    const galleryContainer = document.getElementById('memorialGallery');
+    if (galleryContainer) {
+      galleryContainer.innerHTML = '<p style="text-align: center; color: #9b8b7e; font-size: 1.1rem; padding: 2rem 0;">Unable to load photos at this time.</p>';
     }
   }
 }
@@ -1060,3 +1213,4 @@ window.loadMemorialDirect = loadMemorialDirect;
 window.displayMemorialDirect = displayMemorialDirect;
 window.setupMemorialTabsDirect = setupMemorialTabsDirect;
 window.loadGuestbookDirect = loadGuestbookDirect;
+window.loadMemorialMomentsDirect = loadMemorialMomentsDirect;
